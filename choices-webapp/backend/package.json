@@ -1,0 +1,15 @@
+{
+  "name": "choices-webapp-backend",
+  "version": "1.0.0",
+  "description": "Lambda backend for the two-player elimination game",
+  "type": "module",
+  "main": "handler.mjs",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.620.0",
+    "@aws-sdk/lib-dynamodb": "^3.620.0",
+    "web-push": "^3.6.7"
+  }
+}
