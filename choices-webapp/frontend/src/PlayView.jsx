@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { getGame, eliminate } from "./api.js";
 import { loadIdentity, saveIdentity } from "./storage.js";
 import { enablePush, pushSupported, isIosSafari, isStandalone } from "./push.js";
+import { stashActiveGame } from "./resume.js";
 
 const POLL_MS = 3000;
 
@@ -21,6 +22,14 @@ export default function PlayView({ gameId, inviteToken }) {
       setIdentity(id);
     }
   }, [gameId, inviteToken, identity]);
+
+  // Bridge identity to Cache Storage so an iOS Home Screen install can recover
+  // this game (separate localStorage + start_url reset). Best-effort.
+  useEffect(() => {
+    if (identity) {
+      stashActiveGame({ gameId, role: identity.role, token: identity.token });
+    }
+  }, [gameId, identity]);
 
   // Initial load + polling loop.
   useEffect(() => {
@@ -134,8 +143,9 @@ export default function PlayView({ gameId, inviteToken }) {
 
       {isIosSafari() && !isStandalone() && !complete && (
         <p className="hint">
-          📲 On iPhone? Add this page to your Home Screen (Share → Add to Home
-          Screen) to get a buzz when it's your turn.
+          📲 On iPhone? Tap Share → <strong>Add to Home Screen</strong>, then
+          open the app from your Home Screen. Your game will be waiting there and
+          you'll get a buzz when it's your turn.
         </p>
       )}
 
