@@ -1,16 +1,20 @@
-// Per-game role + token persistence in localStorage.
-// Lets a player keep their identity (and authorization token) across refreshes.
-const key = (gameId) => `choices:${gameId}`;
+// Persistent player identity for the pairing (survives across all games).
+// One record per device: { pairingId, role, token }.
+const KEY = "choices:identity";
 
-export function saveIdentity(gameId, role, token) {
-  localStorage.setItem(key(gameId), JSON.stringify({ role, token }));
+export function saveIdentity({ pairingId, role, token }) {
+  localStorage.setItem(KEY, JSON.stringify({ pairingId, role, token }));
 }
 
-export function loadIdentity(gameId) {
+export function loadIdentity() {
   try {
-    const raw = localStorage.getItem(key(gameId));
+    const raw = localStorage.getItem(KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
+}
+
+export function clearIdentity() {
+  localStorage.removeItem(KEY);
 }

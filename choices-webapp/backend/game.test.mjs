@@ -11,14 +11,29 @@ import {
 
 const CHOICES = ["Pizza", "Tacos", "Sushi", "Ramen"];
 
-test("createGame initializes a valid active game, B moves first", () => {
-  const g = createGame(CHOICES, 1000);
+test("createGame (A-started) -> B moves first", () => {
+  const g = createGame(CHOICES, { startedBy: "A", number: 1 }, 1000);
   assert.deepEqual(g.choices, CHOICES);
   assert.deepEqual(g.eliminated, []);
-  assert.equal(g.turn, "B");
+  assert.equal(g.startedBy, "A");
+  assert.equal(g.number, 1);
+  assert.equal(g.turn, "B"); // non-starter moves first
   assert.equal(g.status, "active");
   assert.equal(g.winnerIndex, null);
   assert.equal(g.createdAt, 1000);
+});
+
+test("createGame (B-started) -> A moves first", () => {
+  const g = createGame(CHOICES, { startedBy: "B", number: 2 });
+  assert.equal(g.startedBy, "B");
+  assert.equal(g.number, 2);
+  assert.equal(g.turn, "A"); // non-starter moves first
+});
+
+test("createGame defaults to A-started", () => {
+  const g = createGame(CHOICES);
+  assert.equal(g.startedBy, "A");
+  assert.equal(g.turn, "B");
 });
 
 test("createGame trims whitespace", () => {
@@ -36,15 +51,26 @@ test("createGame rejects empty/whitespace choices", () => {
   assert.throws(() => createGame(["a", "   ", "c", "d"]), (e) => e.code === "EMPTY_CHOICE");
 });
 
-test("turnAfter sequence is B, A, B, done", () => {
-  assert.equal(turnAfter(0), "B");
-  assert.equal(turnAfter(1), "A");
-  assert.equal(turnAfter(2), "B");
-  assert.equal(turnAfter(3), "done");
+test("createGame rejects bad startedBy", () => {
+  assert.throws(() => createGame(CHOICES, { startedBy: "C" }), (e) => e.code === "BAD_ROLE");
 });
 
-test("full B -> A -> B flow produces a single winner", () => {
-  let g = createGame(CHOICES, 1);
+test("turnAfter (A-started) is B, A, B, done", () => {
+  assert.equal(turnAfter(0, "A"), "B");
+  assert.equal(turnAfter(1, "A"), "A");
+  assert.equal(turnAfter(2, "A"), "B");
+  assert.equal(turnAfter(3, "A"), "done");
+});
+
+test("turnAfter (B-started) is A, B, A, done", () => {
+  assert.equal(turnAfter(0, "B"), "A");
+  assert.equal(turnAfter(1, "B"), "B");
+  assert.equal(turnAfter(2, "B"), "A");
+  assert.equal(turnAfter(3, "B"), "done");
+});
+
+test("full A-started flow (B,A,B) produces a single winner", () => {
+  let g = createGame(CHOICES, { startedBy: "A" }, 1);
   // B eliminates index 0 (Pizza)
   g = applyElimination(g, "B", 0, 2);
   assert.equal(g.turn, "A");
@@ -66,9 +92,22 @@ test("full B -> A -> B flow produces a single winner", () => {
   assert.equal(g.eliminated.length, 3);
 });
 
-test("rejects out-of-turn moves", () => {
-  const g = createGame(CHOICES);
-  // A tries to move first but it's B's turn
+test("full B-started flow (A,B,A) produces a single winner", () => {
+  let g = createGame(CHOICES, { startedBy: "B" });
+  // A eliminates first
+  g = applyElimination(g, "A", 0);
+  assert.equal(g.turn, "B");
+  // B eliminates
+  g = applyElimination(g, "B", 1);
+  assert.equal(g.turn, "A");
+  // A eliminates final -> winner index 3
+  g = applyElimination(g, "A", 2);
+  assert.equal(g.status, "complete");
+  assert.equal(g.winnerIndex, 3);
+});
+
+test("rejects out-of-turn moves (A-started: A can't move first)", () => {
+  const g = createGame(CHOICES, { startedBy: "A" });
   assert.throws(() => applyElimination(g, "A", 0), (e) => e.code === "NOT_YOUR_TURN");
 });
 

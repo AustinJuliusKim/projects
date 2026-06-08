@@ -1,20 +1,26 @@
 // Pure game logic for the two-player elimination game.
 // No I/O here so it can be unit-tested in isolation and reused by the Lambda.
 //
-// Flow: 4 choices, eliminations happen in the order B -> A -> B, leaving 1 winner.
+// Flow: 4 choices, 3 eliminations leave 1 winner. The player who STARTS a game
+// (picks the choices) does NOT eliminate first — the OTHER player eliminates
+// first. So within-game order is [nonStarter, starter, nonStarter].
 
-// Whose turn it is after `n` eliminations have happened.
-// 0 eliminations -> "B", 1 -> "A", 2 -> "B", 3 -> "done".
-const TURN_ORDER = ["B", "A", "B"];
-
-export function turnAfter(eliminationCount) {
-  return eliminationCount < TURN_ORDER.length
-    ? TURN_ORDER[eliminationCount]
-    : "done";
+// Whose turn it is after `n` eliminations, given who started the game.
+// n=0 -> nonStarter, 1 -> starter, 2 -> nonStarter, 3 -> "done".
+export function turnAfter(eliminationCount, startedBy) {
+  const nonStarter = otherRole(startedBy);
+  const order = [nonStarter, startedBy, nonStarter];
+  return eliminationCount < order.length ? order[eliminationCount] : "done";
 }
 
-// Create a new game item from 4 choice labels. Caller is role "A".
-export function createGame(choices, now = Date.now()) {
+// Create a new game from 4 choice labels.
+// opts.startedBy: "A" | "B" (who picked the choices; the other moves first).
+// opts.number: monotonic game number within a pairing.
+export function createGame(choices, opts = {}, now = Date.now()) {
+  const { startedBy = "A", number = 1 } = opts;
+  if (startedBy !== "A" && startedBy !== "B") {
+    throw new GameError("BAD_ROLE", "startedBy must be 'A' or 'B'.");
+  }
   if (!Array.isArray(choices) || choices.length !== 4) {
     throw new GameError("EXACTLY_FOUR", "Provide exactly 4 choices.");
   }
@@ -24,9 +30,11 @@ export function createGame(choices, now = Date.now()) {
   }
 
   return {
+    number,
+    startedBy,
     choices: cleaned,
     eliminated: [], // ordered: [{ index, by, at }]
-    turn: turnAfter(0), // "B" moves first
+    turn: turnAfter(0, startedBy), // non-starter moves first
     status: "active",
     winnerIndex: null,
     createdAt: now,
@@ -59,7 +67,7 @@ export function applyElimination(game, role, index, now = Date.now()) {
   }
 
   const eliminated = [...game.eliminated, { index, by: role, at: now }];
-  const turn = turnAfter(eliminated.length);
+  const turn = turnAfter(eliminated.length, game.startedBy);
   const done = turn === "done";
   const winnerIndex = done ? liveIndicesFrom(game.choices, eliminated)[0] : null;
 

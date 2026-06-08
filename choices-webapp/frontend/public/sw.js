@@ -1,5 +1,5 @@
 // Service worker: receives Web Push events and shows OS notifications.
-// Clicking a notification deep-links to the game.
+// Clicking a notification opens the app (which resumes from stored identity).
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
@@ -23,20 +23,27 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = event.notification.data?.url || "/";
-  // The push payload sends a path like "/g/{id}"; convert to a hash route.
-  const hashUrl = target.startsWith("/g/")
-    ? `/#${target}`
-    : target;
+  // Resolve against the SW scope so the target is always absolute and in-scope.
+  const target = new URL(event.notification.data?.url || "/", self.registration.scope).href;
+  const inScope = (url) => url.startsWith(self.registration.scope);
+
+  // Identity is restored from localStorage on boot. For an already-open window,
+  // focusing is enough (PlayView's poll resumes the game); navigate() is flaky in
+  // iOS standalone PWAs, so only attempt it when the window is out of scope.
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if ("focus" in client) {
-          client.navigate(hashUrl);
-          return client.focus();
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+      const client = clients.find((c) => "focus" in c);
+      if (client) {
+        if (!inScope(client.url) && "navigate" in client) {
+          try {
+            await client.navigate(target);
+          } catch {
+            // Ignore: focus still brings the app forward where it resumes itself.
+          }
         }
+        return client.focus();
       }
-      return self.clients.openWindow(hashUrl);
+      return self.clients.openWindow(target);
     })
   );
 });

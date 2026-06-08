@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import CreateView from "./CreateView.jsx";
+import CreatePairingView from "./CreatePairingView.jsx";
+import JoinView from "./JoinView.jsx";
 import PlayView from "./PlayView.jsx";
-import { registerServiceWorker, isStandalone } from "./push.js";
-import { readActiveGame } from "./resume.js";
-import { saveIdentity } from "./storage.js";
+import Landing from "./Landing.jsx";
+import { registerServiceWorker } from "./push.js";
+import { loadIdentity } from "./storage.js";
 import "./styles.css";
 
-// Tiny hash router: "#/" -> create, "#/g/{id}?t={token}" -> play.
-function useRoute() {
-  const [hash, setHash] = useState(window.location.hash || "#/");
+// Routing is driven by stored identity, NOT the URL — on iOS an installed PWA
+// always boots at "/". Optional entry hashes (#/create, #/join?code=) let A/B
+// start the flow, but resuming never depends on the URL.
+function useHash() {
+  const [hash, setHash] = useState(window.location.hash || "");
   useEffect(() => {
-    const onChange = () => setHash(window.location.hash || "#/");
+    const onChange = () => setHash(window.location.hash || "");
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
@@ -19,32 +22,28 @@ function useRoute() {
 }
 
 function App() {
-  const hash = useRoute();
-  // Match "#/g/{id}" with optional "?t={inviteToken}"
-  const match = hash.match(/^#\/g\/([^?]+)(?:\?t=([^&]+))?/);
-  if (match) {
-    return <PlayView gameId={match[1]} inviteToken={match[2] || null} />;
+  const hash = useHash();
+  const [identity, setIdentity] = useState(() => loadIdentity());
+
+  // If we already have an identity, we're in the game — ignore entry hashes.
+  if (identity) {
+    return <PlayView identity={identity} onLeave={() => setIdentity(loadIdentity())} />;
   }
-  return <CreateView />;
+
+  if (hash.startsWith("#/create")) {
+    return <CreatePairingView onReady={() => setIdentity(loadIdentity())} />;
+  }
+  const joinMatch = hash.match(/^#\/join(?:\?code=([^&]+))?/);
+  if (joinMatch) {
+    return (
+      <JoinView
+        prefillCode={joinMatch[1] ? decodeURIComponent(joinMatch[1]) : ""}
+        onReady={() => setIdentity(loadIdentity())}
+      />
+    );
+  }
+  return <Landing />;
 }
 
-// On iOS, an installed PWA launches at "/" with isolated storage. If we're
-// running standalone with no game in the URL, recover the most recent game from
-// the Cache Storage bridge, restore identity into this (separate) localStorage,
-// and redirect into the game before rendering.
-async function recoverStandaloneGame() {
-  const hasGameRoute = /^#\/g\//.test(window.location.hash);
-  if (!isStandalone() || hasGameRoute) return;
-  const active = await readActiveGame();
-  if (!active) return;
-  saveIdentity(active.gameId, active.role, active.token);
-  window.location.hash = `#/g/${active.gameId}`;
-}
-
-async function boot() {
-  registerServiceWorker();
-  await recoverStandaloneGame();
-  createRoot(document.getElementById("root")).render(<App />);
-}
-
-boot();
+registerServiceWorker();
+createRoot(document.getElementById("root")).render(<App />);

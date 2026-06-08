@@ -18,9 +18,13 @@ async function call(action, payload) {
   return data;
 }
 
-export const createGame = (choices) => call("createGame", { choices });
-export const getGame = (game_id) => call("getGame", { game_id });
-export const eliminate = (game_id, role, token, index) =>
-  call("eliminate", { game_id, role, token, index });
-export const subscribe = (game_id, role, token, subscription) =>
-  call("subscribe", { game_id, role, token, subscription });
+export const createPairing = (choices) => call("createPairing", { choices });
+export const claimSeat = (code, seat) => call("claimSeat", { code, seat });
+export const getState = (pairingId, role, token) =>
+  call("getState", { pairingId, role, token });
+export const eliminate = (pairingId, role, token, gameNumber, index) =>
+  call("eliminate", { pairingId, role, token, gameNumber, index });
+export const rematch = (pairingId, role, token, choices) =>
+  call("rematch", { pairingId, role, token, choices });
+export const subscribe = (pairingId, role, token, subscription) =>
+  call("subscribe", { pairingId, role, token, subscription });
