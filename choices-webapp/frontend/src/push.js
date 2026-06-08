@@ -32,8 +32,9 @@ export async function registerServiceWorker() {
 }
 
 // Ask permission, subscribe, and persist the subscription on the server.
+// Scoped to the PAIRING so notifications work across rematches.
 // Returns true if a subscription was registered.
-export async function enablePush(gameId, role, token) {
+export async function enablePush(pairingId, role, token) {
   if (!pushSupported() || !VAPID_PUBLIC_KEY) return false;
 
   const permission = await Notification.requestPermission();
@@ -47,7 +48,7 @@ export async function enablePush(gameId, role, token) {
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     });
   }
-  await apiSubscribe(gameId, role, token, sub.toJSON());
+  await apiSubscribe(pairingId, role, token, sub.toJSON());
   return true;
 }
 
