@@ -1,0 +1,31 @@
+# Root-level, language-agnostic ignores.
+# Project-specific ignores live in each project's own .gitignore.
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+
+# Node / JS
+node_modules/
+dist/
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
