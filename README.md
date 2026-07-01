@@ -11,9 +11,12 @@ below.
 ```
 .
 ├── apps/        # Deployable applications (web apps, personal site)
-│   └── choices-webapp/   # Vite/React frontend + Node.js Lambda backend (AWS SAM)
-├── packages/    # Shared, reusable libraries (created on first need)
-├── services/    # Standalone backends/scripts, often non-JS (created on first need)
+│   ├── choices-webapp/   # Vite/React frontend + Node.js Lambda backend (AWS SAM)
+│   └── claude-repl/      # Vite/React playground that teaches Claude Code (BYOK)
+├── packages/    # Shared, reusable libraries
+│   └── claude-repl-protocol/  # WS message contract shared by claude-repl + its backend
+├── services/    # Standalone, long-lived backends/scripts
+│   └── claude-repl-backend/   # WS server running Claude Code in per-session E2B sandboxes
 ├── agents/      # Claude agent definitions
 └── docs/        # Cross-cutting repo documentation
 ```
