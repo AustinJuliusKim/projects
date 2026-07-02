@@ -1,0 +1,13 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "ChoicesWebApp"
+resolve_s3 = true
+s3_prefix = "ChoicesWebApp"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "VapidPublicKey=\"BL0BvvWzSES2LgK4Tq074U1rmeDVVZLWk-1sCCcoRACaxbcvtlxK_fu7lA6QWvKMOEOSRcshQcEP2bcaZkaplnY\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"https://choices.austinjuliuskim.com\" CustomDomain=\"choices.austinjuliuskim.com\" CertificateArn=\"arn:aws:acm:us-east-1:549883968767:certificate/2ec1bd4f-b12f-4284-aad4-5997c6be9a70\""
+image_repositories = []
+
+[default.global.parameters]
+region = "us-west-2"
