@@ -1,6 +1,0 @@
-# E2B template config for claude-repl. See https://e2b.dev/docs
-# Build: `e2b template build` from this directory, then copy the printed
-# template id into the backend .env as E2B_TEMPLATE.
-template_name = "claude-repl"
-dockerfile = "e2b.Dockerfile"
-start_cmd = ""
