@@ -201,6 +201,18 @@ sam deploy --parameter-overrides CorsAllowOrigin=https://<your SiteUrl domain>
 
 ---
 
+## Automatic deploys (CI/CD)
+
+Pushes to `main` that touch `apps/choices-webapp/**` auto-deploy the full
+stack via GitHub Actions (`.github/workflows/choices-webapp.yml`): after the
+tests and build pass, the `deploy` job runs `sam build && sam deploy` and then
+`./deploy-frontend.sh`. It authenticates via GitHub OIDC, assuming the IAM
+role `choices-webapp-github-deploy` (trusted only for pushes to `main` of this
+repo; permissions in `docs/iam-policy.json`). The manual steps above are still
+how you do the first-time guided setup or deploy from your machine.
+
+---
+
 ## Where to find things later (quick reference)
 
 | You need… | Console location |

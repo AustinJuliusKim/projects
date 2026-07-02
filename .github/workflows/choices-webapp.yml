@@ -41,3 +41,36 @@ jobs:
           cache-dependency-path: apps/choices-webapp/frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend-tests, frontend-build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for OIDC role assumption
+      contents: read
+    concurrency:
+      group: choices-webapp-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/choices-webapp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/choices-webapp/frontend/package-lock.json
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::549883968767:role/choices-webapp-github-deploy
+          aws-region: us-west-2
+      - run: sam build
+      - run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
+      - run: npm ci
+        working-directory: apps/choices-webapp/frontend
+      - run: ./deploy-frontend.sh
