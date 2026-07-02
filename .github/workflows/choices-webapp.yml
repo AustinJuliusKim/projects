@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22 # matches the Lambda runtime (nodejs22.x)
+          node-version: 24.15 # matches the Lambda runtime (nodejs24.x)
           cache: npm
           cache-dependency-path: apps/choices-webapp/backend/package-lock.json
       - run: npm ci
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.15
           cache: npm
           cache-dependency-path: apps/choices-webapp/frontend/package-lock.json
       - run: npm ci
@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.15
           cache: npm
           cache-dependency-path: apps/choices-webapp/frontend/package-lock.json
       - uses: aws-actions/setup-sam@v2
