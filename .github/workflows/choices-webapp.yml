@@ -18,8 +18,8 @@ jobs:
       run:
         working-directory: apps/choices-webapp/backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: 24.15 # matches the Lambda runtime (nodejs24.x)
           cache: npm
@@ -33,8 +33,8 @@ jobs:
       run:
         working-directory: apps/choices-webapp/frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: 24.15
           cache: npm
@@ -56,16 +56,16 @@ jobs:
       run:
         working-directory: apps/choices-webapp
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: 24.15
           cache: npm
           cache-dependency-path: apps/choices-webapp/frontend/package-lock.json
-      - uses: aws-actions/setup-sam@v2
+      - uses: aws-actions/setup-sam@v3
         with:
           use-installer: true
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::549883968767:role/choices-webapp-github-deploy
           aws-region: us-west-2
