@@ -31,7 +31,7 @@ predates the pairing/join-code/rematch flow).
 
 ## Prerequisites
 
-- **Node.js 20+** (the Lambda runtime is Node 22) — `node --version`
+- **Node.js 24+** (the Lambda runtime is Node 24) — `node --version`
 - **AWS account** — [sign up](https://aws.amazon.com/free/) (everything here fits the free tier)
 - **AWS CLI** — [install](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), then `aws --version`
 - **AWS SAM CLI** — [install](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html), then `sam --version`
