@@ -4,7 +4,7 @@
 // tokenB) and push subscriptions live at the pairing level so they survive
 // rematches. B joins by entering a short human CODE inside the app.
 //
-// Actions: createPairing | joinPairing | getState | eliminate | rematch | subscribe
+// Actions: createPairing | claimSeat | getState | eliminate | rematch | subscribe
 import { randomUUID } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {

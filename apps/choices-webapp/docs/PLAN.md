@@ -1,5 +1,13 @@
 # Plan: Two-Player "Elimination" Game Web App
 
+> **Historical document.** This is the original v1 design plan, kept as a
+> record of the initial decisions. The implementation has since moved to a
+> **pairing-based flow**: players join via a short human code (e.g. `PLUM-42`)
+> instead of `/g/{game_id}` share links, seats are claimed per device, and a
+> persistent pairing hosts a series of games with rematch support. See
+> [`README.md`](../README.md) for current behavior and `backend/handler.mjs`
+> for the current actions.
+
 ## Context
 
 We want a lightweight web app for a turn-based elimination game between two
