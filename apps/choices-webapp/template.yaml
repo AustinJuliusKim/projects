@@ -28,6 +28,10 @@ Parameters:
     Type: String
     Default: ""
     Description: ACM certificate ARN in us-east-1 for CustomDomain (required if CustomDomain is set)
+  TableName:
+    Type: String
+    Default: choices-games
+    Description: DynamoDB table name (override for preview stacks so they don't collide with prod)
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
@@ -42,7 +46,7 @@ Resources:
   GamesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: choices-games
+      TableName: !Ref TableName
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: pk

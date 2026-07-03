@@ -4,7 +4,8 @@
 // tokenB) and push subscriptions live at the pairing level so they survive
 // rematches. B joins by entering a short human CODE inside the app.
 //
-// Actions: createPairing | claimSeat | getState | eliminate | rematch | subscribe
+// Actions: createPairing | claimSeat | getState | eliminate | rematch |
+// subscribe | linkClick
 import { randomUUID } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -12,7 +13,13 @@ import {
   GetCommand,
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { createGame, applyElimination, otherRole, GameError } from "./game.mjs";
+import {
+  createGame,
+  applyElimination,
+  applyLinkClick,
+  otherRole,
+  GameError,
+} from "./game.mjs";
 import { sendPush } from "./push.mjs";
 
 const TABLE = process.env.TABLE_NAME;
@@ -60,6 +67,8 @@ export async function handler(event) {
         return reply(200, await doRematch(body));
       case "subscribe":
         return reply(200, await doSubscribe(body));
+      case "linkClick":
+        return reply(200, await doLinkClick(body));
       default:
         return reply(400, { error: "Unknown action" });
     }
@@ -213,6 +222,24 @@ async function doSubscribe(body) {
       Item: { pk: subPk(pairingId, role), subscription, ttl: ttlEpoch() },
     })
   );
+  return { ok: true };
+}
+
+// Record an outbound order-link click on the current game (conversion-funnel
+// data: games completed -> winner screens -> order clicks).
+async function doLinkClick(body) {
+  const { pairingId, role, token, gameNumber, platform } = body;
+  const pairing = await loadPairing(pairingId);
+  assertToken(pairing, role, token);
+
+  if (gameNumber !== pairing.gameNumber) {
+    throw new HttpError(409, "This game has moved on.", "STALE_GAME");
+  }
+
+  pairing.game = applyLinkClick(pairing.game, role, platform);
+  pairing.updatedAt = Date.now();
+  pairing.ttl = ttlEpoch();
+  await ddb.send(new PutCommand({ TableName: TABLE, Item: pairing }));
   return { ok: true };
 }
 

@@ -8,7 +8,7 @@ export default function Landing() {
     <div className="container">
       <h1>Choices</h1>
       <p className="muted">
-        A two-player game: pick 4 options, take turns eliminating, last one wins.
+        A two-player game: pick 4 options, take turns cutting, last one wins.
       </p>
 
       <a className="btn primary" href="#/create">
