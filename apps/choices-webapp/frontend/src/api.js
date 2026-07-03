@@ -28,3 +28,5 @@ export const rematch = (pairingId, role, token, choices) =>
   call("rematch", { pairingId, role, token, choices });
 export const subscribe = (pairingId, role, token, subscription) =>
   call("subscribe", { pairingId, role, token, subscription });
+export const linkClick = (pairingId, role, token, gameNumber, platform) =>
+  call("linkClick", { pairingId, role, token, gameNumber, platform });

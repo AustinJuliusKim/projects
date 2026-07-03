@@ -86,6 +86,25 @@ function liveIndicesFrom(choices, eliminated) {
   return choices.map((_, i) => i).filter((i) => !dead.has(i));
 }
 
+// Platforms the winner-screen "order" buttons can report (growth plan §6).
+export const LINK_PLATFORMS = ["ubereats", "doordash", "grubhub", "opentable"];
+
+// Record an outbound order-link click. Only valid once the game is complete —
+// the order card never renders before a winner exists. Returns a NEW game object.
+export function applyLinkClick(game, role, platform, now = Date.now()) {
+  if (game.status !== "complete") {
+    throw new GameError("NO_WINNER_YET", "The game has no winner yet.");
+  }
+  if (role !== "A" && role !== "B") {
+    throw new GameError("BAD_ROLE", "Role must be 'A' or 'B'.");
+  }
+  if (!LINK_PLATFORMS.includes(platform)) {
+    throw new GameError("BAD_PLATFORM", "Unknown platform.");
+  }
+  const linkClicks = [...(game.linkClicks ?? []), { platform, by: role, at: now }];
+  return { ...game, linkClicks };
+}
+
 // The other player's role.
 export function otherRole(role) {
   return role === "A" ? "B" : "A";
