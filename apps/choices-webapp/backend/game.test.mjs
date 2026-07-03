@@ -3,10 +3,12 @@ import assert from "node:assert/strict";
 import {
   createGame,
   applyElimination,
+  applyLinkClick,
   turnAfter,
   liveIndices,
   otherRole,
   GameError,
+  LINK_PLATFORMS,
 } from "./game.mjs";
 
 const CHOICES = ["Pizza", "Tacos", "Sushi", "Ramen"];
@@ -149,6 +151,55 @@ test("applyElimination does not mutate the input", () => {
   const before = JSON.stringify(g);
   applyElimination(g, "B", 0);
   assert.equal(JSON.stringify(g), before);
+});
+
+function completedGame() {
+  let g = createGame(CHOICES);
+  g = applyElimination(g, "B", 0);
+  g = applyElimination(g, "A", 1);
+  g = applyElimination(g, "B", 2);
+  return g;
+}
+
+test("applyLinkClick records clicks on a complete game", () => {
+  let g = completedGame();
+  g = applyLinkClick(g, "A", "ubereats", 100);
+  g = applyLinkClick(g, "B", "opentable", 200);
+  assert.deepEqual(g.linkClicks, [
+    { platform: "ubereats", by: "A", at: 100 },
+    { platform: "opentable", by: "B", at: 200 },
+  ]);
+});
+
+test("applyLinkClick rejects clicks before a winner exists", () => {
+  const g = createGame(CHOICES);
+  assert.throws(() => applyLinkClick(g, "B", "ubereats"), (e) => e.code === "NO_WINNER_YET");
+});
+
+test("applyLinkClick rejects unknown platforms", () => {
+  const g = completedGame();
+  assert.throws(() => applyLinkClick(g, "A", "seamless"), (e) => e.code === "BAD_PLATFORM");
+  assert.throws(() => applyLinkClick(g, "A", ""), (e) => e.code === "BAD_PLATFORM");
+  assert.throws(() => applyLinkClick(g, "A", null), (e) => e.code === "BAD_PLATFORM");
+});
+
+test("applyLinkClick rejects bad role", () => {
+  const g = completedGame();
+  assert.throws(() => applyLinkClick(g, "C", "doordash"), (e) => e.code === "BAD_ROLE");
+});
+
+test("applyLinkClick does not mutate the input", () => {
+  const g = completedGame();
+  const before = JSON.stringify(g);
+  applyLinkClick(g, "A", "grubhub");
+  assert.equal(JSON.stringify(g), before);
+});
+
+test("LINK_PLATFORMS covers the four launch platforms", () => {
+  assert.deepEqual(
+    [...LINK_PLATFORMS].sort(),
+    ["doordash", "grubhub", "opentable", "ubereats"]
+  );
 });
 
 test("GameError carries a code", () => {

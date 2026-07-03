@@ -94,7 +94,7 @@ export default function CreatePairingView({ onReady }) {
     <div className="container">
       <h1>Pick 4 choices</h1>
       <p className="muted">
-        Seed four options. Your friend eliminates one first, then you, then them —
+        Seed four options. Your friend cuts one first, then you, then them —
         last one standing wins.
       </p>
       <form onSubmit={onCreate}>

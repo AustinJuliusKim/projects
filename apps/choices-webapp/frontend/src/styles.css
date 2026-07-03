@@ -7,10 +7,23 @@
   --muted: #94a3b8;
   --green: #22c55e;
   --red: #ef4444;
+  --border: #334155;
+  --radius-card: 16px;
+  --radius-choice: 18px;
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --flip-ms: 600ms;
+  --flip-delay: 250ms;
+  color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html,
+body {
+  overscroll-behavior: none;
 }
 
 body {
@@ -21,10 +34,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+button,
+.btn,
+.link-btn,
+.choice-btn {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
 .container {
   max-width: 480px;
   margin: 0 auto;
-  padding: max(24px, env(safe-area-inset-top)) 20px 40px;
+  padding: max(24px, calc(env(safe-area-inset-top) + 8px)) 20px
+    max(40px, calc(env(safe-area-inset-bottom) + 16px));
 }
 
 h1 {
@@ -45,7 +69,7 @@ h1 {
   margin-bottom: 12px;
   font-size: 1rem;
   border: 1px solid #334155;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--card);
   color: var(--text);
 }
@@ -63,12 +87,17 @@ h1 {
   font-size: 1rem;
   font-weight: 600;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--card);
   color: var(--text);
   cursor: pointer;
   text-align: center;
   text-decoration: none;
+  transition: transform 0.1s var(--ease-out);
+}
+
+.btn:not(:disabled):active {
+  transform: scale(0.97);
 }
 
 .btn.primary {
@@ -88,7 +117,7 @@ h1 {
 .link-box {
   background: var(--card);
   border: 1px dashed #334155;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   padding: 14px;
   font-size: 0.85rem;
   word-break: break-all;
@@ -98,7 +127,7 @@ h1 {
 
 .banner {
   padding: 14px 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   font-weight: 600;
   margin-bottom: 20px;
   text-align: center;
@@ -112,6 +141,7 @@ h1 {
 .banner.waiting {
   background: rgba(148, 163, 184, 0.12);
   color: var(--muted);
+  margin-top: 20px;
 }
 
 .choices {
@@ -133,11 +163,11 @@ h1 {
   padding: 18px 18px;
   font-size: 1.1rem;
   border: 1px solid #334155;
-  border-radius: 14px;
+  border-radius: var(--radius-choice);
   background: var(--card);
   color: var(--text);
   cursor: pointer;
-  transition: transform 0.05s ease, border-color 0.15s ease;
+  transition: transform 0.1s var(--ease-out), border-color 0.15s ease;
 }
 
 .choice-btn:not(:disabled):active {
@@ -191,7 +221,7 @@ h1 {
   color: var(--muted);
   background: var(--card);
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
 }
 
 /* Big shareable join code */
@@ -204,9 +234,9 @@ h1 {
   margin-bottom: 16px;
   background: var(--card);
   border: 2px dashed var(--indigo);
-  border-radius: 16px;
+  border-radius: 20px;
   color: var(--text);
-  user-select: all;
+  user-select: all; /* intentional copy affordance — keep selectable */
 }
 
 .code-input {
@@ -223,7 +253,7 @@ h1 {
   padding: 14px 16px;
   background: var(--card);
   border: 1px solid var(--indigo);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   font-size: 0.9rem;
 }
 
@@ -234,6 +264,152 @@ h1 {
 
 .ios-hint li {
   margin-bottom: 4px;
+}
+
+/* --- Winner reveal: 3D card flip ---
+   The choices board (front) flips over into the winner card (back).
+   IMPORTANT: never add overflow (non-visible), filter, clip-path, opacity<1,
+   or contain:paint to .flip-scene or .flip-card — any of those silently
+   flattens preserve-3d and kills the flip. */
+.flip-scene {
+  perspective: 1200px;
+}
+
+.flip-card {
+  display: grid; /* faces stack at 1/1; container height = tallest face */
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transition: transform var(--flip-ms) var(--ease-out-back) var(--flip-delay);
+}
+
+.flip-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-face {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  min-width: 0;
+}
+
+/* translateZ separates the faces slightly — fixes Safari z-fighting where the
+   back face ghosts through at the 90° midpoint. */
+.flip-front {
+  transform: rotateY(0deg) translateZ(1px);
+}
+
+.flip-back {
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+/* Loaded into an already-complete game: show the back face with no replay. */
+.flip-card.no-anim {
+  transition: none !important;
+}
+
+/* After the flip lands, drop the (taller) front face from layout so the
+   content below snaps up with the confetti burst. */
+.flip-card.flip-settled .flip-front {
+  display: none;
+}
+
+/* Staged reveal of the back-face content once flipped. */
+.reveal {
+  opacity: 0;
+}
+
+.flip-card.flipped .reveal {
+  animation: rise 0.4s var(--ease-out) var(--d, 550ms) both;
+}
+
+.flip-card.no-anim .reveal {
+  animation: none !important;
+  opacity: 1;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fade-swap {
+  animation: fadein 0.3s ease-out both;
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+  }
+}
+
+/* "Get the winner" card — the back of the flipping card */
+.get-winner {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+}
+
+.get-winner h2 {
+  font-size: 1.3rem;
+  margin: 0 0 12px;
+  text-align: center;
+}
+
+.platform-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn.platform {
+  margin-top: 0;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 10px;
+  font-size: 0.9rem;
+}
+
+.platform-icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: var(--brand, var(--text));
+}
+
+.platform-icon.monogram {
+  background: var(--brand);
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.platform-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.disclosure {
+  margin-top: 12px;
+  margin-bottom: 0;
+  font-size: 0.75rem;
+  text-align: center;
 }
 
 /* Rematch form on winner screen */
@@ -267,4 +443,47 @@ h1 {
   cursor: pointer;
   padding: 4px;
   text-decoration: underline;
+}
+
+/* Reduced motion: kill animations globally, replace the 3D flip with a
+   cross-fade. The .flip-face override must stay LAST so its transition
+   survives the global zeroing above it. Confetti is disabled separately
+   via disableForReducedMotion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .flip-card,
+  .flip-card.flipped {
+    transform: none;
+  }
+
+  .flip-card.flipped .reveal {
+    animation: none;
+    opacity: 1;
+  }
+
+  .flip-face {
+    transform: none;
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
+    transition: opacity 0.3s ease !important;
+    transition-duration: 0.3s !important;
+  }
+
+  .flip-card:not(.flipped) .flip-back {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .flip-card.flipped .flip-front {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
