@@ -1,0 +1,15 @@
+{
+  "name": "guided-repl-seeder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "seed-lessons": "./src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@guided-repl/protocol": "file:../../packages/guided-repl-protocol"
+  }
+}

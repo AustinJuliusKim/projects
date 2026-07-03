@@ -1,0 +1,142 @@
+name: guided-repl CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/guided-repl-protocol/**"
+      - "services/guided-repl-seeder/**"
+      - "apps/guided-repl/**"
+      - ".github/workflows/guided-repl.yml"
+  pull_request:
+    paths:
+      - "packages/guided-repl-protocol/**"
+      - "services/guided-repl-seeder/**"
+      - "apps/guided-repl/**"
+      - ".github/workflows/guided-repl.yml"
+
+jobs:
+  protocol:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/guided-repl-protocol
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: packages/guided-repl-protocol/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  seeder:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/guided-repl-seeder
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: services/guided-repl-seeder/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/guided-repl
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: apps/guided-repl/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:lessons
+
+  e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/guided-repl
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: apps/guided-repl/package-lock.json
+      - run: npm ci
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-1.61.1-${{ runner.os }}
+      - name: Install Playwright Chromium (+ OS deps)
+        run: npx playwright install --with-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+      - name: Install Playwright OS deps only (browser cache hit)
+        run: npx playwright install-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/guided-repl/playwright-report/
+          retention-days: 14
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [protocol, seeder, app, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for OIDC role assumption
+      contents: read
+    concurrency:
+      group: guided-repl-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/guided-repl
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: apps/guided-repl/package-lock.json
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::549883968767:role/guided-repl-github-deploy
+          aws-region: us-west-2
+      - name: Check deploy-params.json is filled in
+        run: |
+          CERT_ARN=$(node -pe "require('./deploy-params.json').CertificateArn")
+          if [ "$CERT_ARN" = "FILL_AFTER_BOOTSTRAP" ]; then
+            echo "::error::deploy-params.json CertificateArn is still FILL_AFTER_BOOTSTRAP. Run scripts/bootstrap-infra.sh first." >&2
+            exit 1
+          fi
+      - name: Deploy CloudFormation stack
+        run: |
+          STACK_NAME=$(node -pe "require('./deploy-params.json').StackName")
+          REGION=$(node -pe "require('./deploy-params.json').Region")
+          CUSTOM_DOMAIN=$(node -pe "require('./deploy-params.json').CustomDomain")
+          CERT_ARN=$(node -pe "require('./deploy-params.json').CertificateArn")
+          aws cloudformation deploy \
+            --template-file template.yaml \
+            --stack-name "$STACK_NAME" \
+            --region "$REGION" \
+            --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" \
+            --no-fail-on-empty-changeset
+      - run: ./deploy-frontend.sh

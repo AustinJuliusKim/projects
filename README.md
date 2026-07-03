@@ -12,11 +12,11 @@ below.
 .
 ├── apps/        # Deployable applications (web apps, personal site)
 │   ├── choices-webapp/   # Vite/React frontend + Node.js Lambda backend (AWS SAM)
-│   └── claude-repl/      # Vite/React playground that teaches Claude Code (BYOK)
+│   └── guided-repl/      # Vite/React SPA: fixture-replayed walkthrough of using Claude Code
 ├── packages/    # Shared, reusable libraries
-│   └── claude-repl-protocol/  # WS message contract shared by claude-repl + its backend
+│   └── guided-repl-protocol/  # Frame vocabulary + fixture schema shared by guided-repl + its seeder
 ├── services/    # Standalone, long-lived backends/scripts
-│   └── claude-repl-backend/   # WS server running Claude Code in per-session E2B sandboxes
+│   └── guided-repl-seeder/    # Node CLI that records real Claude Code runs into fixtures
 ├── agents/      # Claude agent definitions
 └── docs/        # Cross-cutting repo documentation
 ```

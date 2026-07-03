@@ -1,0 +1,205 @@
+{
+  "fixtureVersion": 1,
+  "claudeCodeVersion": "2.1.199 (Claude Code)",
+  "lessonId": "l6",
+  "branchId": "planted-bug",
+  "recordedAt": "2026-07-03T02:31:41.458Z",
+  "seedSnapshotId": "l5-output",
+  "permissionMode": "acceptEdits",
+  "expectedPrompt": "add a testimonials section to the page with two example quotes, reference a CSS class named .testimonial-card in the HTML but do not add a .testimonial-card rule anywhere in the stylesheet",
+  "events": [
+    {
+      "frame": {
+        "type": "session_ready"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Let me look at what's in the working directory first."
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 4730
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01TMd4HNuFXBfCmFFY6BHydJ",
+          "tool": "Bash",
+          "input": {
+            "command": "ls -la ",
+            "description": "List files in working directory"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 2434
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01TMd4HNuFXBfCmFFY6BHydJ",
+          "content": "total 24\ndrwx------@    4 <user>  staff    128 Jul  2 19:31 .\ndrwx------@ 2025 <user>  staff  64800 Jul  2 19:31 ..\n-rw-r--r--@    1 <user>  staff   5550 Jul  2 19:31 index.html\n-rw-r--r--@    1 <user>  staff     30 Jul  2 19:31 README.md",
+          "isError": false
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 1536
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_019HH1bZK4MvAyvjZJiVTVwi",
+          "tool": "Read",
+          "input": {
+            "file_path": "index.html"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 5075
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_019HH1bZK4MvAyvjZJiVTVwi",
+          "content": "1\t<!DOCTYPE html>\n2\t<html lang=\"en\">\n3\t<head>\n4\t  <meta charset=\"UTF-8\" />\n5\t  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n6\t  <title>Demo User</title>\n7\t  <style>\n8\t    :root {\n9\t      --bg: #09090b;\n10\t      --surface: #131316;\n11\t      --text: #ededf0;\n12\t      --muted: #8b8b96;\n13\t      --accent: #5eead4;\n14\t      --accent-2: #a78bfa;\n15\t      --border: #232329;\n16\t    }\n17\t\n18\t    * {\n19\t      margin: 0;\n20\t      padding: 0;\n21\t      box-sizing: border-box;\n22\t    }\n23\t\n24\t    html {\n25\t      scroll-behavior: smooth;\n26\t    }\n27\t\n28\t    ::selection {\n29\t      background: rgba(94, 234, 212, 0.25);\n30\t    }\n31\t\n32\t    body {\n33\t      font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\n34\t      background: var(--bg);\n35\t      color: var(--text);\n36\t      line-height: 1.6;\n37\t      -webkit-font-smoothing: antialiased;\n38\t    }\n39\t\n40\t    .container {\n41\t      max-width: 720px;\n42\t      margin: 0 auto;\n43\t      padding: 0 24px;\n44\t    }\n45\t\n46\t    /* Header / hero */\n47\t    header {\n48\t      position: relative;\n49\t      padding: 96px 0 64px;\n50\t    }\n51\t\n52\t    header::before {\n53\t      content: \"\";\n54\t      position: absolute;\n55\t      top: -160px;\n56\t      left: -120px;\n57\t      width: 480px;\n58\t      height: 480px;\n59\t      background: radial-gradient(circle, rgba(94, 234, 212, 0.08), transparent 70%);\n60\t      pointer-events: none;\n61\t    }\n62\t\n63\t    .avatar {\n64\t      width: 88px;\n65\t      height: 88px;\n66\t      border-radius: 50%;\n67\t      background: linear-gradient(135deg, var(--accent), var(--accent-2));\n68\t      display: flex;\n69\t      align-items: center;\n70\t      justify-content: center;\n71\t      font-size: 32px;\n72\t      font-weight: 700;\n73\t      color: var(--bg);\n74\t      margin-bottom: 24px;\n75\t      box-shadow: 0 0 40px rgba(94, 234, 212, 0.25);\n76\t    }\n77\t\n78\t    h1 {\n79\t      font-size: 40px;\n80\t      font-weight: 700;\n81\t      letter-spacing: -0.02em;\n82\t      margin-bottom: 8px;\n83\t    }\n84\t\n85\t    .tagline {\n86\t      font-size: 20px;\n87\t      color: var(--muted);\n88\t      margin-bottom: 24px;\n89\t    }\n90\t\n91\t    .intro {\n92\t      font-size: 17px;\n93\t      color: var(--text);\n94\t      max-width: 60ch;\n95\t    }\n96\t\n97\t    /* Sections */\n98\t    section {\n99\t      padding: 40px 0;\n100\t      border-top: 1px solid var(--border);\n101\t    }\n102\t\n103\t    h2 {\n104\t      font-size: 14px;\n105\t      font-weight: 600;\n106\t      text-transform: uppercase;\n107\t      letter-spacing: 0.08em;\n108\t      color: var(--muted);\n109\t      margin-bottom: 24px;\n110\t    }\n111\t\n112\t    /* Work / projects */\n113\t    .section-note {\n114\t      font-size: 16px;\n115\t      color: var(--muted);\n116\t      max-width: 60ch;\n117\t    }\n118\t\n119\t    .section-note a {\n120\t      color: var(--accent);\n121\t      text-decoration: none;\n122\t    }\n123\t\n124\t    .section-note a:hover {\n125\t      text-decoration: underline;\n126\t    }\n127\t\n128\t    /* Skills */\n129\t    .skills {\n130\t      display: grid;\n131\t      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));\n132\t      gap: 16px;\n133\t    }\n134\t\n135\t    .skill {\n136\t      background: var(--surface);\n137\t      border: 1px solid var(--border);\n138\t      border-radius: 12px;\n139\t      padding: 20px 24px;\n140\t    }\n141\t\n142\t    .skill h3 {\n143\t      font-size: 16px;\n144\t      font-weight: 600;\n145\t      margin-bottom: 4px;\n146\t    }\n147\t\n148\t    .skill p {\n149\t      font-size: 14px;\n150\t      color: var(--muted);\n151\t    }\n152\t\n153\t    /* Contact links */\n154\t    .links {\n155\t      display: flex;\n156\t      flex-wrap: wrap;\n157\t      gap: 12px;\n158\t    }\n159\t\n160\t    .links a {\n161\t      display: inline-block;\n162\t      padding: 10px 18px;\n163\t      border: 1px solid var(--border);\n164\t      border-radius: 999px;\n165\t      color: var(--text);\n166\t      text-decoration: none;\n167\t      font-size: 15px;\n168\t      transition: border-color 0.15s ease, color 0.15s ease;\n169\t    }\n170\t\n171\t    .links a:hover {\n172\t      border-color: var(--accent);\n173\t      color: var(--accent);\n174\t    }\n175\t\n176\t    footer {\n177\t      padding: 40px 0 64px;\n178\t      border-top: 1px solid var(--border);\n179\t      color: var(--muted);\n180\t      font-size: 14px;\n181\t    }\n182\t\n183\t    @media (max-width: 480px) {\n184\t      header {\n185\t        padding: 64px 0 48px;\n186\t      }\n187\t\n188\t      h1 {\n189\t        font-size: 32px;\n190\t      }\n191\t\n192\t      .tagline {\n193\t        font-size: 18px;\n194\t      }\n195\t    }\n196\t  </style>\n197\t</head>\n198\t<body>\n199\t  <div class=\"container\">\n200\t    <header>\n201\t      <div class=\"avatar\">AK</div>\n202\t      <h1>Demo User</h1>\n203\t      <p class=\"tagline\">Software engineer &amp; builder</p>\n204\t      <p class=\"intro\">\n205\t        Hi, I'm Demo User. I build software and enjoy turning ideas into simple,\n206\t        well-crafted tools. This is my corner of the internet — a place for\n207\t        what I'm working on and how to reach me.\n208\t      </p>\n209\t    </header>\n210\t\n211\t    <section>\n212\t      <h2>What I'm working on</h2>\n213\t      <p class=\"section-note\">\n214\t        I'm always building something — new projects will land here soon.\n215\t        In the meantime, you can find my work on\n216\t        <a href=\"https://github.com/\" target=\"_blank\" rel=\"noopener\">GitHub</a>.\n217\t      </p>\n218\t    </section>\n219\t\n220\t    <section>\n221\t      <h2>Skills</h2>\n222\t      <div class=\"skills\">\n223\t        <div class=\"skill\">\n224\t          <h3>Web Development</h3>\n225\t          <p>Building responsive, accessible sites with modern HTML, CSS, and JavaScript.</p>\n226\t        </div>\n227\t        <div class=\"skill\">\n228\t          <h3>Backend &amp; APIs</h3>\n229\t          <p>Designing and shipping reliable services, from data models to deployment.</p>\n230\t        </div>\n231\t        <div class=\"skill\">\n232\t          <h3>Developer Tooling</h3>\n233\t          <p>Automating workflows and crafting small tools that make teams faster.</p>\n234\t        </div>\n235\t      </div>\n236\t    </section>\n237\t\n238\t    <section>\n239\t      <h2>Get in touch</h2>\n240\t      <div class=\"links\">\n241\t        <a href=\"mailto:<email>\">Email</a>\n242\t        <a href=\"https://github.com/\" target=\"_blank\" rel=\"noopener\">GitHub</a>\n243\t        <a href=\"https://www.linkedin.com/\" target=\"_blank\" rel=\"noopener\">LinkedIn</a>\n244\t      </div>\n245\t    </section>\n246\t\n247\t    <footer>\n248\t      &copy; 2026 Demo User\n249\t    </footer>\n250\t  </div>\n251\t</body>\n252\t</html>\n253\t",
+          "isError": false
+        }
+      },
+      "delayMs": 19,
+      "origDelayMs": 19
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_016hWxrNp7f7SUpyN6J1WsQb",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "    <section>\n      <h2>Get in touch</h2>",
+            "new_string": "    <section>\n      <h2>Testimonials</h2>\n      <div class=\"testimonial-card\">\n        <blockquote>\n          \"Working with Demo User was a pleasure — clear communication,\n          thoughtful code, and delivered ahead of schedule.\"\n        </blockquote>\n        <p>&mdash; Jane Rivera, Product Manager</p>\n      </div>\n      <div class=\"testimonial-card\">\n        <blockquote>\n          \"One of the most reliable engineers I've collaborated with. Takes\n          messy problems and turns them into simple, maintainable solutions.\"\n        </blockquote>\n        <p>&mdash; Sam Okafor, Engineering Lead</p>\n      </div>\n    </section>\n\n    <section>\n      <h2>Get in touch</h2>"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 12023
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_016hWxrNp7f7SUpyN6J1WsQb",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 10,
+      "origDelayMs": 10
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Done. I added a \"Testimonials\" section to"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 7424
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " `index.html` between the Skills and Get in touch sections, with two example quotes (from a product manager and an"
+        }
+      },
+      "delayMs": 1,
+      "origDelayMs": 1
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " engineering lead), each wrapped in a `<div class=\"testimonial-card\">`. As requested, I did not add a `.testimonial-card` rule to"
+        }
+      },
+      "delayMs": 1,
+      "origDelayMs": 1
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " the `<style>` block — the class exists only in the HTML.\n\nOne heads-up: since the"
+        }
+      },
+      "delayMs": 3,
+      "origDelayMs": 3
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " class is unstyled, the cards will render as plain unboxed text, inheriting only the generic section styling"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " (and default `blockquote` margins are zeroed by the `*` reset). If you later want them to match the look"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " of the `.skill` cards, a small rule with the same surface/border/radius treatment would do it — just say the word."
+        }
+      },
+      "delayMs": 3,
+      "origDelayMs": 3
+    },
+    {
+      "frame": {
+        "type": "usage",
+        "payload": {
+          "inputTokens": 2883,
+          "outputTokens": 1145,
+          "model": "claude-fable-5"
+        }
+      },
+      "delayMs": 21,
+      "origDelayMs": 21
+    },
+    {
+      "frame": {
+        "type": "done"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    }
+  ],
+  "assertion": {
+    "type": "file-contains",
+    "path": "index.html",
+    "match": ".testimonial-card {"
+  }
+}

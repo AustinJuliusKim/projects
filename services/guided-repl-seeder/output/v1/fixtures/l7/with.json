@@ -1,0 +1,318 @@
+{
+  "fixtureVersion": 1,
+  "claudeCodeVersion": "2.1.199 (Claude Code)",
+  "lessonId": "l7",
+  "branchId": "with",
+  "recordedAt": "2026-07-03T02:34:12.860Z",
+  "seedSnapshotId": "l7-input-claudemd",
+  "permissionMode": "acceptEdits",
+  "expectedPrompt": "add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property",
+  "events": [
+    {
+      "frame": {
+        "type": "session_ready"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "I'll look"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 5221
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " at the current page first."
+        }
+      },
+      "delayMs": 467,
+      "origDelayMs": 467
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_018CMQPQJgE324e5i5RESRyy",
+          "tool": "Bash",
+          "input": {
+            "command": "ls ",
+            "description": "List files in project directory"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 2211
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_018CMQPQJgE324e5i5RESRyy",
+          "content": "CLAUDE.md\nindex.html\nREADME.md",
+          "isError": false
+        }
+      },
+      "delayMs": 1489,
+      "origDelayMs": 1489
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01QehFRN6m7o4BKskiK43XTa",
+          "tool": "Read",
+          "input": {
+            "file_path": "index.html"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 3953
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01QehFRN6m7o4BKskiK43XTa",
+          "content": "1\t<!DOCTYPE html>\n2\t<html lang=\"en\">\n3\t<head>\n4\t  <meta charset=\"UTF-8\" />\n5\t  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n6\t  <title>Demo User</title>\n7\t  <style>\n8\t    :root {\n9\t      --bg: #09090b;\n10\t      --surface: #131316;\n11\t      --text: #ededf0;\n12\t      --muted: #8b8b96;\n13\t      --accent: #5eead4;\n14\t      --accent-2: #a78bfa;\n15\t      --border: #232329;\n16\t    }\n17\t\n18\t    * {\n19\t      margin: 0;\n20\t      padding: 0;\n21\t      box-sizing: border-box;\n22\t    }\n23\t\n24\t    html {\n25\t      scroll-behavior: smooth;\n26\t    }\n27\t\n28\t    ::selection {\n29\t      background: rgba(94, 234, 212, 0.25);\n30\t    }\n31\t\n32\t    body {\n33\t      font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\n34\t      background: var(--bg);\n35\t      color: var(--text);\n36\t      line-height: 1.6;\n37\t      -webkit-font-smoothing: antialiased;\n38\t    }\n39\t\n40\t    .container {\n41\t      max-width: 720px;\n42\t      margin: 0 auto;\n43\t      padding: 0 24px;\n44\t    }\n45\t\n46\t    /* Header / hero */\n47\t    header {\n48\t      position: relative;\n49\t      padding: 96px 0 64px;\n50\t    }\n51\t\n52\t    header::before {\n53\t      content: \"\";\n54\t      position: absolute;\n55\t      top: -160px;\n56\t      left: -120px;\n57\t      width: 480px;\n58\t      height: 480px;\n59\t      background: radial-gradient(circle, rgba(94, 234, 212, 0.08), transparent 70%);\n60\t      pointer-events: none;\n61\t    }\n62\t\n63\t    .avatar {\n64\t      width: 88px;\n65\t      height: 88px;\n66\t      border-radius: 50%;\n67\t      background: linear-gradient(135deg, var(--accent), var(--accent-2));\n68\t      display: flex;\n69\t      align-items: center;\n70\t      justify-content: center;\n71\t      font-size: 32px;\n72\t      font-weight: 700;\n73\t      color: var(--bg);\n74\t      margin-bottom: 24px;\n75\t      box-shadow: 0 0 40px rgba(94, 234, 212, 0.25);\n76\t    }\n77\t\n78\t    h1 {\n79\t      font-size: 40px;\n80\t      font-weight: 700;\n81\t      letter-spacing: -0.02em;\n82\t      margin-bottom: 8px;\n83\t    }\n84\t\n85\t    .tagline {\n86\t      font-size: 20px;\n87\t      color: var(--muted);\n88\t      margin-bottom: 24px;\n89\t    }\n90\t\n91\t    .intro {\n92\t      font-size: 17px;\n93\t      color: var(--text);\n94\t      max-width: 60ch;\n95\t    }\n96\t\n97\t    /* Sections */\n98\t    section {\n99\t      padding: 40px 0;\n100\t      border-top: 1px solid var(--border);\n101\t    }\n102\t\n103\t    h2 {\n104\t      font-size: 14px;\n105\t      font-weight: 600;\n106\t      text-transform: uppercase;\n107\t      letter-spacing: 0.08em;\n108\t      color: var(--muted);\n109\t      margin-bottom: 24px;\n110\t    }\n111\t\n112\t    /* Work / projects */\n113\t    .section-note {\n114\t      font-size: 16px;\n115\t      color: var(--muted);\n116\t      max-width: 60ch;\n117\t    }\n118\t\n119\t    .section-note a {\n120\t      color: var(--accent);\n121\t      text-decoration: none;\n122\t    }\n123\t\n124\t    .section-note a:hover {\n125\t      text-decoration: underline;\n126\t    }\n127\t\n128\t    /* Skills */\n129\t    .skills {\n130\t      display: grid;\n131\t      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));\n132\t      gap: 16px;\n133\t    }\n134\t\n135\t    .skill {\n136\t      background: var(--surface);\n137\t      border: 1px solid var(--border);\n138\t      border-radius: 12px;\n139\t      padding: 20px 24px;\n140\t    }\n141\t\n142\t    .skill h3 {\n143\t      font-size: 16px;\n144\t      font-weight: 600;\n145\t      margin-bottom: 4px;\n146\t    }\n147\t\n148\t    .skill p {\n149\t      font-size: 14px;\n150\t      color: var(--muted);\n151\t    }\n152\t\n153\t    /* Testimonials */\n154\t    .testimonial-card {\n155\t      background: var(--surface);\n156\t      border: 1px solid var(--border);\n157\t      border-radius: 12px;\n158\t      padding: 24px;\n159\t      margin-bottom: 16px;\n160\t    }\n161\t\n162\t    .testimonial-card:last-child {\n163\t      margin-bottom: 0;\n164\t    }\n165\t\n166\t    .testimonial-card blockquote {\n167\t      font-size: 16px;\n168\t      font-style: italic;\n169\t      margin-bottom: 12px;\n170\t    }\n171\t\n172\t    .testimonial-card cite {\n173\t      font-size: 14px;\n174\t      font-style: normal;\n175\t      color: var(--muted);\n176\t    }\n177\t\n178\t    /* Contact links */\n179\t    .links {\n180\t      display: flex;\n181\t      flex-wrap: wrap;\n182\t      gap: 12px;\n183\t    }\n184\t\n185\t    .links a {\n186\t      display: inline-block;\n187\t      padding: 10px 18px;\n188\t      border: 1px solid var(--border);\n189\t      border-radius: 999px;\n190\t      color: var(--text);\n191\t      text-decoration: none;\n192\t      font-size: 15px;\n193\t      transition: border-color 0.15s ease, color 0.15s ease;\n194\t    }\n195\t\n196\t    .links a:hover {\n197\t      border-color: var(--accent);\n198\t      color: var(--accent);\n199\t    }\n200\t\n201\t    footer {\n202\t      padding: 40px 0 64px;\n203\t      border-top: 1px solid var(--border);\n204\t      color: var(--muted);\n205\t      font-size: 14px;\n206\t    }\n207\t\n208\t    @media (max-width: 480px) {\n209\t      header {\n210\t        padding: 64px 0 48px;\n211\t      }\n212\t\n213\t      h1 {\n214\t        font-size: 32px;\n215\t      }\n216\t\n217\t      .tagline {\n218\t        font-size: 18px;\n219\t      }\n220\t    }\n221\t  </style>\n222\t</head>\n223\t<body>\n224\t  <div class=\"container\">\n225\t    <header>\n226\t      <div class=\"avatar\">AK</div>\n227\t      <h1>Demo User</h1>\n228\t      <p class=\"tagline\">Software engineer &amp; builder</p>\n229\t      <p class=\"intro\">\n230\t        Hi, I'm Demo User. I build software and enjoy turning ideas into simple,\n231\t        well-crafted tools. This is my corner of the internet — a place for\n232\t        what I'm working on and how to reach me.\n233\t      </p>\n234\t    </header>\n235\t\n236\t    <section>\n237\t      <h2>What I'm working on</h2>\n238\t      <p class=\"section-note\">\n239\t        I'm always building something — new projects will land here soon.\n240\t        In the meantime, you can find my work on\n241\t        <a href=\"https://github.com/\" target=\"_blank\" rel=\"noopener\">GitHub</a>.\n242\t      </p>\n243\t    </section>\n244\t\n245\t    <section>\n246\t      <h2>Skills</h2>\n247\t      <div class=\"skills\">\n248\t        <div class=\"skill\">\n249\t          <h3>Web Development</h3>\n250\t          <p>Building responsive, accessible sites with modern HTML, CSS, and JavaScript.</p>\n251\t        </div>\n252\t        <div class=\"skill\">\n253\t          <h3>Backend &amp; APIs</h3>\n254\t          <p>Designing and shipping reliable services, from data models to deployment.</p>\n255\t        </div>\n256\t        <div class=\"skill\">\n257\t          <h3>Developer Tooling</h3>\n258\t          <p>Automating workflows and crafting small tools that make teams faster.</p>\n259\t        </div>\n260\t      </div>\n261\t    </section>\n262\t\n263\t    <section>\n264\t      <h2>Testimonials</h2>\n265\t      <div class=\"testimonial-card\">\n266\t        <blockquote>&ldquo;Demo User turned a vague idea into a working product in weeks. Clear communication, clean code, and no surprises.&rdquo;</blockquote>\n267\t        <cite>&mdash; Jordan Lee, Product Manager</cite>\n268\t      </div>\n269\t      <div class=\"testimonial-card\">\n270\t        <blockquote>&ldquo;One of the most reliable engineers I've worked with. The tooling they built saved our team hours every single week.&rdquo;</blockquote>\n271\t        <cite>&mdash; Sam Rivera, Engineering Lead</cite>\n272\t      </div>\n273\t    </section>\n274\t\n275\t    <section>\n276\t      <h2>Get in touch</h2>\n277\t      <div class=\"links\">\n278\t        <a href=\"mailto:<email>\">Email</a>\n279\t        <a href=\"https://github.com/\" target=\"_blank\" rel=\"noopener\">GitHub</a>\n280\t        <a href=\"https://www.linkedin.com/\" target=\"_blank\" rel=\"noopener\">LinkedIn</a>\n281\t      </div>\n282\t    </section>\n283\t\n284\t    <footer>\n285\t      &copy; 2026 Demo User\n286\t    </footer>\n287\t  </div>\n288\t</body>\n289\t</html>\n290\t",
+          "isError": false
+        }
+      },
+      "delayMs": 21,
+      "origDelayMs": 21
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01BpBsCVm9mRyeu1tk7xe3GA",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "      --border: #232329;\n    }",
+            "new_string": "      --border: #232329;\n      --gp-highlight: #fbbf24;\n    }"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 11187
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01BpBsCVm9mRyeu1tk7xe3GA",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 42,
+      "origDelayMs": 42
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01DM4KnbPJJ3PN34B6xr2Gg5",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "    .intro {\n      font-size: 17px;\n      color: var(--text);\n      max-width: 60ch;\n    }",
+            "new_string": "    .intro {\n      font-size: 17px;\n      color: var(--text);\n      max-width: 60ch;\n    }\n\n    .cta-button {\n      display: inline-block;\n      margin-top: 28px;\n      padding: 12px 24px;\n      background: var(--gp-highlight);\n      border-radius: 999px;\n      color: var(--bg);\n      font-size: 16px;\n      font-weight: 600;\n      text-decoration: none;\n      transition: filter 0.15s ease;\n    }\n\n    .cta-button:hover {\n      filter: brightness(1.1);\n    }"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 6719
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01DM4KnbPJJ3PN34B6xr2Gg5",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 14,
+      "origDelayMs": 14
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01S3cu3f8haHayh5opZbUkKd",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "        what I'm working on and how to reach me.\n      </p>\n    </header>",
+            "new_string": "        what I'm working on and how to reach me.\n      </p>\n      <a class=\"cta-button\" href=\"#contact\">Get in Touch</a>\n    </header>"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 5666
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01S3cu3f8haHayh5opZbUkKd",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 23,
+      "origDelayMs": 23
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01R8wekcQ8hX7ZDAPvtMipBH",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "    <section>\n      <h2>Get in touch</h2>",
+            "new_string": "    <section id=\"contact\">\n      <h2>Get in touch</h2>"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 5649
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01R8wekcQ8hX7ZDAPvtMipBH",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 22,
+      "origDelayMs": 22
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Done"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 6223
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": ". I added a \"Get in Touch\" call-to-action button to the hero section of `index.html`:\n\n- **New custom property**: `--gp"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "-highlight: #fbbf24` (a warm amber that stands out against the existing teal/purple accents), defined in `:root` with the required"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " `--gp-` prefix.\n- **Button**: a pill-shaped `.cta-button` styled with `background: var(--gp-high"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "light)`, placed after the intro paragraph. It brightens slightly on hover.\n- **Target**: the"
+        }
+      },
+      "delayMs": 1,
+      "origDelayMs": 1
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " button scroll-links to the \"Get in touch\" section, which I gave an `id=\"contact\"` (the page already has smooth scrolling enab"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "led).\n\nEverything stays in the single `index.html` with inline CSS, and the button label uses Title Case per the project con"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ventions."
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "usage",
+        "payload": {
+          "inputTokens": 2889,
+          "outputTokens": 1923,
+          "model": "claude-fable-5"
+        }
+      },
+      "delayMs": 9,
+      "origDelayMs": 9
+    },
+    {
+      "frame": {
+        "type": "done"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    }
+  ],
+  "assertion": {
+    "type": "quiz",
+    "question": "The 'with CLAUDE.md' run named its new CSS variable --gp-highlight instead of --highlight. What caused that?",
+    "choices": [
+      "A convention defined in the workspace's CLAUDE.md file",
+      "A different prompt text",
+      "A different permission mode",
+      "Random variation between runs"
+    ],
+    "correctIndex": 0
+  }
+}
