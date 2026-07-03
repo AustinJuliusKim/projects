@@ -1,0 +1,124 @@
+{
+  "fixtureVersion": 1,
+  "claudeCodeVersion": "2.1.199 (Claude Code)",
+  "lessonId": "l8",
+  "branchId": "haiku",
+  "recordedAt": "2026-07-03T02:34:41.797Z",
+  "seedSnapshotId": "l7-output",
+  "permissionMode": "acceptEdits",
+  "expectedPrompt": "update the call-to-action button label to say Get in touch, keep everything else the same",
+  "events": [
+    {
+      "frame": {
+        "type": "session_ready"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01Mq4Fy1B18XbHQ4tBbrHXoJ",
+          "tool": "Read",
+          "input": {
+            "file_path": "index.html"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 2615
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01Mq4Fy1B18XbHQ4tBbrHXoJ",
+          "content": "1\t<!DOCTYPE html>\n2\t<html lang=\"en\">\n3\t<head>\n4\t  <meta charset=\"UTF-8\" />\n5\t  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n6\t  <title>Demo User</title>\n7\t  <style>\n8\t    :root {\n9\t      --bg: #09090b;\n10\t      --surface: #131316;\n11\t      --text: #ededf0;\n12\t      --muted: #8b8b96;\n13\t      --accent: #5eead4;\n14\t      --accent-2: #a78bfa;\n15\t      --border: #232329;\n16\t      --gp-highlight: #fbbf24;\n17\t    }\n18\t\n19\t    * {\n20\t      margin: 0;\n21\t      padding: 0;\n22\t      box-sizing: border-box;\n23\t    }\n24\t\n25\t    html {\n26\t      scroll-behavior: smooth;\n27\t    }\n28\t\n29\t    ::selection {\n30\t      background: rgba(94, 234, 212, 0.25);\n31\t    }\n32\t\n33\t    body {\n34\t      font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\n35\t      background: var(--bg);\n36\t      color: var(--text);\n37\t      line-height: 1.6;\n38\t      -webkit-font-smoothing: antialiased;\n39\t    }\n40\t\n41\t    .container {\n42\t      max-width: 720px;\n43\t      margin: 0 auto;\n44\t      padding: 0 24px;\n45\t    }\n46\t\n47\t    /* Header / hero */\n48\t    header {\n49\t      position: relative;\n50\t      padding: 96px 0 64px;\n51\t    }\n52\t\n53\t    header::before {\n54\t      content: \"\";\n55\t      position: absolute;\n56\t      top: -160px;\n57\t      left: -120px;\n58\t      width: 480px;\n59\t      height: 480px;\n60\t      background: radial-gradient(circle, rgba(94, 234, 212, 0.08), transparent 70%);\n61\t      pointer-events: none;\n62\t    }\n63\t\n64\t    .avatar {\n65\t      width: 88px;\n66\t      height: 88px;\n67\t      border-radius: 50%;\n68\t      background: linear-gradient(135deg, var(--accent), var(--accent-2));\n69\t      display: flex;\n70\t      align-items: center;\n71\t      justify-content: center;\n72\t      font-size: 32px;\n73\t      font-weight: 700;\n74\t      color: var(--bg);\n75\t      margin-bottom: 24px;\n76\t      box-shadow: 0 0 40px rgba(94, 234, 212, 0.25);\n77\t    }\n78\t\n79\t    h1 {\n80\t      font-size: 40px;\n81\t      font-weight: 700;\n82\t      letter-spacing: -0.02em;\n83\t      margin-bottom: 8px;\n84\t    }\n85\t\n86\t    .tagline {\n87\t      font-size: 20px;\n88\t      color: var(--muted);\n89\t      margin-bottom: 24px;\n90\t    }\n91\t\n92\t    .intro {\n93\t      font-size: 17px;\n94\t      color: var(--text);\n95\t      max-width: 60ch;\n96\t    }\n97\t\n98\t    .cta-button {\n99\t      display: inline-block;\n100\t      margin-top: 28px;\n101\t      padding: 12px 24px;\n102\t      background: var(--gp-highlight);\n103\t      border-radius: 999px;\n104\t      color: var(--bg);\n105\t      font-size: 16px;\n106\t      font-weight: 600;\n107\t      text-decoration: none;\n108\t      transition: filter 0.15s ease;\n109\t    }\n110\t\n111\t    .cta-button:hover {\n112\t      filter: brightness(1.1);\n113\t    }\n114\t\n115\t    /* Sections */\n116\t    section {\n117\t      padding: 40px 0;\n118\t      border-top: 1px solid var(--border);\n119\t    }\n120\t\n121\t    h2 {\n122\t      font-size: 14px;\n123\t      font-weight: 600;\n124\t      text-transform: uppercase;\n125\t      letter-spacing: 0.08em;\n126\t      color: var(--muted);\n127\t      margin-bottom: 24px;\n128\t    }\n129\t\n130\t    /* Work / projects */\n131\t    .section-note {\n132\t      font-size: 16px;\n133\t      color: var(--muted);\n134\t      max-width: 60ch;\n135\t    }\n136\t\n137\t    .section-note a {\n138\t      color: var(--accent);\n139\t      text-decoration: none;\n140\t    }\n141\t\n142\t    .section-note a:hover {\n143\t      text-decoration: underline;\n144\t    }\n145\t\n146\t    /* Skills */\n147\t    .skills {\n148\t      display: grid;\n149\t      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));\n150\t      gap: 16px;\n151\t    }\n152\t\n153\t    .skill {\n154\t      background: var(--surface);\n155\t      border: 1px solid var(--border);\n156\t      border-radius: 12px;\n157\t      padding: 20px 24px;\n158\t    }\n159\t\n160\t    .skill h3 {\n161\t      font-size: 16px;\n162\t      font-weight: 600;\n163\t      margin-bottom: 4px;\n164\t    }\n165\t\n166\t    .skill p {\n167\t      font-size: 14px;\n168\t      color: var(--muted);\n169\t    }\n170\t\n171\t    /* Testimonials */\n172\t    .testimonial-card {\n173\t      background: var(--surface);\n174\t      border: 1px solid var(--border);\n175\t      border-radius: 12px;\n176\t      padding: 24px;\n177\t      margin-bottom: 16px;\n178\t    }\n179\t\n180\t    .testimonial-card:last-child {\n181\t      margin-bottom: 0;\n182\t    }\n183\t\n184\t    .testimonial-card blockquote {\n185\t      font-size: 16px;\n186\t      font-style: italic;\n187\t      margin-bottom: 12px;\n188\t    }\n189\t\n190\t    .testimonial-card cite {\n191\t      font-size: 14px;\n192\t      font-style: normal;\n193\t      color: var(--muted);\n194\t    }\n195\t\n196\t    /* Contact links */\n197\t    .links {\n198\t      display: flex;\n199\t      flex-wrap: wrap;\n200\t      gap: 12px;\n201\t    }\n202\t\n203\t    .links a {\n204\t      display: inline-block;\n205\t      padding: 10px 18px;\n206\t      border: 1px solid var(--border);\n207\t      border-radius: 999px;\n208\t      color: var(--text);\n209\t      text-decoration: none;\n210\t      font-size: 15px;\n211\t      transition: border-color 0.15s ease, color 0.15s ease;\n212\t    }\n213\t\n214\t    .links a:hover {\n215\t      border-color: var(--accent);\n216\t      color: var(--accent);\n217\t    }\n218\t\n219\t    footer {\n220\t      padding: 40px 0 64px;\n221\t      border-top: 1px solid var(--border);\n222\t      color: var(--muted);\n223\t      font-size: 14px;\n224\t    }\n225\t\n226\t    @media (max-width: 480px) {\n227\t      header {\n228\t        padding: 64px 0 48px;\n229\t      }\n230\t\n231\t      h1 {\n232\t        font-size: 32px;\n233\t      }\n234\t\n235\t      .tagline {\n236\t        font-size: 18px;\n237\t      }\n238\t    }\n239\t  </style>\n240\t</head>\n241\t<body>\n242\t  <div class=\"container\">\n243\t    <header>\n244\t      <div class=\"avatar\">AK</div>\n245\t      <h1>Demo User</h1>\n246\t      <p class=\"tagline\">Software engineer &amp; builder</p>\n247\t      <p class=\"intro\">\n248\t        Hi, I'm Demo User. I build software and enjoy turning ideas into simple,\n249\t        well-crafted tools. This is my corner of the internet — a place for\n250\t        what I'm working on and how to reach me.\n251\t      </p>\n252\t      <a class=\"cta-button\" href=\"#contact\">Get in Touch</a>\n253\t    </header>\n254\t\n255\t    <section>\n256\t      <h2>What I'm working on</h2>\n257\t      <p class=\"section-note\">\n258\t        I'm always building something — new projects will land here soon.\n259\t        In the meantime, you can find my work on\n260\t        <a href=\"https://github.com/\" target=\"_blank\" rel=\"noopener\">GitHub</a>.\n261\t      </p>\n262\t    </section>\n263\t\n264\t    <section>\n265\t      <h2>Skills</h2>\n266\t      <div class=\"skills\">\n267\t        <div class=\"skill\">\n268\t          <h3>Web Development</h3>\n269\t          <p>Building responsive, accessible sites with modern HTML, CSS, and JavaScript.</p>\n270\t        </div>\n271\t        <div class=\"skill\">\n272\t          <h3>Backend &amp; APIs</h3>\n273\t          <p>Designing and shipping reliable services, from data models to deployment.</p>\n274\t        </div>\n275\t        <div class=\"skill\">\n276\t          <h3>Developer Tooling</h3>\n277\t          <p>Automating workflows and crafting small tools that make teams faster.</p>\n278\t        </div>\n279\t      </div>\n280\t    </section>\n281\t\n282\t    <section>\n283\t      <h2>Testimonials</h2>\n284\t      <div class=\"testimonial-card\">\n285\t        <blockquote>&ldquo;Demo User turned a vague idea into a working product in weeks. Clear communication, clean code, and no surprises.&rdquo;</blockquote>\n286\t        <cite>&mdash; Jordan Lee, Product Manager</cite>\n287\t      </div>\n288\t      <div class=\"testimonial-card\">\n289\t        <blockquote>&ldquo;One of the most reliable engineers I've worked with. The tooling they built saved our team hours every single week.&rdquo;</blockquote>\n290\t        <cite>&mdash; Sam Rivera, Engineering Lead</cite>\n291\t      </div>\n292\t    </section>\n293\t\n294\t    <section id=\"contact\">\n295\t      <h2>Get in touch</h2>\n296\t      <div class=\"links\">\n297\t        <a href=\"mailto:<email>\">Email</a>\n298\t        <a href=\"https://github.com/\" target=\"_blank\" rel=\"noopener\">GitHub</a>\n299\t        <a href=\"https://www.linkedin.com/\" target=\"_blank\" rel=\"noopener\">LinkedIn</a>\n300\t      </div>\n301\t    </section>\n302\t\n303\t    <footer>\n304\t      &copy; 2026 Demo User\n305\t    </footer>\n306\t  </div>\n307\t</body>\n308\t</html>\n309\t",
+          "isError": false
+        }
+      },
+      "delayMs": 18,
+      "origDelayMs": 18
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01Kq9jKt1d8ReUJkNSoKDgcC",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "      <a class=\"cta-button\" href=\"#contact\">Get in Touch</a>",
+            "new_string": "      <a class=\"cta-button\" href=\"#contact\">Get in touch</a>"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 3351
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01Kq9jKt1d8ReUJkNSoKDgcC",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 12,
+      "origDelayMs": 12
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Done. Updated the C"
+        }
+      },
+      "delayMs": 1489,
+      "origDelayMs": 1489
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "TA button label to \"Get in touch\" on line 252."
+        }
+      },
+      "delayMs": 16,
+      "origDelayMs": 16
+    },
+    {
+      "frame": {
+        "type": "usage",
+        "payload": {
+          "inputTokens": 35,
+          "outputTokens": 560,
+          "model": "claude-haiku-4-5-20251001"
+        }
+      },
+      "delayMs": 27,
+      "origDelayMs": 27
+    },
+    {
+      "frame": {
+        "type": "done"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    }
+  ],
+  "assertion": {
+    "type": "quiz",
+    "question": "For a small, well-specified text tweak like this one, which model is the better cost/quality tradeoff?",
+    "choices": [
+      "Haiku — the task is simple and well-scoped",
+      "Sonnet — always default to the most capable model",
+      "Neither — this needs a human to do it by hand",
+      "Cost doesn't matter, model choice is irrelevant"
+    ],
+    "correctIndex": 0
+  }
+}

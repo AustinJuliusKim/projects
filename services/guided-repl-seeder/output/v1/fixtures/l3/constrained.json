@@ -1,0 +1,357 @@
+{
+  "fixtureVersion": 1,
+  "claudeCodeVersion": "2.1.199 (Claude Code)",
+  "lessonId": "l3",
+  "branchId": "constrained",
+  "recordedAt": "2026-07-03T02:21:05.470Z",
+  "seedSnapshotId": "l1-output",
+  "permissionMode": "acceptEdits",
+  "expectedPrompt": "restyle the page with a dark theme, keep it one file, no frameworks",
+  "events": [
+    {
+      "frame": {
+        "type": "session_ready"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Let me look at what's in the working directory first."
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 4590
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01Q5oYcBgebc97vt8muE9UGK",
+          "tool": "Bash",
+          "input": {
+            "command": "ls -la ",
+            "description": "List files in working directory"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 2006
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01Q5oYcBgebc97vt8muE9UGK",
+          "content": "total 24\ndrwx------@    4 <user>  staff    128 Jul  2 19:19 .\ndrwx------@ 2025 <user>  staff  64800 Jul  2 19:19 ..\n-rw-r--r--@    1 <user>  staff   4397 Jul  2 19:19 index.html\n-rw-r--r--@    1 <user>  staff     30 Jul  2 19:19 README.md",
+          "isError": false
+        }
+      },
+      "delayMs": 1413,
+      "origDelayMs": 1413
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01XYhUArA8sLdeFmEZRvM4WJ",
+          "tool": "Read",
+          "input": {
+            "file_path": "index.html"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 7018
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01XYhUArA8sLdeFmEZRvM4WJ",
+          "content": "1\t<!DOCTYPE html>\n2\t<html lang=\"en\">\n3\t<head>\n4\t  <meta charset=\"UTF-8\" />\n5\t  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n6\t  <title>Demo User</title>\n7\t  <style>\n8\t    :root {\n9\t      --bg: #0f1115;\n10\t      --surface: #171a21;\n11\t      --text: #e8eaf0;\n12\t      --muted: #9aa3b2;\n13\t      --accent: #6ea8fe;\n14\t      --border: #262b36;\n15\t    }\n16\t\n17\t    * {\n18\t      margin: 0;\n19\t      padding: 0;\n20\t      box-sizing: border-box;\n21\t    }\n22\t\n23\t    html {\n24\t      scroll-behavior: smooth;\n25\t    }\n26\t\n27\t    body {\n28\t      font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\n29\t      background: var(--bg);\n30\t      color: var(--text);\n31\t      line-height: 1.6;\n32\t      -webkit-font-smoothing: antialiased;\n33\t    }\n34\t\n35\t    .container {\n36\t      max-width: 720px;\n37\t      margin: 0 auto;\n38\t      padding: 0 24px;\n39\t    }\n40\t\n41\t    /* Header / hero */\n42\t    header {\n43\t      padding: 96px 0 64px;\n44\t    }\n45\t\n46\t    .avatar {\n47\t      width: 88px;\n48\t      height: 88px;\n49\t      border-radius: 50%;\n50\t      background: linear-gradient(135deg, var(--accent), #b388ff);\n51\t      display: flex;\n52\t      align-items: center;\n53\t      justify-content: center;\n54\t      font-size: 32px;\n55\t      font-weight: 700;\n56\t      color: #0f1115;\n57\t      margin-bottom: 24px;\n58\t    }\n59\t\n60\t    h1 {\n61\t      font-size: 40px;\n62\t      font-weight: 700;\n63\t      letter-spacing: -0.02em;\n64\t      margin-bottom: 8px;\n65\t    }\n66\t\n67\t    .tagline {\n68\t      font-size: 20px;\n69\t      color: var(--muted);\n70\t      margin-bottom: 24px;\n71\t    }\n72\t\n73\t    .intro {\n74\t      font-size: 17px;\n75\t      color: var(--text);\n76\t      max-width: 60ch;\n77\t    }\n78\t\n79\t    /* Sections */\n80\t    section {\n81\t      padding: 40px 0;\n82\t      border-top: 1px solid var(--border);\n83\t    }\n84\t\n85\t    h2 {\n86\t      font-size: 14px;\n87\t      font-weight: 600;\n88\t      text-transform: uppercase;\n89\t      letter-spacing: 0.08em;\n90\t      color: var(--muted);\n91\t      margin-bottom: 24px;\n92\t    }\n93\t\n94\t    /* Work / projects */\n95\t    .card {\n96\t      display: block;\n97\t      background: var(--surface);\n98\t      border: 1px solid var(--border);\n99\t      border-radius: 12px;\n100\t      padding: 20px 24px;\n101\t      margin-bottom: 16px;\n102\t      text-decoration: none;\n103\t      color: inherit;\n104\t      transition: border-color 0.15s ease, transform 0.15s ease;\n105\t    }\n106\t\n107\t    .card:hover {\n108\t      border-color: var(--accent);\n109\t      transform: translateY(-2px);\n110\t    }\n111\t\n112\t    .card h3 {\n113\t      font-size: 17px;\n114\t      font-weight: 600;\n115\t      margin-bottom: 4px;\n116\t    }\n117\t\n118\t    .card p {\n119\t      font-size: 15px;\n120\t      color: var(--muted);\n121\t    }\n122\t\n123\t    /* Contact links */\n124\t    .links {\n125\t      display: flex;\n126\t      flex-wrap: wrap;\n127\t      gap: 12px;\n128\t    }\n129\t\n130\t    .links a {\n131\t      display: inline-block;\n132\t      padding: 10px 18px;\n133\t      border: 1px solid var(--border);\n134\t      border-radius: 999px;\n135\t      color: var(--text);\n136\t      text-decoration: none;\n137\t      font-size: 15px;\n138\t      transition: border-color 0.15s ease, color 0.15s ease;\n139\t    }\n140\t\n141\t    .links a:hover {\n142\t      border-color: var(--accent);\n143\t      color: var(--accent);\n144\t    }\n145\t\n146\t    footer {\n147\t      padding: 40px 0 64px;\n148\t      border-top: 1px solid var(--border);\n149\t      color: var(--muted);\n150\t      font-size: 14px;\n151\t    }\n152\t\n153\t    @media (max-width: 480px) {\n154\t      header {\n155\t        padding: 64px 0 48px;\n156\t      }\n157\t\n158\t      h1 {\n159\t        font-size: 32px;\n160\t      }\n161\t\n162\t      .tagline {\n163\t        font-size: 18px;\n164\t      }\n165\t    }\n166\t  </style>\n167\t</head>\n168\t<body>\n169\t  <div class=\"container\">\n170\t    <header>\n171\t      <div class=\"avatar\">AK</div>\n172\t      <h1>Demo User</h1>\n173\t      <p class=\"tagline\">Software engineer &amp; builder</p>\n174\t      <p class=\"intro\">\n175\t        Hi, I'm Demo User. I build software and enjoy turning ideas into simple,\n176\t        well-crafted tools. This is my corner of the internet — a place for\n177\t        what I'm working on and how to reach me.\n178\t      </p>\n179\t    </header>\n180\t\n181\t    <section>\n182\t      <h2>What I'm working on</h2>\n183\t      <a class=\"card\" href=\"#\">\n184\t        <h3>Project One</h3>\n185\t        <p>A short description of what this project does and why it exists.</p>\n186\t      </a>\n187\t      <a class=\"card\" href=\"#\">\n188\t        <h3>Project Two</h3>\n189\t        <p>Another thing I've built or am currently exploring.</p>\n190\t      </a>\n191\t    </section>\n192\t\n193\t    <section>\n194\t      <h2>Get in touch</h2>\n195\t      <div class=\"links\">\n196\t        <a href=\"mailto:<email>\">Email</a>\n197\t        <a href=\"https://github.com/\" target=\"_blank\" rel=\"noopener\">GitHub</a>\n198\t        <a href=\"https://www.linkedin.com/\" target=\"_blank\" rel=\"noopener\">LinkedIn</a>\n199\t      </div>\n200\t    </section>\n201\t\n202\t    <footer>\n203\t      &copy; 2026 Demo User\n204\t    </footer>\n205\t  </div>\n206\t</body>\n207\t</html>\n208\t",
+          "isError": false
+        }
+      },
+      "delayMs": 16,
+      "origDelayMs": 16
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01N9FD3CHb1p9ySNc8q5TFw2",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "    :root {\n      --bg: #0f1115;\n      --surface: #171a21;\n      --text: #e8eaf0;\n      --muted: #9aa3b2;\n      --accent: #6ea8fe;\n      --border: #262b36;\n    }",
+            "new_string": "    :root {\n      --bg: #09090b;\n      --surface: #131316;\n      --text: #ededf0;\n      --muted: #8b8b96;\n      --accent: #5eead4;\n      --accent-2: #a78bfa;\n      --border: #232329;\n    }"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 18050
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01N9FD3CHb1p9ySNc8q5TFw2",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 16,
+      "origDelayMs": 16
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01B2SciaC4BG35DP7Zi59uJP",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "    /* Header / hero */\n    header {\n      padding: 96px 0 64px;\n    }\n\n    .avatar {\n      width: 88px;\n      height: 88px;\n      border-radius: 50%;\n      background: linear-gradient(135deg, var(--accent), #b388ff);\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      font-size: 32px;\n      font-weight: 700;\n      color: #0f1115;\n      margin-bottom: 24px;\n    }",
+            "new_string": "    /* Header / hero */\n    header {\n      position: relative;\n      padding: 96px 0 64px;\n    }\n\n    header::before {\n      content: \"\";\n      position: absolute;\n      top: -160px;\n      left: -120px;\n      width: 480px;\n      height: 480px;\n      background: radial-gradient(circle, rgba(94, 234, 212, 0.08), transparent 70%);\n      pointer-events: none;\n    }\n\n    .avatar {\n      width: 88px;\n      height: 88px;\n      border-radius: 50%;\n      background: linear-gradient(135deg, var(--accent), var(--accent-2));\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      font-size: 32px;\n      font-weight: 700;\n      color: var(--bg);\n      margin-bottom: 24px;\n      box-shadow: 0 0 40px rgba(94, 234, 212, 0.25);\n    }"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 9521
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01B2SciaC4BG35DP7Zi59uJP",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 14,
+      "origDelayMs": 14
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01KLSGUtXeMTfH4Z1cnWfVPq",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "    .card:hover {\n      border-color: var(--accent);\n      transform: translateY(-2px);\n    }",
+            "new_string": "    .card:hover {\n      border-color: var(--accent);\n      transform: translateY(-2px);\n      box-shadow: 0 4px 24px rgba(94, 234, 212, 0.1);\n    }"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 7632
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01KLSGUtXeMTfH4Z1cnWfVPq",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 12,
+      "origDelayMs": 12
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "One more small touch — a them"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 7680
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ed text-selection color so highlighting matches the palette:"
+        }
+      },
+      "delayMs": 1,
+      "origDelayMs": 1
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_012EV3b4LvrKdrRf9DMGeLP7",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "    html {\n      scroll-behavior: smooth;\n    }",
+            "new_string": "    html {\n      scroll-behavior: smooth;\n    }\n\n    ::selection {\n      background: rgba(94, 234, 212, 0.25);\n    }"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 1566
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_012EV3b4LvrKdrRf9DMGeLP7",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 21,
+      "origDelayMs": 21
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Done. One thing worth kn"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 9571
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "owing: the page already had a dark palette (slate-blue tones), so I treated this as a refresh into a more"
+        }
+      },
+      "delayMs": 5,
+      "origDelayMs": 5
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " distinct dark look rather than a light-to-dark conversion. Everything stays in the single `index.html` with"
+        }
+      },
+      "delayMs": 1,
+      "origDelayMs": 1
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " plain CSS — no frameworks, no new files, and the HTML structure is untouched.\n\nWhat changed, all in the `<style>` block:\n\n- **Palette**: near-black background"
+        }
+      },
+      "delayMs": 2,
+      "origDelayMs": 2
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " (`#09090b`) with a slightly elevated card surface, and the"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " accent swapped from blue to teal (`#5eead4`) with a violet secondary (`#a"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "78bfa`) for the avatar gradient.\n- **Hero**: a fa"
+        }
+      },
+      "delayMs": 20,
+      "origDelayMs": 20
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "int teal radial glow behind the header and a soft glow on the avatar to give the dark page some depth.\n- **C"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ards**: hover now adds a subtle teal shadow along with the existing border highlight and lift.\n- **Selection**: highlighted text uses a transl"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ucent teal instead of the browser default.\n\nOpen `index.html` in a browser to see it. If you'd prefer a different accent (am"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ber, blue, monochrome), that's a one-line change to `--accent`."
+        }
+      },
+      "delayMs": 1,
+      "origDelayMs": 1
+    },
+    {
+      "frame": {
+        "type": "usage",
+        "payload": {
+          "inputTokens": 2889,
+          "outputTokens": 2982,
+          "model": "claude-fable-5"
+        }
+      },
+      "delayMs": 16,
+      "origDelayMs": 16
+    },
+    {
+      "frame": {
+        "type": "done"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    }
+  ],
+  "assertion": {
+    "type": "quiz",
+    "question": "Comparing the three restyle diffs, which prompt produced the most tightly controlled outcome?",
+    "choices": [
+      "The vague prompt",
+      "The constrained prompt",
+      "The plan-mode prompt (constrained, plus a reviewed plan)"
+    ],
+    "correctIndex": 2
+  }
+}

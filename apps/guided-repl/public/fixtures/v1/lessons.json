@@ -1,0 +1,273 @@
+{
+  "lessons": [
+    {
+      "lessonId": "l1",
+      "title": "Ship a page in 90 seconds",
+      "branches": ["vague", "constrained", "plan-mode"],
+      "seedSnapshotId": "l1-input",
+      "promptChoices": {
+        "task": ["make a page", "make a personal landing page"],
+        "subject": ["about me", "for my photography"],
+        "constraint": ["in index.html", "single index.html file, inline CSS"]
+      },
+      "branchConfig": {
+        "vague": {
+          "expectedPrompt": "make a page about me, in index.html",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l1/vague.json"
+        },
+        "constrained": {
+          "expectedPrompt": "make a personal landing page about me, single index.html file, inline CSS",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l1/constrained.json"
+        },
+        "plan-mode": {
+          "expectedPrompt": "make a personal landing page for my photography, single index.html file, inline CSS",
+          "permissionMode": "plan",
+          "fixture": "fixtures/l1/plan-mode.json"
+        }
+      },
+      "assertion": { "type": "file-contains", "path": "index.html", "match": "<h1>" }
+    },
+    {
+      "lessonId": "l2",
+      "title": "Why did it do that?",
+      "locked": false,
+      "playback": "step",
+      "branches": ["walkthrough"],
+      "seedSnapshotId": "l1-input",
+      "promptChoices": {
+        "task": ["make a personal landing page"],
+        "subject": ["about me"],
+        "constraint": ["single index.html file, inline CSS"]
+      },
+      "branchConfig": {
+        "walkthrough": {
+          "expectedPrompt": "make a personal landing page about me, single index.html file, inline CSS",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l2/walkthrough.json"
+        }
+      },
+      "assertion": {
+        "type": "quiz",
+        "question": "Which step in this replay is the agent's explore/plan step, done before any file is written?",
+        "choices": [
+          "The streamed reasoning text before any tool call",
+          "The Write tool call that creates index.html",
+          "The tool_result confirming the file was created",
+          "The final summary message after the write"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "lessonId": "l3",
+      "title": "The prompt ladder",
+      "locked": false,
+      "branches": ["vague", "constrained", "plan-mode"],
+      "seedSnapshotId": "l1-output",
+      "promptChoices": {
+        "task": ["restyle the page"],
+        "subject": ["with a dark theme", "with a dark theme and a new accent color"],
+        "constraint": ["", "keep it one file, no frameworks"]
+      },
+      "branchConfig": {
+        "vague": {
+          "expectedPrompt": "restyle the page with a dark theme",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l3/vague.json"
+        },
+        "constrained": {
+          "expectedPrompt": "restyle the page with a dark theme, keep it one file, no frameworks",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l3/constrained.json"
+        },
+        "plan-mode": {
+          "expectedPrompt": "restyle the page with a dark theme and a new accent color, keep it one file, no frameworks",
+          "permissionMode": "plan",
+          "fixture": "fixtures/l3/plan-mode.json"
+        }
+      },
+      "assertion": {
+        "type": "quiz",
+        "question": "Comparing the three restyle diffs, which prompt produced the most tightly controlled outcome?",
+        "choices": [
+          "The vague prompt",
+          "The constrained prompt",
+          "The plan-mode prompt (constrained, plus a reviewed plan)"
+        ],
+        "correctIndex": 2
+      }
+    },
+    {
+      "lessonId": "l4",
+      "title": "Plan mode & prompt planning",
+      "locked": false,
+      "branches": ["approve", "revise"],
+      "seedSnapshotId": "l3-output",
+      "promptChoices": {
+        "task": ["add a skills section to the page"],
+        "subject": ["listing 3 example skills"],
+        "constraint": ["keep it one file"]
+      },
+      "branchConfig": {
+        "approve": {
+          "expectedPrompt": "add a skills section to the page listing 3 example skills, keep it one file",
+          "permissionMode": "plan",
+          "fixture": "fixtures/l4/approve.json"
+        },
+        "revise": {
+          "expectedPrompt": "add a skills section to the page listing 3 example skills, keep it one file",
+          "permissionMode": "plan",
+          "fixture": "fixtures/l4/revise.json"
+        }
+      },
+      "assertion": {
+        "type": "quiz",
+        "question": "What's the main benefit of revising a plan before approving it, rather than approving immediately?",
+        "choices": [
+          "You catch mismatches between what you asked for and what the agent intends to do, before any files change",
+          "It makes the agent respond faster",
+          "It skips the permission gate entirely",
+          "It automatically switches to a cheaper model"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "lessonId": "l5",
+      "title": "Permission modes & the leash",
+      "locked": false,
+      "branches": ["plan", "acceptEdits", "bypass"],
+      "seedSnapshotId": "l4-output",
+      "promptChoices": {
+        "task": ["rewrite the projects section"],
+        "subject": ["removing the placeholder cards"],
+        "constraint": ["keep it one file"]
+      },
+      "branchConfig": {
+        "plan": {
+          "expectedPrompt": "rewrite the projects section removing the placeholder cards, keep it one file",
+          "permissionMode": "plan",
+          "fixture": "fixtures/l5/plan.json"
+        },
+        "acceptEdits": {
+          "expectedPrompt": "rewrite the projects section removing the placeholder cards, keep it one file",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l5/acceptEdits.json"
+        },
+        "bypass": {
+          "expectedPrompt": "rewrite the projects section removing the placeholder cards, keep it one file",
+          "permissionMode": "bypassPermissions",
+          "fixture": "fixtures/l5/bypass.json"
+        }
+      },
+      "assertion": {
+        "type": "quiz",
+        "question": "Which permission mode pauses for your review before a risky edit is applied?",
+        "choices": ["plan mode", "acceptEdits", "bypassPermissions"],
+        "correctIndex": 0
+      }
+    },
+    {
+      "lessonId": "l6",
+      "title": "Reading diffs & verifying",
+      "locked": false,
+      "branches": ["clean", "planted-bug"],
+      "seedSnapshotId": "l5-output",
+      "promptChoices": {
+        "task": ["add a testimonials section to the page"],
+        "subject": ["with two example quotes"],
+        "constraint": [
+          "style it with a CSS class named .testimonial-card defined in the stylesheet",
+          "reference a CSS class named .testimonial-card in the HTML but do not add a .testimonial-card rule anywhere in the stylesheet"
+        ]
+      },
+      "branchConfig": {
+        "clean": {
+          "expectedPrompt": "add a testimonials section to the page with two example quotes, style it with a CSS class named .testimonial-card defined in the stylesheet",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l6/clean.json"
+        },
+        "planted-bug": {
+          "expectedPrompt": "add a testimonials section to the page with two example quotes, reference a CSS class named .testimonial-card in the HTML but do not add a .testimonial-card rule anywhere in the stylesheet",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l6/planted-bug.json"
+        }
+      },
+      "assertion": { "type": "file-contains", "path": "index.html", "match": ".testimonial-card {" }
+    },
+    {
+      "lessonId": "l7",
+      "title": "CLAUDE.md — teaching your agent",
+      "locked": false,
+      "branches": ["without", "with"],
+      "seedSnapshotId": "l7-input-plain",
+      "promptChoices": {
+        "task": ["add a call-to-action button to the page"],
+        "subject": ["using a new highlight color"],
+        "constraint": ["define the highlight as a CSS custom property"]
+      },
+      "branchConfig": {
+        "without": {
+          "expectedPrompt": "add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l7/without.json"
+        },
+        "with": {
+          "expectedPrompt": "add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l7/with.json",
+          "seedSnapshotId": "l7-input-claudemd"
+        }
+      },
+      "assertion": {
+        "type": "quiz",
+        "question": "The 'with CLAUDE.md' run named its new CSS variable --gp-highlight instead of --highlight. What caused that?",
+        "choices": [
+          "A convention defined in the workspace's CLAUDE.md file",
+          "A different prompt text",
+          "A different permission mode",
+          "Random variation between runs"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "lessonId": "l8",
+      "title": "Cost, models & going live",
+      "locked": false,
+      "branches": ["haiku", "sonnet"],
+      "seedSnapshotId": "l7-output",
+      "promptChoices": {
+        "task": ["update the call-to-action button label"],
+        "subject": ["to say Get in touch"],
+        "constraint": ["keep everything else the same"]
+      },
+      "branchConfig": {
+        "haiku": {
+          "expectedPrompt": "update the call-to-action button label to say Get in touch, keep everything else the same",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l8/haiku.json",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "sonnet": {
+          "expectedPrompt": "update the call-to-action button label to say Get in touch, keep everything else the same",
+          "permissionMode": "acceptEdits",
+          "fixture": "fixtures/l8/sonnet.json"
+        }
+      },
+      "assertion": {
+        "type": "quiz",
+        "question": "For a small, well-specified text tweak like this one, which model is the better cost/quality tradeoff?",
+        "choices": [
+          "Haiku — the task is simple and well-scoped",
+          "Sonnet — always default to the most capable model",
+          "Neither — this needs a human to do it by hand",
+          "Cost doesn't matter, model choice is irrelevant"
+        ],
+        "correctIndex": 0
+      }
+    }
+  ]
+}
