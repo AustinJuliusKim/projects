@@ -23,7 +23,7 @@ export default function JoinView({ prefillCode = "", onReady }) {
     setBusy(true);
     try {
       const res = await claimSeat(code.trim(), seat);
-      saveIdentity({ pairingId: res.pairingId, role: seat, token: res.token });
+      saveIdentity({ pairingId: res.pairingId, role: seat, token: res.token, code: res.code });
       if (pushSupported()) {
         enablePush(res.pairingId, seat, res.token).catch(() => {});
       }

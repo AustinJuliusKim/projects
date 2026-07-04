@@ -32,9 +32,34 @@ Parameters:
     Type: String
     Default: choices-games
     Description: DynamoDB table name (override for preview stacks so they don't collide with prod)
+  WebAclArn:
+    Type: String
+    Default: ""
+    Description: >
+      ARN of the CloudFront-scoped WAF WebACL from the ChoicesWebAppEdge
+      stack (us-east-1). Blank = no WAF attached.
+  OriginVerifySecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >
+      Shared secret CloudFront adds as an x-origin-verify header on API
+      origin requests. Like VapidPrivateKey, pass once via
+      --parameter-overrides (never commit); updates reuse the stored value.
+      Blank = header not sent.
+  EnforceOriginHeader:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      true = Lambda rejects requests missing x-origin-verify (direct Function
+      URL calls get 403). Flip only after the frontend calls the CloudFront
+      /api path and OriginVerifySecret is set.
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
+  HasWebAcl: !Not [!Equals [!Ref WebAclArn, ""]]
+  HasOriginSecret: !Not [!Equals [!Ref OriginVerifySecret, ""]]
 
 Globals:
   Function:
@@ -70,6 +95,8 @@ Resources:
           VAPID_PRIVATE_KEY: !Ref VapidPrivateKey
           VAPID_SUBJECT: !Ref VapidSubject
           CORS_ALLOW_ORIGIN: !Ref CorsAllowOrigin
+          ORIGIN_VERIFY_SECRET: !Ref OriginVerifySecret
+          ENFORCE_ORIGIN_HEADER: !Ref EnforceOriginHeader
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GamesTable
@@ -80,6 +107,7 @@ Resources:
             - !Ref CorsAllowOrigin
           AllowMethods:
             - POST
+            - GET
           AllowHeaders:
             - content-type
 
@@ -102,12 +130,57 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
+  # SPA fallback, scoped to the default (site) behavior only. The old
+  # distribution-wide CustomErrorResponses (403/404 -> 200 index.html) would
+  # corrupt API error bodies now that /api* shares the distribution.
+  SpaRewriteFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${AWS::StackName}-spa-rewrite"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Serve index.html for extension-less SPA routes
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          if (!request.uri.includes(".")) {
+            request.uri = "/index.html";
+          }
+          return request;
+        }
+
+  # 1s TTL on getState: MinTTL=1 overrides the handler's no-cache (browsers
+  # still revalidate), and request collapsing lets the edge absorb retry
+  # storms hammering a single pairing. Cache key is the getState query only —
+  # cache hits skip origin token validation, which is safe solely because
+  # publicState carries no credentials (no `code` — see handler.mjs).
+  ApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${AWS::StackName}-api-1s"
+        MinTTL: 1
+        DefaultTTL: 1
+        MaxTTL: 1
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: false
+          EnableAcceptEncodingBrotli: false
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: whitelist
+            QueryStrings: [action, pairingId, role, token]
+
   SiteDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         Enabled: true
         DefaultRootObject: index.html
+        WebACLId: !If [HasWebAcl, !Ref WebAclArn, !Ref "AWS::NoValue"]
         Aliases: !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
         ViewerCertificate: !If
           - HasCustomDomain
@@ -121,20 +194,36 @@ Resources:
             OriginAccessControlId: !GetAtt SiteOriginAccessControl.Id
             S3OriginConfig:
               OriginAccessIdentity: ""
+          # Function URL as a custom origin -> same-origin /api (no CORS
+          # preflights) with WAF + edge caching in front.
+          - Id: ApiFunctionOrigin
+            DomainName: !Select [2, !Split ["/", !GetAtt ApiFunctionUrl.FunctionUrl]]
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+            OriginCustomHeaders: !If
+              - HasOriginSecret
+              - - HeaderName: x-origin-verify
+                  HeaderValue: !Ref OriginVerifySecret
+              - !Ref "AWS::NoValue"
         DefaultCacheBehavior:
           TargetOriginId: SiteS3Origin
           ViewerProtocolPolicy: redirect-to-https
           # AWS managed "CachingOptimized" policy
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
           AllowedMethods: [GET, HEAD, OPTIONS]
-        CustomErrorResponses:
-          # SPA fallback: serve index.html for client-side routes
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt SpaRewriteFunction.FunctionMetadata.FunctionARN
+        CacheBehaviors:
+          - PathPattern: "/api*"
+            TargetOriginId: ApiFunctionOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachePolicyId: !Ref ApiCachePolicy
+            # AWS managed "AllViewerExceptHostHeader" origin request policy
+            # (Function URLs reject a forwarded viewer Host header)
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
 
   SiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -157,6 +246,12 @@ Outputs:
   ApiUrl:
     Description: Lambda Function URL (POST JSON actions here)
     Value: !GetAtt ApiFunctionUrl.FunctionUrl
+  ApiBaseUrl:
+    Description: API endpoint behind CloudFront (same-origin /api path)
+    Value: !If
+      - HasCustomDomain
+      - !Sub "https://${CustomDomain}/api"
+      - !Sub "https://${SiteDistribution.DomainName}/api"
   TableName:
     Description: DynamoDB table name
     Value: !Ref GamesTable
