@@ -33,7 +33,7 @@ export default function CreatePairingView({ onReady }) {
     setBusy(true);
     try {
       const res = await claimSeat(created.code, "A");
-      saveIdentity({ pairingId: res.pairingId, role: "A", token: res.token });
+      saveIdentity({ pairingId: res.pairingId, role: "A", token: res.token, code: res.code });
       if (pushSupported()) {
         enablePush(res.pairingId, "A", res.token).catch(() => {});
       }

@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Account-level billing guardrails: monthly cost budget + Cost Anomaly
+  Detection, both alerting an email via SNS. Account-scoped (covers every
+  app in the account, not just one stack), so it lives outside the app
+  stacks and outside the least-privilege CI deploy roles. Deploy ONCE,
+  manually, with admin credentials (Budgets/CE CloudFormation support is
+  us-east-1 only):
+    aws cloudformation deploy --template-file ops/billing-alarms.yaml \
+      --stack-name BillingAlarms --region us-east-1
+  Then confirm the SNS subscription email.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Default: austinjuliuskim@gmail.com
+  MonthlyBudgetUsd:
+    Type: Number
+    Default: 10
+    Description: Monthly budget; alerts at 80%/100% actual and 100% forecast.
+  AnomalyThresholdUsd:
+    Type: Number
+    Default: 5
+    Description: Minimum anomaly impact (USD) before an immediate alert.
+
+Resources:
+  BillingAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: billing-alerts
+
+  BillingAlertsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref BillingAlertsTopic]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowBillingServicesPublish
+            Effect: Allow
+            Principal:
+              Service:
+                - budgets.amazonaws.com
+                - costalerts.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref BillingAlertsTopic
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
+  BillingAlertsEmail:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref BillingAlertsTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: account-monthly
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: !Ref MonthlyBudgetUsd
+          Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: SNS
+              Address: !Ref BillingAlertsTopic
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: SNS
+              Address: !Ref BillingAlertsTopic
+        - Notification:
+            NotificationType: FORECASTED
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: SNS
+              Address: !Ref BillingAlertsTopic
+
+  # Per-service anomaly detection: catches "DynamoDB suddenly costs 10x"
+  # even while the absolute spend is still under budget.
+  ServiceAnomalyMonitor:
+    Type: AWS::CE::AnomalyMonitor
+    Properties:
+      MonitorName: per-service
+      MonitorType: DIMENSIONAL
+      MonitorDimension: SERVICE
+
+  ServiceAnomalyAlerts:
+    Type: AWS::CE::AnomalySubscription
+    Properties:
+      SubscriptionName: per-service-immediate
+      Frequency: IMMEDIATE
+      MonitorArnList: [!Ref ServiceAnomalyMonitor]
+      Subscribers:
+        - Type: SNS
+          Address: !Ref BillingAlertsTopic
+      ThresholdExpression: !Sub >-
+        {"Dimensions": {"Key": "ANOMALY_TOTAL_IMPACT_ABSOLUTE",
+        "MatchOptions": ["GREATER_THAN_OR_EQUAL"],
+        "Values": ["${AnomalyThresholdUsd}"]}}
+
+Outputs:
+  TopicArn:
+    Description: SNS topic for future ops alarms (reuse instead of new topics)
+    Value: !Ref BillingAlertsTopic

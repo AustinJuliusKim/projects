@@ -52,6 +52,19 @@ aws s3 rm "s3://$(aws cloudformation describe-stacks --stack-name ChoicesWebApp-
 sam delete --config-env preview
 ```
 
+## Tier-1 hardening parameters
+
+- `WebAclArn`: after deploying the edge stack (`edge/template.yaml`,
+  us-east-1), paste its `WebAclArn` output into the `[preview]` and
+  `[default]` `parameter_overrides` in `samconfig.toml`. One CloudFront
+  WebACL can be attached to both distributions. Blank = no WAF.
+- `OriginVerifySecret`: same handling as the VAPID private key — pass once
+  via `--parameter-overrides` on a fresh deploy (e.g. `openssl rand -hex 32`),
+  never commit; later deploys reuse the stored value. Blank = CloudFront
+  doesn't send the header (fine while `EnforceOriginHeader` is `false`).
+- `EnforceOriginHeader`: flip to `true` only after the frontend uses the
+  CloudFront `/api` URL (`ApiBaseUrl` output) and the secret is set.
+
 ## Notes / future work
 
 - Cost at idle is ~zero (pay-per-request DynamoDB, Lambda, CloudFront).
