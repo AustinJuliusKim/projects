@@ -12,7 +12,12 @@ get_output() {
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
 }
 
-API_URL="$(get_output ApiUrl)"
+# Prefer the CloudFront /api path (same-origin, WAF, edge cache); fall back
+# to the raw Function URL for stacks predating the ApiBaseUrl output.
+API_URL="$(get_output ApiBaseUrl)"
+if [ -z "$API_URL" ] || [ "$API_URL" = "None" ]; then
+  API_URL="$(get_output ApiUrl)"
+fi
 VAPID_PUBLIC_KEY="$(get_output VapidPublicKey)"
 BUCKET="$(get_output SiteBucketName)"
 DIST_ID="$(get_output DistributionId)"

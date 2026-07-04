@@ -5,7 +5,15 @@ import { PLATFORMS } from "./affiliates.js";
 import { clearIdentity } from "./storage.js";
 import { enablePush, pushSupported, isIosSafari, isStandalone } from "./push.js";
 
-const POLL_MS = 3000;
+// Adaptive polling (foreground fallback; push is primary). The interval
+// tracks how hot the game is; hidden tabs stop polling entirely and refetch
+// immediately on return (which also covers notification taps).
+const POLL_MS = {
+  hot: 3000, // opponent's move lands any second (or state not loaded yet)
+  waiting: 15000, // waiting for the opponent to join — push nudges the host
+  idle: 30000, // my turn / game complete — remote changes are rare
+};
+const POLL_ERROR_MAX_MS = 60000;
 
 export default function PlayView({ identity, onLeave }) {
   const { pairingId, role, token } = identity;
@@ -15,7 +23,6 @@ export default function PlayView({ identity, onLeave }) {
   const [bumped, setBumped] = useState(false);
   const [pushPrompted, setPushPrompted] = useState(false);
   const [rematchChoices, setRematchChoices] = useState(["", "", "", ""]);
-  const pollRef = useRef(null);
 
   // Winner-reveal card flip. `complete` is computed before the early returns
   // so the hooks below can depend on it (hooks rule).
@@ -74,26 +81,70 @@ export default function PlayView({ identity, onLeave }) {
     return err?.status === 403 && err?.code === "BAD_TOKEN";
   }
 
-  // Initial load + polling (foreground fallback; push is primary on iOS).
+  // Poll mode derives from the latest state, so mutations retune the poll
+  // rate instantly (e.g. after my cut it's the opponent's turn -> hot).
+  const pollMode = !state
+    ? "hot"
+    : !state.bothJoined
+      ? "waiting"
+      : state.game.status === "active" && state.game.turn !== role
+        ? "hot"
+        : "idle";
+
+  // Initial load + adaptive polling; the effect re-arms whenever pollMode
+  // changes. Self-scheduling setTimeout (not setInterval) so each delay is
+  // recomputed, backs off on errors, and pauses while the tab is hidden.
   useEffect(() => {
     let alive = true;
+    let timer = null;
+    let errorStreak = 0;
+
     async function poll() {
+      timer = null;
       try {
         const res = await getState(pairingId, role, token);
-        if (alive) setState(res.state);
+        if (!alive) return;
+        errorStreak = 0;
+        setState(res.state);
       } catch (err) {
         if (!alive) return;
-        if (isBumped(err)) setBumped(true);
-        else setError(err.message);
+        if (isBumped(err)) {
+          setBumped(true);
+          return; // seat lost — stop polling
+        }
+        errorStreak += 1;
+        setError(err.message);
+      }
+      schedule();
+    }
+
+    function schedule() {
+      if (!alive || document.visibilityState === "hidden") return;
+      const base = Math.min(
+        POLL_MS[pollMode] * 2 ** errorStreak,
+        POLL_ERROR_MAX_MS
+      );
+      // ±20% jitter desynchronizes the two players' clients
+      timer = setTimeout(poll, base * (0.8 + Math.random() * 0.4));
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "hidden") {
+        if (timer) clearTimeout(timer);
+        timer = null;
+      } else if (timer == null) {
+        poll(); // back in the foreground: refetch now, then reschedule
       }
     }
+
     poll();
-    pollRef.current = setInterval(poll, POLL_MS);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       alive = false;
-      clearInterval(pollRef.current);
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [pairingId, role, token]);
+  }, [pairingId, role, token, pollMode]);
 
   // Offer push once (only meaningful inside an installed app on iOS).
   useEffect(() => {
@@ -206,11 +257,19 @@ export default function PlayView({ identity, onLeave }) {
         {complete ? "We have a winner! 🏆" : "Cut a choice"}
       </h1>
 
-      {!state.bothJoined && (
-        <div className="banner waiting">
-          Share code <strong>{state.code}</strong> with your opponent to begin.
-        </div>
-      )}
+      {!state.bothJoined &&
+        // getState no longer carries the code (cache safety) — it lives in
+        // the stored identity; state.code covers pre-migration identities.
+        ((identity.code ?? state.code) ? (
+          <div className="banner waiting">
+            Share code <strong>{identity.code ?? state.code}</strong> with your
+            opponent to begin.
+          </div>
+        ) : (
+          <div className="banner waiting">
+            Waiting for your opponent to join…
+          </div>
+        ))}
 
       {!complete && state.bothJoined && (
         <div className={`banner ${myTurn ? "your-turn" : "waiting"}`}>
