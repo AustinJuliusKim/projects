@@ -36,8 +36,11 @@ Parameters:
     Type: String
     Default: ""
     Description: >
-      ARN of the CloudFront-scoped WAF WebACL from the ChoicesWebAppEdge
-      stack (us-east-1). Blank = no WAF attached.
+      ARN of the CloudFront-scoped WAF WebACL to keep associated with the
+      distribution. For prod this is the CloudFront pricing-plan protection
+      pack (CreatedByCloudFront-*) — the plan requires it and blocks
+      removal/replacement, so this parameter must always match what's
+      attached. Blank = no WAF (preview).
   OriginVerifySecret:
     Type: String
     NoEcho: true
@@ -150,30 +153,6 @@ Resources:
           return request;
         }
 
-  # 1s TTL on getState: MinTTL=1 overrides the handler's no-cache (browsers
-  # still revalidate), and request collapsing lets the edge absorb retry
-  # storms hammering a single pairing. Cache key is the getState query only —
-  # cache hits skip origin token validation, which is safe solely because
-  # publicState carries no credentials (no `code` — see handler.mjs).
-  ApiCachePolicy:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Name: !Sub "${AWS::StackName}-api-1s"
-        MinTTL: 1
-        DefaultTTL: 1
-        MaxTTL: 1
-        ParametersInCacheKeyAndForwardedToOrigin:
-          EnableAcceptEncodingGzip: false
-          EnableAcceptEncodingBrotli: false
-          CookiesConfig:
-            CookieBehavior: none
-          HeadersConfig:
-            HeaderBehavior: none
-          QueryStringsConfig:
-            QueryStringBehavior: whitelist
-            QueryStrings: [action, pairingId, role, token]
-
   SiteDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -220,7 +199,16 @@ Resources:
             TargetOriginId: ApiFunctionOrigin
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
-            CachePolicyId: !Ref ApiCachePolicy
+            # AWS managed "CachingDisabled". Constraints that force this:
+            # prod's CloudFront flat-rate pricing plan excludes custom cache
+            # policies, and the only caching-enabled managed policy that
+            # honors origin Cache-Control (UseOriginCacheControlHeaders-*)
+            # puts `host` in the cache key — cache-key headers are always
+            # forwarded, and Lambda Function URLs reject a viewer Host
+            # header. If the distribution ever leaves the pricing plan,
+            # restore a custom 1s-TTL policy here (keyed on the getState
+            # query strings) so the edge absorbs retry storms.
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             # AWS managed "AllViewerExceptHostHeader" origin request policy
             # (Function URLs reject a forwarded viewer Host header)
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac

@@ -63,7 +63,7 @@ test("GET getState works and never exposes the code", async () => {
     getEvent({ action: "getState", pairingId: "abc123", role: "A", token: "tok-a" })
   );
   assert.equal(res.statusCode, 200);
-  assert.equal(res.headers["cache-control"], "private, no-cache");
+  assert.equal(res.headers["cache-control"], "no-cache");
   const data = JSON.parse(res.body);
   assert.equal(data.state.code, undefined); // cache-safety invariant
   assert.equal(data.state.gameNumber, 1);

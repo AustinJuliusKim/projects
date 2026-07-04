@@ -54,10 +54,25 @@ sam delete --config-env preview
 
 ## Tier-1 hardening parameters
 
-- `WebAclArn`: after deploying the edge stack (`edge/template.yaml`,
-  us-east-1), paste its `WebAclArn` output into the `[preview]` and
-  `[default]` `parameter_overrides` in `samconfig.toml`. One CloudFront
-  WebACL can be attached to both distributions. Blank = no WAF.
+- `WebAclArn`: **prod is subscribed to a CloudFront flat-rate pricing plan
+  (Free tier)**, which requires its protection-pack web ACL
+  (`CreatedByCloudFront-8bb2952d`) to stay associated — CloudFront rejects
+  any deploy that removes or replaces it. The samconfig `[default]` value
+  must therefore always be that pack's ARN. Preview is not on a plan and
+  runs without WAF (`WebAclArn=""`).
+- **WAF rules live in the protection pack, managed via the WAF console/API
+  (us-east-1), not in git** — the pricing plan blocks CloudFormation from
+  swapping the ACL. Current contents (all Count mode until soak completes):
+  3 AWS managed groups (IP reputation, Common, Known Bad Inputs) +
+  `ChoicesRateLimitPerIp` (600 req/5 min/IP, all traffic). Free-plan limits:
+  5 rules max, plain IP rate rules only (no scope-down/URI/body matching),
+  so there is no createPairing-specific rule — the generic cap plus billing
+  alarms are the backstop. Revisit if the app outgrows the plan.
+- The `/api*` cache behavior uses the AWS managed `CachingDisabled` policy:
+  custom cache policies are Business-tier+ under pricing plans, and the
+  managed caching-enabled alternatives put `host` in the cache key, which
+  Lambda Function URLs reject when forwarded. No edge caching on the API —
+  adaptive polling and the rate limit are the load/cost controls.
 - `OriginVerifySecret`: same handling as the VAPID private key — pass once
   via `--parameter-overrides` on a fresh deploy (e.g. `openssl rand -hex 32`),
   never commit; later deploys reuse the stored value. Blank = CloudFront
