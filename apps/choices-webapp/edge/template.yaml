@@ -34,6 +34,45 @@ Resources:
         CloudWatchMetricsEnabled: true
         MetricName: choices-webapp-api
       Rules:
+        # AWS managed rule groups (no per-group charge for AWS-managed),
+        # replacing the console one-click protection that previously covered
+        # the prod distribution. Count mode during soak (same posture as the
+        # rate rules): CommonRuleSet body inspections could false-positive on
+        # user-typed choice text — verify metrics before overriding to none.
+        - Name: AWSManagedIpReputation
+          Priority: 1
+          OverrideAction: !If [Block, { None: {} }, { Count: {} }]
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: choices-managed-ip-reputation
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+        - Name: AWSManagedCommon
+          Priority: 2
+          OverrideAction: !If [Block, { None: {} }, { Count: {} }]
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: choices-managed-common
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+        - Name: AWSManagedKnownBadInputs
+          Priority: 3
+          OverrideAction: !If [Block, { None: {} }, { Count: {} }]
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: choices-managed-known-bad-inputs
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+
         # Per-IP rate limits over a 5-minute rolling window. Both players
         # often share a household NAT IP (plus other family devices), so
         # limits are sized for 2+ active pairings per IP: legacy dual 3s
