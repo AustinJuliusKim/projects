@@ -6,7 +6,7 @@ resolve_s3 = true
 s3_prefix = "ChoicesWebApp"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "VapidPublicKey=\"BL0BvvWzSES2LgK4Tq074U1rmeDVVZLWk-1sCCcoRACaxbcvtlxK_fu7lA6QWvKMOEOSRcshQcEP2bcaZkaplnY\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"https://choices.austinjuliuskim.com\" CustomDomain=\"choices.austinjuliuskim.com\" CertificateArn=\"arn:aws:acm:us-east-1:549883968767:certificate/2ec1bd4f-b12f-4284-aad4-5997c6be9a70\""
+parameter_overrides = "VapidPublicKey=\"BL0BvvWzSES2LgK4Tq074U1rmeDVVZLWk-1sCCcoRACaxbcvtlxK_fu7lA6QWvKMOEOSRcshQcEP2bcaZkaplnY\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"https://choices.austinjuliuskim.com\" CustomDomain=\"choices.austinjuliuskim.com\" CertificateArn=\"arn:aws:acm:us-east-1:549883968767:certificate/2ec1bd4f-b12f-4284-aad4-5997c6be9a70\" WebAclArn=\"arn:aws:wafv2:us-east-1:549883968767:global/webacl/choices-webapp-api/4d39eee1-9771-4bcc-8ff0-fcea6411c298\""
 image_repositories = []
 
 [default.global.parameters]
@@ -24,7 +24,7 @@ resolve_s3 = true
 s3_prefix = "ChoicesWebApp-preview"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "TableName=\"choices-games-preview\" VapidPublicKey=\"BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"*\""
+parameter_overrides = "TableName=\"choices-games-preview\" VapidPublicKey=\"BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"*\" WebAclArn=\"arn:aws:wafv2:us-east-1:549883968767:global/webacl/choices-webapp-api/4d39eee1-9771-4bcc-8ff0-fcea6411c298\""
 
 [preview.global.parameters]
 region = "us-west-2"

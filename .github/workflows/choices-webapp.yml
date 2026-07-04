@@ -69,6 +69,14 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::549883968767:role/choices-webapp-github-deploy
           aws-region: us-west-2
+      # Edge stack first (us-east-1: CloudFront-scoped WAF) so rate-limit
+      # tuning in edge/template.yaml ships from git like everything else.
+      - run: >
+          aws cloudformation deploy
+          --template-file edge/template.yaml
+          --stack-name ChoicesWebAppEdge
+          --region us-east-1
+          --no-fail-on-empty-changeset
       - run: sam build
       - run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
       - run: npm ci

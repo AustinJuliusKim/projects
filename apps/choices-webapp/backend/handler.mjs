@@ -42,15 +42,35 @@ function generateCode() {
   return `${word}-${num}`;
 }
 
+// When enforced, only requests carrying the CloudFront origin secret are
+// served — direct Function URL calls get a 403. Enabled (via env) only after
+// the frontend has switched to the CloudFront /api path.
+function originAllowed(event) {
+  if (process.env.ENFORCE_ORIGIN_HEADER !== "true") return true;
+  return event?.headers?.["x-origin-verify"] === process.env.ORIGIN_VERIFY_SECRET;
+}
+
+// getState replies: browsers must always revalidate; CloudFront's 1s MinTTL
+// on the /api* cache behavior still edge-caches (MinTTL wins over no-cache).
+const GETSTATE_HEADERS = { "cache-control": "private, no-cache" };
+
 export async function handler(event) {
   const method = event?.requestContext?.http?.method;
   if (method === "OPTIONS") return reply(204, "");
+  if (!originAllowed(event)) return reply(403, { error: "Forbidden" });
 
   let body;
-  try {
-    body = JSON.parse(event.body || "{}");
-  } catch {
-    return reply(400, { error: "Invalid JSON" });
+  if (method === "GET") {
+    // Cacheable read path: CloudFront only caches GET, so getState is also
+    // exposed as GET /?action=getState&pairingId=..&role=..&token=..
+    body = { ...(event.queryStringParameters || {}) };
+    if (body.action !== "getState") return reply(400, { error: "Unknown action" });
+  } else {
+    try {
+      body = JSON.parse(event.body || "{}");
+    } catch {
+      return reply(400, { error: "Invalid JSON" });
+    }
   }
 
   try {
@@ -60,7 +80,7 @@ export async function handler(event) {
       case "claimSeat":
         return reply(200, await doClaimSeat(body));
       case "getState":
-        return reply(200, await doGetState(body));
+        return reply(200, await doGetState(body), GETSTATE_HEADERS);
       case "eliminate":
         return reply(200, await doEliminate(body));
       case "rematch":
@@ -101,6 +121,7 @@ async function doCreatePairing(body) {
     gameNumber: 1,
     nextStarter: "B", // after game 1 (A-started), B starts the next
     game,
+    version: 1,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     ttl: ttlEpoch(),
@@ -123,35 +144,41 @@ async function doClaimSeat(body) {
   );
   if (!codeRes.Item) throw new HttpError(404, "Invalid code", "INVALID_CODE");
 
-  const pairing = await loadPairing(codeRes.Item.pairingId);
-
   // The code is the bearer key for either seat. Claiming ALWAYS re-mints the
   // seat's token (take-over): any previous device on this seat is invalidated
   // and will get a 403 on its next call.
-  const wasFirstBClaim = seat === "B" && pairing.tokenB == null;
-  const token = randomUUID();
-  if (seat === "A") pairing.tokenA = token;
-  else pairing.tokenB = token;
-  pairing.updatedAt = Date.now();
-  pairing.ttl = ttlEpoch();
-  await ddb.send(new PutCommand({ TableName: TABLE, Item: pairing }));
+  for (let attempt = 0; ; attempt++) {
+    const pairing = await loadPairing(codeRes.Item.pairingId);
+    const wasFirstBClaim = seat === "B" && pairing.tokenB == null;
+    const token = randomUUID();
+    if (seat === "A") pairing.tokenA = token;
+    else pairing.tokenB = token;
+    pairing.updatedAt = Date.now();
+    pairing.ttl = ttlEpoch();
+    try {
+      await savePairing(pairing);
+    } catch (err) {
+      if (err?.name === "ConditionalCheckFailedException" && attempt < 1) continue;
+      throw err;
+    }
 
-  // Best-effort: tell A their opponent joined (only on the first B claim).
-  if (wasFirstBClaim) {
-    await pushTo(pairing, "A", {
-      title: "Your opponent joined!",
-      body: "They're making the first move.",
-      url: "/",
-    });
+    // Best-effort: tell A their opponent joined (only on the first B claim).
+    if (wasFirstBClaim) {
+      await pushTo(pairing, "A", {
+        title: "Your opponent joined!",
+        body: "They're making the first move.",
+        url: "/",
+      });
+    }
+
+    return {
+      pairingId: pairing.pk.slice("PAIR#".length),
+      code: pairing.code,
+      role: seat,
+      token,
+      state: publicState(pairing),
+    };
   }
-
-  return {
-    pairingId: pairing.pk.slice("PAIR#".length),
-    code: pairing.code,
-    role: seat,
-    token,
-    state: publicState(pairing),
-  };
 }
 
 async function doGetState(body) {
@@ -161,51 +188,41 @@ async function doGetState(body) {
 }
 
 async function doEliminate(body) {
-  const { pairingId, role, token, gameNumber, index } = body;
-  const pairing = await loadPairing(pairingId);
-  assertToken(pairing, role, token);
+  const { role, gameNumber, index } = body;
+  const { pairing, replay } = await mutatePairing(body, (pairing) => {
+    if (gameNumber !== pairing.gameNumber) {
+      throw new HttpError(409, "This game has moved on.", "STALE_GAME");
+    }
+    pairing.game = applyElimination(pairing.game, role, index);
+  });
 
-  if (gameNumber !== pairing.gameNumber) {
-    throw new HttpError(409, "This game has moved on.", "STALE_GAME");
-  }
-
-  const updatedGame = applyElimination(pairing.game, role, index);
-  pairing.game = updatedGame;
-  pairing.updatedAt = Date.now();
-  pairing.ttl = ttlEpoch();
-  await ddb.send(new PutCommand({ TableName: TABLE, Item: pairing }));
-
-  await notifyAfterMove(pairing);
+  if (!replay) await notifyAfterMove(pairing);
   return { state: publicState(pairing) };
 }
 
 async function doRematch(body) {
-  const { pairingId, role, token, choices } = body;
-  const pairing = await loadPairing(pairingId);
-  assertToken(pairing, role, token);
-
-  if (role !== pairing.nextStarter) {
-    throw new HttpError(409, "It's not your turn to start.", "NOT_YOUR_TURN_TO_START");
-  }
-  if (pairing.game.status !== "complete") {
-    throw new HttpError(409, "Finish the current game first.", "GAME_IN_PROGRESS");
-  }
-
-  const number = pairing.gameNumber + 1;
-  const game = createGame(choices, { startedBy: role, number });
-  pairing.game = game;
-  pairing.gameNumber = number;
-  pairing.nextStarter = otherRole(role);
-  pairing.updatedAt = Date.now();
-  pairing.ttl = ttlEpoch();
-  await ddb.send(new PutCommand({ TableName: TABLE, Item: pairing }));
+  const { role, choices } = body;
+  const { pairing, replay } = await mutatePairing(body, (pairing) => {
+    if (role !== pairing.nextStarter) {
+      throw new HttpError(409, "It's not your turn to start.", "NOT_YOUR_TURN_TO_START");
+    }
+    if (pairing.game.status !== "complete") {
+      throw new HttpError(409, "Finish the current game first.", "GAME_IN_PROGRESS");
+    }
+    const number = pairing.gameNumber + 1;
+    pairing.game = createGame(choices, { startedBy: role, number });
+    pairing.gameNumber = number;
+    pairing.nextStarter = otherRole(role);
+  });
 
   // Notify the OTHER player (who eliminates first) that a new game started.
-  await pushTo(pairing, otherRole(role), {
-    title: "New game started 🎲",
-    body: `Player ${role} picked 4 new choices. Your move!`,
-    url: "/",
-  });
+  if (!replay) {
+    await pushTo(pairing, otherRole(role), {
+      title: "New game started 🎲",
+      body: `Player ${role} picked 4 new choices. Your move!`,
+      url: "/",
+    });
+  }
 
   return { state: publicState(pairing) };
 }
@@ -228,18 +245,13 @@ async function doSubscribe(body) {
 // Record an outbound order-link click on the current game (conversion-funnel
 // data: games completed -> winner screens -> order clicks).
 async function doLinkClick(body) {
-  const { pairingId, role, token, gameNumber, platform } = body;
-  const pairing = await loadPairing(pairingId);
-  assertToken(pairing, role, token);
-
-  if (gameNumber !== pairing.gameNumber) {
-    throw new HttpError(409, "This game has moved on.", "STALE_GAME");
-  }
-
-  pairing.game = applyLinkClick(pairing.game, role, platform);
-  pairing.updatedAt = Date.now();
-  pairing.ttl = ttlEpoch();
-  await ddb.send(new PutCommand({ TableName: TABLE, Item: pairing }));
+  const { role, gameNumber, platform } = body;
+  await mutatePairing(body, (pairing) => {
+    if (gameNumber !== pairing.gameNumber) {
+      throw new HttpError(409, "This game has moved on.", "STALE_GAME");
+    }
+    pairing.game = applyLinkClick(pairing.game, role, platform);
+  });
   return { ok: true };
 }
 
@@ -275,6 +287,51 @@ async function pushTo(pairing, role, payload) {
 }
 
 // --- Helpers ---
+
+// Optimistic-lock write: succeeds only if the stored item still carries the
+// version we loaded (legacy items predating `version` age out via TTL and are
+// matched by attribute_not_exists). Bumps version on success.
+async function savePairing(pairing) {
+  const expected = pairing.version;
+  pairing.version = (expected ?? 0) + 1;
+  const params = { TableName: TABLE, Item: pairing };
+  if (expected == null) {
+    params.ConditionExpression = "attribute_not_exists(version)";
+  } else {
+    params.ConditionExpression = "version = :v";
+    params.ExpressionAttributeValues = { ":v": expected };
+  }
+  await ddb.send(new PutCommand(params));
+}
+
+// Load-mutate-save a pairing with optimistic locking and actionId replay
+// detection. `mutate(pairing)` applies the change in place (throws on
+// invalid input). Retried client requests reuse their actionId, so a
+// duplicate that already landed returns { replay: true } with the stored
+// state instead of failing — callers skip side effects (push) on replay.
+async function mutatePairing({ pairingId, role, token, actionId }, mutate) {
+  for (let attempt = 0; ; attempt++) {
+    const pairing = await loadPairing(pairingId);
+    assertToken(pairing, role, token);
+    if (actionId && pairing.lastActionId === actionId) {
+      return { pairing, replay: true };
+    }
+    mutate(pairing);
+    if (actionId) pairing.lastActionId = actionId;
+    pairing.updatedAt = Date.now();
+    pairing.ttl = ttlEpoch();
+    try {
+      await savePairing(pairing);
+      return { pairing, replay: false };
+    } catch (err) {
+      if (err?.name !== "ConditionalCheckFailedException") throw err;
+      if (attempt >= 1) {
+        throw new HttpError(409, "Conflicting update, try again.", "WRITE_CONFLICT");
+      }
+      // Lost a write race — reload and re-apply (replay check runs again).
+    }
+  }
+}
 
 async function loadPairing(id) {
   if (!id) throw new HttpError(400, "Missing pairingId");
@@ -327,10 +384,14 @@ function normalizeCode(code) {
   return c.length ? c : null;
 }
 
-// Strip secrets before returning to clients.
+// Strip secrets before returning to clients. Deliberately excludes `code`:
+// getState responses are edge-cached keyed by pairingId (token validation is
+// skipped on a cache hit), and the code is the bearer key for seat takeover
+// via claimSeat — it must never ride in a cacheable body. Clients get the
+// code from createPairing/claimSeat responses and persist it locally.
+// Scrutinize any field added here with the same lens.
 function publicState(pairing) {
   return {
-    code: pairing.code,
     gameNumber: pairing.gameNumber,
     nextStarter: pairing.nextStarter,
     seatsClaimed: { A: pairing.tokenA != null, B: pairing.tokenB != null },
@@ -354,11 +415,11 @@ function shortId(n = 8) {
   return s.slice(0, n);
 }
 
-function reply(status, payload) {
+function reply(status, payload, extraHeaders) {
   // CORS owned solely by the Function URL config (template.yaml).
   return {
     statusCode: status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...extraHeaders },
     body: typeof payload === "string" ? payload : JSON.stringify(payload),
   };
 }
