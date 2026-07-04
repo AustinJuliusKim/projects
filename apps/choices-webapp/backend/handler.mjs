@@ -50,9 +50,11 @@ function originAllowed(event) {
   return event?.headers?.["x-origin-verify"] === process.env.ORIGIN_VERIFY_SECRET;
 }
 
-// getState replies: browsers must always revalidate; CloudFront's 1s MinTTL
-// on the /api* cache behavior still edge-caches (MinTTL wins over no-cache).
-const GETSTATE_HEADERS = { "cache-control": "private, no-cache" };
+// getState replies: never cached — the /api* behavior uses the managed
+// CachingDisabled policy (see template.yaml for why), and browsers must
+// always revalidate. publicState still must never carry credentials, so a
+// future caching-enabled policy stays safe to introduce.
+const GETSTATE_HEADERS = { "cache-control": "no-cache" };
 
 export async function handler(event) {
   const method = event?.requestContext?.http?.method;

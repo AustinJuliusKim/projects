@@ -181,28 +181,14 @@
         "cloudfront:DeleteFunction",
         "cloudfront:DescribeFunction",
         "cloudfront:GetFunction",
-        "cloudfront:PublishFunction",
-        "cloudfront:CreateCachePolicy",
-        "cloudfront:GetCachePolicy",
-        "cloudfront:GetCachePolicyConfig",
-        "cloudfront:UpdateCachePolicy",
-        "cloudfront:DeleteCachePolicy"
+        "cloudfront:PublishFunction"
       ],
       "Resource": "*"
     },
     {
-      "Sid": "EdgeWafStack",
+      "Sid": "WafAssociationRead",
       "Effect": "Allow",
-      "Action": [
-        "wafv2:CreateWebACL",
-        "wafv2:GetWebACL",
-        "wafv2:UpdateWebACL",
-        "wafv2:DeleteWebACL",
-        "wafv2:ListWebACLs",
-        "wafv2:TagResource",
-        "wafv2:UntagResource",
-        "wafv2:ListTagsForResource"
-      ],
+      "Action": ["wafv2:GetWebACL"],
       "Resource": "*"
     }
   ]
