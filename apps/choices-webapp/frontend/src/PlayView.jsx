@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
+import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { getState, eliminate, rematch, linkClick } from "./api.js";
 import { PLATFORMS } from "./affiliates.js";
 import { clearIdentity } from "./storage.js";
 import { enablePush, pushSupported, isIosSafari, isStandalone } from "./push.js";
+import { isNative } from "./platform.js";
 
 // Adaptive polling (foreground fallback; push is primary). The interval
 // tracks how hot the game is; hidden tabs stop polling entirely and refetch
@@ -45,6 +47,9 @@ export default function PlayView({ identity, onLeave }) {
     prevCompleteRef.current = complete;
     if (!(complete && was === false)) return;
     const t = setTimeout(() => {
+      if (isNative) {
+        Haptics.notification({ type: NotificationType.Success }).catch(() => {});
+      }
       const r = sceneRef.current?.getBoundingClientRect();
       confetti({
         particleCount: 90,
@@ -160,6 +165,7 @@ export default function PlayView({ identity, onLeave }) {
   }, [state, pairingId, role, token, pushPrompted]);
 
   async function onEliminate(index) {
+    if (isNative) Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
     setBusy(true);
     setError(null);
     try {
@@ -197,6 +203,19 @@ export default function PlayView({ identity, onLeave }) {
   // Fire-and-forget click beacon — never block or delay the outbound link.
   function reportLinkClick(platform) {
     linkClick(pairingId, role, token, state.gameNumber, platform).catch(() => {});
+  }
+
+  // Native shell: target="_blank" handling in WKWebView is unreliable — open
+  // outbound links in SFSafariViewController (user stays in the app,
+  // affiliate redirect chains work).
+  function onPlatformClick(e, p) {
+    reportLinkClick(p.id);
+    if (isNative) {
+      e.preventDefault();
+      import("@capacitor/browser").then(({ Browser }) =>
+        Browser.open({ url: p.buildUrl(winnerName) }).catch(() => {})
+      );
+    }
   }
 
   function leaveGame() {
@@ -328,7 +347,7 @@ export default function PlayView({ identity, onLeave }) {
                       href={p.buildUrl(winnerName)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() => reportLinkClick(p.id)}
+                      onClick={(e) => onPlatformClick(e, p)}
                     >
                       {p.iconPath ? (
                         <svg

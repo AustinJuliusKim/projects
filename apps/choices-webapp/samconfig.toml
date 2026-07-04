@@ -6,7 +6,7 @@ resolve_s3 = true
 s3_prefix = "ChoicesWebApp"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "VapidPublicKey=\"BL0BvvWzSES2LgK4Tq074U1rmeDVVZLWk-1sCCcoRACaxbcvtlxK_fu7lA6QWvKMOEOSRcshQcEP2bcaZkaplnY\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"https://choices.austinjuliuskim.com\" CustomDomain=\"choices.austinjuliuskim.com\" CertificateArn=\"arn:aws:acm:us-east-1:549883968767:certificate/2ec1bd4f-b12f-4284-aad4-5997c6be9a70\" WebAclArn=\"arn:aws:wafv2:us-east-1:549883968767:global/webacl/CreatedByCloudFront-8bb2952d/76c07143-4d9e-4fd0-bc59-e7e1d641fe87\""
+parameter_overrides = "VapidPublicKey=\"BL0BvvWzSES2LgK4Tq074U1rmeDVVZLWk-1sCCcoRACaxbcvtlxK_fu7lA6QWvKMOEOSRcshQcEP2bcaZkaplnY\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"https://choices.austinjuliuskim.com,capacitor://localhost\" CustomDomain=\"choices.austinjuliuskim.com\" CertificateArn=\"arn:aws:acm:us-east-1:549883968767:certificate/2ec1bd4f-b12f-4284-aad4-5997c6be9a70\" WebAclArn=\"arn:aws:wafv2:us-east-1:549883968767:global/webacl/CreatedByCloudFront-8bb2952d/76c07143-4d9e-4fd0-bc59-e7e1d641fe87\""
 image_repositories = []
 
 [default.global.parameters]

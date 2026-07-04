@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { createPairing, claimSeat } from "./api.js";
 import { saveIdentity } from "./storage.js";
 import { enablePush, pushSupported } from "./push.js";
+import { isNative, WEB_ORIGIN } from "./platform.js";
 import IosInstallHint from "./IosInstallHint.jsx";
 
 export default function CreatePairingView({ onReady }) {
@@ -45,13 +46,26 @@ export default function CreatePairingView({ onReady }) {
   }
 
   function joinLink(code) {
-    const base = `${window.location.origin}${window.location.pathname}`;
+    // Inside the native shell the location origin is capacitor://localhost —
+    // recipients need the web app.
+    const base = isNative
+      ? `${WEB_ORIGIN}/`
+      : `${window.location.origin}${window.location.pathname}`;
     return `${base}#/join?code=${encodeURIComponent(code)}`;
   }
 
   async function onShare() {
     const text = `Join my game on Choices! Open the app and enter code: ${created.code}`;
     const shareData = { title: "Choices", text, url: joinLink(created.code) };
+    if (isNative) {
+      const { Share } = await import("@capacitor/share");
+      try {
+        await Share.share(shareData);
+      } catch {
+        /* sheet dismissed */
+      }
+      return;
+    }
     if (navigator.share) {
       try {
         await navigator.share(shareData);
