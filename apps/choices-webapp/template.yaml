@@ -87,6 +87,26 @@ Parameters:
       OAuth redirect URL — the site origin with a trailing slash
       (e.g. https://choices.austinjuliuskim.com/). Required when
       GoogleClientId is set.
+  StripeSecretKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >
+      Stripe secret key (sk_live_/sk_test_). Blank = billing disabled (the
+      upgrade UI hides itself, billing actions 400).
+  StripeWebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Stripe webhook signing secret (whsec_) for /api/stripe-webhook
+  StripePriceMonthly:
+    Type: String
+    Default: ""
+    Description: Stripe Price id for the monthly premium plan ($2.99/mo)
+  StripePriceAnnual:
+    Type: String
+    Default: ""
+    Description: Stripe Price id for the annual premium plan ($24/yr)
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
@@ -132,6 +152,15 @@ Resources:
           ENFORCE_ORIGIN_HEADER: !Ref EnforceOriginHeader
           USER_POOL_ID: !If [HasCognito, !Ref UserPool, ""]
           USER_POOL_CLIENT_ID: !If [HasCognito, !Ref UserPoolClient, ""]
+          STRIPE_SECRET_KEY: !Ref StripeSecretKey
+          STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
+          STRIPE_PRICE_MONTHLY: !Ref StripePriceMonthly
+          STRIPE_PRICE_ANNUAL: !Ref StripePriceAnnual
+          # Checkout/portal redirect base (trailing slash). Reuses the
+          # Cognito callback URL — billing requires sign-in, so it's always
+          # set when billing is; deriving from SiteDistribution would be a
+          # circular dependency (distribution -> function URL -> function).
+          SITE_URL: !Ref CognitoCallbackUrl
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GamesTable

@@ -1,6 +1,79 @@
 import React, { useEffect, useState } from "react";
-import { getMe } from "./api.js";
+import { getMe, createCheckoutSession, createPortalSession } from "./api.js";
 import { authEnabled, hasSession, getProfile, signIn, signOut } from "./auth.js";
+
+// Premium purchase/manage section. Web-only by construction (AccountView is
+// unreachable in the native shell): Apple 3.1.1 forbids linking to external
+// payment from the iOS app; entitlements bought here still work there (3.1.3).
+function PremiumSection({ me }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const premiumActive = ["active", "past_due"].includes(me.premium?.status);
+  const justUpgraded = window.location.hash.includes("upgraded=1");
+
+  async function go(fn, arg) {
+    setBusy(true);
+    setError(null);
+    try {
+      const { url } = await fn(arg);
+      window.location.assign(url);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  if (premiumActive) {
+    return (
+      <div className="premium-box">
+        <p>✨ Premium — thanks for the support!</p>
+        <button
+          className="link-btn"
+          disabled={busy}
+          onClick={() => go(createPortalSession)}
+        >
+          Manage subscription
+        </button>
+        {error && <p className="error">{error}</p>}
+      </div>
+    );
+  }
+
+  if (justUpgraded) {
+    // Checkout finished but the webhook hasn't landed yet.
+    return (
+      <div className="premium-box">
+        <p className="muted">Payment received — activating your Premium…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="premium-box">
+      <p>
+        ✨ <strong>Premium</strong> — your streak, full history &amp; every
+        winner you've crowned.
+      </p>
+      <div className="premium-btns">
+        <button
+          className="btn primary"
+          disabled={busy}
+          onClick={() => go(createCheckoutSession, "monthly")}
+        >
+          $2.99/mo
+        </button>
+        <button
+          className="btn"
+          disabled={busy}
+          onClick={() => go(createCheckoutSession, "annual")}
+        >
+          $24/yr
+        </button>
+      </div>
+      {error && <p className="error">{error}</p>}
+    </div>
+  );
+}
 
 // One-line account hook for the winner screen (post-value placement, like
 // the tip jar): guests get the sign-in pitch, free accounts the locked-streak
@@ -106,6 +179,11 @@ export default function AccountView() {
               </div>
             )}
           </div>
+
+          {(me.billingAvailable ||
+            ["active", "past_due"].includes(me.premium?.status)) && (
+            <PremiumSection me={me} />
+          )}
 
           {me.stats.topWinners && Object.keys(me.stats.topWinners).length > 0 && (
             <div className="top-winners">

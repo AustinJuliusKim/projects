@@ -506,6 +506,30 @@ h1 {
   margin-top: 8px;
 }
 
+.premium-box {
+  background: var(--card);
+  border: 1px solid var(--indigo);
+  border-radius: var(--radius-card);
+  padding: 14px;
+  margin: 16px 0;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.premium-box p {
+  margin: 0 0 10px;
+}
+
+.premium-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.premium-btns .btn {
+  margin-top: 0;
+}
+
 /* Rematch form on winner screen */
 .rematch {
   margin-top: 24px;

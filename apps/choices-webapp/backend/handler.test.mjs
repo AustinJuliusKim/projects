@@ -13,6 +13,7 @@ import {
 import { handler } from "./handler.mjs";
 import { createGame, applyElimination } from "./game.mjs";
 import { _setVerifierForTests } from "./auth.mjs";
+import { _setStripeForTests } from "./billing.mjs";
 
 // Fake Cognito verifier: token "good-token" -> user u-1; anything else throws.
 function fakeVerifier() {
@@ -66,9 +67,12 @@ beforeEach(() => {
   ddbMock.reset();
   delete process.env.ENFORCE_ORIGIN_HEADER;
   delete process.env.ORIGIN_VERIFY_SECRET;
+  delete process.env.STRIPE_SECRET_KEY;
   process.env.USER_POOL_ID = "pool";
   process.env.USER_POOL_CLIENT_ID = "client";
+  process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
   _setVerifierForTests(fakeVerifier());
+  _setStripeForTests(null);
 });
 
 test("GET getState works and never exposes the code", async () => {
@@ -477,6 +481,119 @@ test("getMe creates the user skeleton on first visit", async () => {
   const me = JSON.parse(res.body);
   assert.equal(me.stats.gamesPlayed, 0);
   assert.equal(me.premium.status, "none");
+});
+
+// Fake Stripe: constructEvent validates our fake signature; checkout/portal
+// return canned URLs.
+function fakeStripe(event) {
+  return {
+    webhooks: {
+      constructEvent: (raw, sig) => {
+        if (sig !== "valid-sig") throw new Error("bad signature");
+        return event ?? JSON.parse(raw);
+      },
+    },
+    customers: { create: async () => ({ id: "cus_1" }) },
+    checkout: {
+      sessions: { create: async (params) => ({ url: `https://stripe/checkout/${params.line_items[0].price}` }) },
+    },
+    billingPortal: { sessions: { create: async () => ({ url: "https://stripe/portal" }) } },
+  };
+}
+
+const webhookEvent = (body, headers = {}) => ({
+  requestContext: { http: { method: "POST", path: "/api/stripe-webhook" } },
+  rawPath: "/api/stripe-webhook",
+  headers,
+  body: typeof body === "string" ? body : JSON.stringify(body),
+});
+
+test("webhook rejects a bad signature", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  _setStripeForTests(fakeStripe());
+  const res = await handler(webhookEvent({}, { "stripe-signature": "forged" }));
+  assert.equal(res.statusCode, 400);
+  assert.equal(JSON.parse(res.body).code, "BAD_SIGNATURE");
+});
+
+test("checkout.session.completed flips the user to premium", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  _setStripeForTests(
+    fakeStripe({
+      type: "checkout.session.completed",
+      data: { object: { client_reference_id: "u-1", customer: "cus_1", subscription: "sub_1" } },
+    })
+  );
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [], premium: { status: "none" } },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(webhookEvent({}, { "stripe-signature": "valid-sig" }));
+  assert.equal(res.statusCode, 200);
+  const saved = ddbMock.commandCalls(PutCommand)[0].args[0].input.Item;
+  assert.equal(saved.premium.status, "active");
+  assert.equal(saved.premium.stripeCustomerId, "cus_1");
+  assert.equal(saved.premium.stripeSubId, "sub_1");
+  assert.equal(saved.version, 2);
+});
+
+test("subscription.deleted cancels premium via metadata userId", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  _setStripeForTests(
+    fakeStripe({
+      type: "customer.subscription.deleted",
+      data: { object: { id: "sub_1", customer: "cus_1", metadata: { userId: "u-1" }, status: "canceled" } },
+    })
+  );
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 3, stats: {}, recentGames: [], premium: { status: "active", stripeCustomerId: "cus_1" } },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(webhookEvent({}, { "stripe-signature": "valid-sig" }));
+  assert.equal(res.statusCode, 200);
+  const saved = ddbMock.commandCalls(PutCommand)[0].args[0].input.Item;
+  assert.equal(saved.premium.status, "canceled");
+  assert.equal(saved.premium.stripeCustomerId, "cus_1"); // merge keeps ids
+});
+
+test("createCheckoutSession requires sign-in and a known plan", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  process.env.STRIPE_PRICE_MONTHLY = "price_m";
+  process.env.SITE_URL = "https://example.test/";
+  _setStripeForTests(fakeStripe());
+
+  const anon = await handler(postEvent({ action: "createCheckoutSession", plan: "monthly" }));
+  assert.equal(anon.statusCode, 401);
+
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [], premium: { status: "none" } },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const bad = await handler(
+    postEvent({ action: "createCheckoutSession", plan: "lifetime" }, { authorization: "Bearer good-token" })
+  );
+  assert.equal(bad.statusCode, 400);
+
+  const ok = await handler(
+    postEvent({ action: "createCheckoutSession", plan: "monthly" }, { authorization: "Bearer good-token" })
+  );
+  assert.equal(ok.statusCode, 200);
+  assert.equal(JSON.parse(ok.body).url, "https://stripe/checkout/price_m");
+  // Newly-minted customer id persisted on the user item.
+  const saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input.Item;
+  assert.equal(saved.premium.stripeCustomerId, "cus_1");
+});
+
+test("billing actions 400 when Stripe is not configured", async () => {
+  delete process.env.STRIPE_SECRET_KEY;
+  const res = await handler(
+    postEvent({ action: "createCheckoutSession", plan: "monthly" }, { authorization: "Bearer good-token" })
+  );
+  assert.equal(res.statusCode, 400);
+  assert.equal(JSON.parse(res.body).code, "BILLING_DISABLED");
 });
 
 test("origin header enforced only when flag is on", async () => {
