@@ -20,10 +20,11 @@ Parameters:
     Type: CommaDelimitedList
     Default: "*"
     Description: >
-      Allowed CORS origins for the Function URL, comma-separated (site origin
-      + capacitor://localhost for the iOS app). NEVER edit via the AWS
-      console — its UI rejects custom schemes like capacitor:// and would
-      clobber the value; CloudFormation accepts them.
+      Allowed CORS origins for the Function URL, comma-separated. Origins
+      must be http(s) or "*" — the Lambda service rejects custom schemes
+      (capacitor://localhost failed the 2026-07-04 prod deploy with
+      InvalidRequest and rolled the stack back). The iOS shell bypasses
+      WKWebView CORS via CapacitorHttp instead (capacitor.config.json).
   CustomDomain:
     Type: String
     Default: ""
