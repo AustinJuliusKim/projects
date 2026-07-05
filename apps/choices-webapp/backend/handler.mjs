@@ -5,7 +5,8 @@
 // rematches. B joins by entering a short human CODE inside the app.
 //
 // Actions: createPairing | claimSeat | getState | eliminate | rematch |
-// subscribe | linkClick | getMe
+// subscribe | linkClick | getMe | createCheckoutSession | createPortalSession
+// (+ POST /api/stripe-webhook, routed by path, raw-body signature verified)
 //
 // Accounts are optional: a Cognito ID token in the authorization header
 // links seats to a user (history/streaks); its absence means guest.
@@ -27,6 +28,13 @@ import {
 } from "./game.mjs";
 import { applyCompletedGame, emptyStats, RECENT_GAMES_CAP } from "./stats.mjs";
 import { verifyIdToken, AuthError } from "./auth.mjs";
+import {
+  billingEnabled,
+  createCheckoutSession,
+  createPortalSession,
+  parseWebhook,
+  BillingError,
+} from "./billing.mjs";
 import { sendPush } from "./push.mjs";
 
 const TABLE = process.env.TABLE_NAME;
@@ -70,6 +78,21 @@ export async function handler(event) {
   if (method === "OPTIONS") return reply(204, "");
   if (!originAllowed(event)) return reply(403, { error: "Forbidden" });
 
+  // Stripe webhook: routed by path (Stripe posts to a fixed URL, not our
+  // action envelope) and verified against the RAW body before any parsing.
+  const path = event?.rawPath ?? event?.requestContext?.http?.path ?? "";
+  if (method === "POST" && path.endsWith("/stripe-webhook")) {
+    try {
+      return reply(200, await doStripeWebhook(event));
+    } catch (err) {
+      if (err instanceof BillingError) {
+        return reply(err.status, { error: err.message, code: err.code });
+      }
+      console.error("webhook error", err);
+      return reply(500, { error: "Internal error" });
+    }
+  }
+
   let body;
   if (method === "GET") {
     // Cacheable read path: CloudFront only caches GET, so getState is also
@@ -106,12 +129,19 @@ export async function handler(event) {
         return reply(200, await doLinkClick(body));
       case "getMe":
         return reply(200, await doGetMe(user));
+      case "createCheckoutSession":
+        return reply(200, await doCreateCheckoutSession(user, body));
+      case "createPortalSession":
+        return reply(200, await doCreatePortalSession(user));
       default:
         return reply(400, { error: "Unknown action" });
     }
   } catch (err) {
     if (err instanceof AuthError) {
       return reply(401, { error: err.message, code: err.code });
+    }
+    if (err instanceof BillingError) {
+      return reply(err.status, { error: err.message, code: err.code });
     }
     if (err instanceof GameError) {
       return reply(409, { error: err.message, code: err.code });
@@ -342,20 +372,7 @@ function isPremium(item) {
 
 async function doGetMe(user) {
   if (!user) throw new HttpError(401, "Sign in required.", "SIGN_IN_REQUIRED");
-  let item = await loadUser(user.sub);
-  if (!item) {
-    // First visit: persist the skeleton so billing (Stripe customer id) has
-    // a row to attach to. Lost creation races just fall through to a reload.
-    item = { ...emptyUser(user.sub), email: user.email, name: user.name };
-    try {
-      await ddb.send(new PutCommand(userPut(item).Put));
-      item.version = 1;
-    } catch (err) {
-      if (err?.name !== "ConditionalCheckFailedException") throw err;
-      item = await loadUser(user.sub);
-    }
-  }
-
+  const item = await ensureUser(user);
   const premium = isPremium(item);
   const recentGames = item.recentGames ?? [];
   const stats = item.stats ?? emptyStats();
@@ -377,7 +394,86 @@ async function doGetMe(user) {
       : { gamesPlayed: stats.gamesPlayed, streakLocked: true },
     recentGames: recentGames.slice(0, premium ? RECENT_GAMES_CAP : FREE_RECENT_GAMES),
     historyLocked: !premium && recentGames.length > FREE_RECENT_GAMES,
+    billingAvailable: billingEnabled(),
   };
+}
+
+// Load the USER# item, persisting the skeleton on first visit so billing
+// (Stripe customer id) has a row to attach to. Lost creation races fall
+// through to a reload.
+async function ensureUser(user) {
+  let item = await loadUser(user.sub);
+  if (item) return item;
+  item = { ...emptyUser(user.sub), email: user.email, name: user.name };
+  try {
+    await ddb.send(new PutCommand(userPut(item).Put));
+    item.version = 1;
+  } catch (err) {
+    if (err?.name !== "ConditionalCheckFailedException") throw err;
+    item = await loadUser(user.sub);
+  }
+  return item;
+}
+
+// --- Billing (premium subscription) ---
+
+async function doCreateCheckoutSession(user, body) {
+  if (!user) throw new HttpError(401, "Sign in required.", "SIGN_IN_REQUIRED");
+  if (!billingEnabled()) {
+    throw new HttpError(400, "Billing is not enabled here.", "BILLING_DISABLED");
+  }
+  const item = await ensureUser(user);
+  const { url, customerId } = await createCheckoutSession(
+    item,
+    body.plan,
+    process.env.SITE_URL
+  );
+  // Persist a newly-minted customer id before redirecting; webhooks for
+  // subscription events resolve the user via metadata either way.
+  if (item.premium?.stripeCustomerId !== customerId) {
+    await updateUserPremium(user.sub, { stripeCustomerId: customerId });
+  }
+  return { url };
+}
+
+async function doCreatePortalSession(user) {
+  if (!user) throw new HttpError(401, "Sign in required.", "SIGN_IN_REQUIRED");
+  if (!billingEnabled()) {
+    throw new HttpError(400, "Billing is not enabled here.", "BILLING_DISABLED");
+  }
+  const item = await ensureUser(user);
+  return createPortalSession(item, process.env.SITE_URL);
+}
+
+async function doStripeWebhook(event) {
+  if (!billingEnabled()) {
+    throw new HttpError(400, "Billing is not enabled here.", "BILLING_DISABLED");
+  }
+  const raw = event.isBase64Encoded
+    ? Buffer.from(event.body ?? "", "base64").toString("utf8")
+    : event.body ?? "";
+  const update = parseWebhook(raw, event.headers?.["stripe-signature"]);
+  // Unhandled event types or events missing our metadata: acknowledge so
+  // Stripe stops retrying — there's nothing to apply.
+  if (!update?.userId) return { ok: true };
+  await updateUserPremium(update.userId, update.premium);
+  return { ok: true };
+}
+
+// Merge premium fields onto the USER# item with the usual version condition
+// (retried once — webhooks can race game completions).
+async function updateUserPremium(userId, premium) {
+  for (let attempt = 0; ; attempt++) {
+    const user = (await loadUser(userId)) ?? emptyUser(userId);
+    user.premium = { ...user.premium, ...premium };
+    user.updatedAt = Date.now();
+    try {
+      await ddb.send(new PutCommand(userPut(user).Put));
+      return;
+    } catch (err) {
+      if (err?.name !== "ConditionalCheckFailedException" || attempt >= 1) throw err;
+    }
+  }
 }
 
 // --- Notifications ---

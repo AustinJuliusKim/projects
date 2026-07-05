@@ -55,6 +55,10 @@ export const createPairing = (choices) => post("createPairing", { choices });
 export const claimSeat = async (code, seat) =>
   post("claimSeat", { code, seat }, await authHeaders());
 export const getMe = async () => post("getMe", {}, await authHeaders());
+export const createCheckoutSession = async (plan) =>
+  post("createCheckoutSession", { plan }, await authHeaders());
+export const createPortalSession = async () =>
+  post("createPortalSession", {}, await authHeaders());
 // GET so CloudFront can edge-cache game state (POSTs are never cached). No
 // retry loop: the poll itself is the retry.
 export async function getState(pairingId, role, token) {
