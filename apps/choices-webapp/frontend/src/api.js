@@ -1,5 +1,15 @@
 // Thin fetch wrappers around the game API (Function URL or CloudFront /api).
+import { getIdToken } from "./auth.js";
+
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Optional account identity: {} for guests, authorization header when a
+// session exists. Only attached where the backend uses it (claimSeat, getMe)
+// so game polling never grows an auth dependency.
+async function authHeaders() {
+  const idToken = await getIdToken();
+  return idToken ? { authorization: `Bearer ${idToken}` } : {};
+}
 
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -11,10 +21,10 @@ function toError(status, data) {
   return err;
 }
 
-async function post(action, payload) {
+async function post(action, payload, headers = {}) {
   const res = await fetch(API_URL, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify({ action, ...payload }),
   });
   const data = await res.json().catch(() => ({}));
@@ -41,7 +51,10 @@ async function mutate(action, payload) {
 }
 
 export const createPairing = (choices) => post("createPairing", { choices });
-export const claimSeat = (code, seat) => post("claimSeat", { code, seat });
+// Signed-in claims link the seat to the account (history/streaks accrue).
+export const claimSeat = async (code, seat) =>
+  post("claimSeat", { code, seat }, await authHeaders());
+export const getMe = async () => post("getMe", {}, await authHeaders());
 // GET so CloudFront can edge-cache game state (POSTs are never cached). No
 // retry loop: the poll itself is the retry.
 export async function getState(pairingId, role, token) {
