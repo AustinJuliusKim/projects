@@ -8,6 +8,7 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { handler } from "./handler.mjs";
 import { createGame, applyElimination } from "./game.mjs";
@@ -172,6 +173,115 @@ test("eliminate gives up with 409 WRITE_CONFLICT after two lost races", async ()
   );
   assert.equal(res.statusCode, 409);
   assert.equal(JSON.parse(res.body).code, "WRITE_CONFLICT");
+});
+
+// Pairing whose game is one elimination away from completing (B to move).
+function nearlyWonPairing(overrides = {}) {
+  const p = pairingItem(overrides);
+  p.game = applyElimination(p.game, "B", 0);
+  p.game = applyElimination(p.game, "A", 1);
+  return p;
+}
+
+test("winning eliminate archives the game atomically with the pairing save", async () => {
+  ddbMock.on(GetCommand).resolves({ Item: nearlyWonPairing() });
+  ddbMock.on(TransactWriteCommand).resolves({});
+
+  const res = await handler(
+    postEvent({
+      action: "eliminate",
+      pairingId: "abc123",
+      role: "B",
+      token: "tok-b",
+      gameNumber: 1,
+      index: 2,
+      actionId: "aid-win",
+    })
+  );
+  assert.equal(res.statusCode, 200);
+  assert.equal(ddbMock.commandCalls(PutCommand).length, 0);
+
+  const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
+  assert.equal(tx.TransactItems.length, 2);
+
+  const pairingPut = tx.TransactItems[0].Put;
+  assert.equal(pairingPut.Item.pk, "PAIR#abc123");
+  assert.equal(pairingPut.Item.version, 4);
+  assert.equal(pairingPut.ConditionExpression, "version = :v");
+  assert.equal(pairingPut.Item.game.status, "complete");
+
+  const archive = tx.TransactItems[1].Put.Item;
+  assert.equal(archive.pk, "GAME#abc123#1");
+  assert.equal(archive.pairingId, "abc123");
+  assert.equal(archive.winnerIndex, 3);
+  assert.equal(archive.winnerLabel, "Ramen");
+  assert.equal(archive.eliminated.length, 3);
+  assert.deepEqual(archive.players, { A: null, B: null });
+  assert.ok(archive.ttl > 0);
+});
+
+test("mid-game eliminate stays on the plain conditional put", async () => {
+  ddbMock.on(GetCommand).resolves({ Item: pairingItem() });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(
+    postEvent({
+      action: "eliminate",
+      pairingId: "abc123",
+      role: "B",
+      token: "tok-b",
+      gameNumber: 1,
+      index: 0,
+    })
+  );
+  assert.equal(res.statusCode, 200);
+  assert.equal(ddbMock.commandCalls(TransactWriteCommand).length, 0);
+  assert.equal(ddbMock.commandCalls(PutCommand).length, 1);
+});
+
+test("winning eliminate retries after losing the transactional write race", async () => {
+  const txCancelled = new Error("Transaction cancelled");
+  txCancelled.name = "TransactionCanceledException";
+  txCancelled.CancellationReasons = [{ Code: "ConditionalCheckFailed" }, { Code: "None" }];
+
+  ddbMock.on(GetCommand).callsFake(() => ({ Item: nearlyWonPairing() }));
+  ddbMock.on(TransactWriteCommand).rejectsOnce(txCancelled).resolves({});
+
+  const res = await handler(
+    postEvent({
+      action: "eliminate",
+      pairingId: "abc123",
+      role: "B",
+      token: "tok-b",
+      gameNumber: 1,
+      index: 2,
+      actionId: "aid-win",
+    })
+  );
+  assert.equal(res.statusCode, 200);
+  assert.equal(ddbMock.commandCalls(TransactWriteCommand).length, 2);
+});
+
+test("transaction cancelled for a non-version reason is not retried", async () => {
+  const txCancelled = new Error("Transaction cancelled");
+  txCancelled.name = "TransactionCanceledException";
+  txCancelled.CancellationReasons = [{ Code: "None" }, { Code: "TransactionConflict" }];
+
+  ddbMock.on(GetCommand).callsFake(() => ({ Item: nearlyWonPairing() }));
+  ddbMock.on(TransactWriteCommand).rejects(txCancelled);
+
+  const res = await handler(
+    postEvent({
+      action: "eliminate",
+      pairingId: "abc123",
+      role: "B",
+      token: "tok-b",
+      gameNumber: 1,
+      index: 2,
+    })
+  );
+  assert.equal(res.statusCode, 500);
+  assert.equal(ddbMock.commandCalls(TransactWriteCommand).length, 1);
 });
 
 test("claimSeat still returns the code at the top level (state stays clean)", async () => {

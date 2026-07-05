@@ -12,11 +12,13 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import {
   createGame,
   applyElimination,
   applyLinkClick,
+  gameSummary,
   otherRole,
   GameError,
 } from "./game.mjs";
@@ -29,6 +31,7 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const pairPk = (id) => `PAIR#${id}`;
 const codePk = (code) => `CODE#${code}`;
 const subPk = (pairingId, role) => `SUB#${pairingId}#${role}`;
+const gamePk = (pairingId, number) => `GAME#${pairingId}#${number}`;
 const ttlEpoch = () => Math.floor(Date.now() / 1000) + TTL_DAYS * 24 * 3600;
 
 // Human-friendly join code: WORD-NN (e.g. "PLUM-42").
@@ -191,15 +194,42 @@ async function doGetState(body) {
 
 async function doEliminate(body) {
   const { role, gameNumber, index } = body;
-  const { pairing, replay } = await mutatePairing(body, (pairing) => {
-    if (gameNumber !== pairing.gameNumber) {
-      throw new HttpError(409, "This game has moved on.", "STALE_GAME");
-    }
-    pairing.game = applyElimination(pairing.game, role, index);
-  });
+  const { pairing, replay } = await mutatePairing(
+    body,
+    (pairing) => {
+      if (gameNumber !== pairing.gameNumber) {
+        throw new HttpError(409, "This game has moved on.", "STALE_GAME");
+      }
+      pairing.game = applyElimination(pairing.game, role, index);
+    },
+    // The winning move archives the game in the same transaction — rematch
+    // overwrites pairing.game, so this is the only moment the record exists.
+    (pairing) =>
+      pairing.game.status === "complete" ? [archivePut(pairing)] : []
+  );
 
   if (!replay) await notifyAfterMove(pairing);
   return { state: publicState(pairing) };
+}
+
+// GAME# archive item for a just-completed game (history/streaks source of
+// truth). Unconditional put: a lost-race retry rewrites identical content.
+// Guest-only games age out with the standard TTL; a signed-in participant
+// (userA/userB, arriving with accounts) will exempt the record.
+function archivePut(pairing) {
+  const pairingId = pairing.pk.slice("PAIR#".length);
+  return {
+    Put: {
+      TableName: TABLE,
+      Item: {
+        pk: gamePk(pairingId, pairing.game.number),
+        pairingId,
+        ...gameSummary(pairing.game),
+        players: { A: pairing.userA ?? null, B: pairing.userB ?? null },
+        ttl: ttlEpoch(),
+      },
+    },
+  };
 }
 
 async function doRematch(body) {
@@ -292,18 +322,27 @@ async function pushTo(pairing, role, payload) {
 
 // Optimistic-lock write: succeeds only if the stored item still carries the
 // version we loaded (legacy items predating `version` age out via TTL and are
-// matched by attribute_not_exists). Bumps version on success.
-async function savePairing(pairing) {
+// matched by attribute_not_exists). Bumps version on success. Extra transact
+// items (e.g. the GAME# archive) commit atomically with the pairing — the
+// pairing put is always TransactItems[0], so cancellation reason 0 is the
+// version check.
+async function savePairing(pairing, extraItems = []) {
   const expected = pairing.version;
   pairing.version = (expected ?? 0) + 1;
-  const params = { TableName: TABLE, Item: pairing };
+  const put = { TableName: TABLE, Item: pairing };
   if (expected == null) {
-    params.ConditionExpression = "attribute_not_exists(version)";
+    put.ConditionExpression = "attribute_not_exists(version)";
   } else {
-    params.ConditionExpression = "version = :v";
-    params.ExpressionAttributeValues = { ":v": expected };
+    put.ConditionExpression = "version = :v";
+    put.ExpressionAttributeValues = { ":v": expected };
   }
-  await ddb.send(new PutCommand(params));
+  if (extraItems.length === 0) {
+    await ddb.send(new PutCommand(put));
+    return;
+  }
+  await ddb.send(
+    new TransactWriteCommand({ TransactItems: [{ Put: put }, ...extraItems] })
+  );
 }
 
 // Load-mutate-save a pairing with optimistic locking and actionId replay
@@ -311,7 +350,7 @@ async function savePairing(pairing) {
 // invalid input). Retried client requests reuse their actionId, so a
 // duplicate that already landed returns { replay: true } with the stored
 // state instead of failing — callers skip side effects (push) on replay.
-async function mutatePairing({ pairingId, role, token, actionId }, mutate) {
+async function mutatePairing({ pairingId, role, token, actionId }, mutate, extraItemsFn) {
   for (let attempt = 0; ; attempt++) {
     const pairing = await loadPairing(pairingId);
     assertToken(pairing, role, token);
@@ -323,16 +362,27 @@ async function mutatePairing({ pairingId, role, token, actionId }, mutate) {
     pairing.updatedAt = Date.now();
     pairing.ttl = ttlEpoch();
     try {
-      await savePairing(pairing);
+      await savePairing(pairing, extraItemsFn ? extraItemsFn(pairing) : []);
       return { pairing, replay: false };
     } catch (err) {
-      if (err?.name !== "ConditionalCheckFailedException") throw err;
+      if (!lostWriteRace(err)) throw err;
       if (attempt >= 1) {
         throw new HttpError(409, "Conflicting update, try again.", "WRITE_CONFLICT");
       }
       // Lost a write race — reload and re-apply (replay check runs again).
     }
   }
+}
+
+// The version condition can fail two ways: plain put -> Conditional-
+// CheckFailedException; transactional put -> TransactionCanceledException
+// with the pairing put's (index 0) reason set to ConditionalCheckFailed.
+function lostWriteRace(err) {
+  if (err?.name === "ConditionalCheckFailedException") return true;
+  return (
+    err?.name === "TransactionCanceledException" &&
+    err.CancellationReasons?.[0]?.Code === "ConditionalCheckFailed"
+  );
 }
 
 async function loadPairing(id) {
