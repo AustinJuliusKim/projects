@@ -4,9 +4,11 @@ import CreatePairingView from "./CreatePairingView.jsx";
 import JoinView from "./JoinView.jsx";
 import PlayView from "./PlayView.jsx";
 import Landing from "./Landing.jsx";
+import AccountView from "./AccountView.jsx";
 import { registerServiceWorker } from "./push.js";
 import { loadIdentity } from "./storage.js";
 import { isNative } from "./platform.js";
+import { handleRedirect } from "./auth.js";
 import "./styles.css";
 
 // Routing is driven by stored identity, NOT the URL — on iOS an installed PWA
@@ -25,6 +27,12 @@ function useHash() {
 function App() {
   const hash = useHash();
   const [identity, setIdentity] = useState(() => loadIdentity());
+
+  // Account view is reachable even mid-game (it has its own back link), so
+  // it's checked ahead of the identity gate.
+  if (hash.startsWith("#/account")) {
+    return <AccountView />;
+  }
 
   // If we already have an identity, we're in the game — ignore entry hashes.
   if (identity) {
@@ -49,4 +57,14 @@ function App() {
 // Service workers don't run in the Capacitor WKWebView — skip registration
 // there (push is handled natively in a future phase; polling covers turns).
 if (!isNative) registerServiceWorker();
-createRoot(document.getElementById("root")).render(<App />);
+
+// Complete an in-flight OAuth redirect (no-op for guests) before first
+// render; a fresh sign-in lands on the account view.
+handleRedirect()
+  .then((signedIn) => {
+    if (signedIn && !window.location.hash) window.location.hash = "#/account";
+  })
+  .catch(() => {})
+  .finally(() => {
+    createRoot(document.getElementById("root")).render(<App />);
+  });

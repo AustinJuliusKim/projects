@@ -63,11 +63,56 @@ Parameters:
       true = Lambda rejects requests missing x-origin-verify (direct Function
       URL calls get 403). Flip only after the frontend calls the CloudFront
       /api path and OriginVerifySecret is set.
+  GoogleClientId:
+    Type: String
+    Default: ""
+    Description: >
+      Google OAuth client ID for Cognito sign-in. Blank = accounts disabled
+      on this stack (no Cognito resources created, sign-in UI hidden).
+  GoogleClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Google OAuth client secret (required when GoogleClientId is set)
+  CognitoDomainPrefix:
+    Type: String
+    Default: ""
+    Description: >
+      Globally-unique Cognito hosted-UI domain prefix (e.g. choices-auth,
+      choices-auth-preview). Required when GoogleClientId is set.
+  CognitoCallbackUrl:
+    Type: String
+    Default: ""
+    Description: >
+      OAuth redirect URL — the site origin with a trailing slash
+      (e.g. https://choices.austinjuliuskim.com/). Required when
+      GoogleClientId is set.
+  StripeSecretKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >
+      Stripe secret key (sk_live_/sk_test_). Blank = billing disabled (the
+      upgrade UI hides itself, billing actions 400).
+  StripeWebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Stripe webhook signing secret (whsec_) for /api/stripe-webhook
+  StripePriceMonthly:
+    Type: String
+    Default: ""
+    Description: Stripe Price id for the monthly premium plan ($2.99/mo)
+  StripePriceAnnual:
+    Type: String
+    Default: ""
+    Description: Stripe Price id for the annual premium plan ($24/yr)
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
   HasWebAcl: !Not [!Equals [!Ref WebAclArn, ""]]
   HasOriginSecret: !Not [!Equals [!Ref OriginVerifySecret, ""]]
+  HasCognito: !Not [!Equals [!Ref GoogleClientId, ""]]
 
 Globals:
   Function:
@@ -105,6 +150,17 @@ Resources:
           CORS_ALLOW_ORIGIN: !Join [",", !Ref CorsAllowOrigin]
           ORIGIN_VERIFY_SECRET: !Ref OriginVerifySecret
           ENFORCE_ORIGIN_HEADER: !Ref EnforceOriginHeader
+          USER_POOL_ID: !If [HasCognito, !Ref UserPool, ""]
+          USER_POOL_CLIENT_ID: !If [HasCognito, !Ref UserPoolClient, ""]
+          STRIPE_SECRET_KEY: !Ref StripeSecretKey
+          STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
+          STRIPE_PRICE_MONTHLY: !Ref StripePriceMonthly
+          STRIPE_PRICE_ANNUAL: !Ref StripePriceAnnual
+          # Checkout/portal redirect base (trailing slash). Reuses the
+          # Cognito callback URL — billing requires sign-in, so it's always
+          # set when billing is; deriving from SiteDistribution would be a
+          # circular dependency (distribution -> function URL -> function).
+          SITE_URL: !Ref CognitoCallbackUrl
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GamesTable
@@ -117,7 +173,59 @@ Resources:
             - GET
           AllowHeaders:
             - content-type
+            - authorization
           MaxAge: 300
+
+  # --- Accounts: Cognito user pool, Google-federated only (v1). Sign in with
+  # Apple joins when the Apple Developer enrollment lands (iOS Phase B). ---
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Condition: HasCognito
+    Properties:
+      UserPoolName: !Sub "${AWS::StackName}-users"
+      # Federated-only: no self-service signup with passwords.
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+
+  GoogleIdp:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Condition: HasCognito
+    Properties:
+      UserPoolId: !Ref UserPool
+      ProviderName: Google
+      ProviderType: Google
+      ProviderDetails:
+        client_id: !Ref GoogleClientId
+        client_secret: !Ref GoogleClientSecret
+        authorize_scopes: "openid email profile"
+      AttributeMapping:
+        email: email
+        name: name
+        username: sub
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Condition: HasCognito
+    DependsOn: GoogleIdp
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: web
+      GenerateSecret: false # public SPA client, PKCE
+      SupportedIdentityProviders: [Google]
+      AllowedOAuthFlows: [code]
+      AllowedOAuthFlowsUserPoolClientEnabled: true
+      AllowedOAuthScopes: [openid, email, profile]
+      CallbackURLs: [!Ref CognitoCallbackUrl]
+      LogoutURLs: [!Ref CognitoCallbackUrl]
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Condition: HasCognito
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Ref CognitoDomainPrefix
 
   # --- Frontend hosting: private S3 bucket served via CloudFront (HTTPS) ---
   SiteBucket:
@@ -266,3 +374,11 @@ Outputs:
   DistributionId:
     Description: CloudFront distribution ID (for cache invalidations)
     Value: !Ref SiteDistribution
+  CognitoDomain:
+    Description: Hosted-UI domain for the frontend (VITE_COGNITO_DOMAIN)
+    Condition: HasCognito
+    Value: !Sub "${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
+  UserPoolClientId:
+    Description: Public SPA client id (VITE_COGNITO_CLIENT_ID)
+    Condition: HasCognito
+    Value: !Ref UserPoolClient

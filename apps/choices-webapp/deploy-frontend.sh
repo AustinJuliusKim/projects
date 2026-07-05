@@ -23,6 +23,13 @@ BUCKET="$(get_output SiteBucketName)"
 DIST_ID="$(get_output DistributionId)"
 SITE_URL="$(get_output SiteUrl)"
 
+# Absent when the stack has accounts disabled (HasCognito=false) -> "None";
+# empty values keep the sign-in UI hidden.
+COGNITO_DOMAIN="$(get_output CognitoDomain)"
+COGNITO_CLIENT_ID="$(get_output UserPoolClientId)"
+[ "$COGNITO_DOMAIN" = "None" ] && COGNITO_DOMAIN=""
+[ "$COGNITO_CLIENT_ID" = "None" ] && COGNITO_CLIENT_ID=""
+
 if [ -z "$BUCKET" ] || [ "$BUCKET" = "None" ]; then
   echo "ERROR: SiteBucketName output not found. Did you run 'sam deploy' with the latest template?" >&2
   exit 1
@@ -32,8 +39,9 @@ echo "Building frontend…"
 # Tip links come from the caller's environment (GitHub Actions repo vars);
 # empty values leave the tip UI hidden.
 ( cd frontend && \
-  printf 'VITE_API_URL=%s\nVITE_VAPID_PUBLIC_KEY=%s\nVITE_TIP_VENMO_URL=%s\nVITE_TIP_STRIPE_URL=%s\n' \
-    "$API_URL" "$VAPID_PUBLIC_KEY" "${VITE_TIP_VENMO_URL:-}" "${VITE_TIP_STRIPE_URL:-}" > .env && \
+  printf 'VITE_API_URL=%s\nVITE_VAPID_PUBLIC_KEY=%s\nVITE_TIP_VENMO_URL=%s\nVITE_TIP_STRIPE_URL=%s\nVITE_COGNITO_DOMAIN=%s\nVITE_COGNITO_CLIENT_ID=%s\n' \
+    "$API_URL" "$VAPID_PUBLIC_KEY" "${VITE_TIP_VENMO_URL:-}" "${VITE_TIP_STRIPE_URL:-}" \
+    "$COGNITO_DOMAIN" "$COGNITO_CLIENT_ID" > .env && \
   npm run build )
 
 echo "Uploading to s3://$BUCKET …"

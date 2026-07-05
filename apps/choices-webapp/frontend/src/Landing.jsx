@@ -1,6 +1,7 @@
 import React from "react";
 import IosInstallHint from "./IosInstallHint.jsx";
 import TipJar from "./support.jsx";
+import { authEnabled, hasSession } from "./auth.js";
 
 // First screen for a device with no identity yet: start a new pairing, or join
 // an existing one with a code.
@@ -18,6 +19,11 @@ export default function Landing() {
       <a className="btn" href="#/join">
         🔑 Enter a game code
       </a>
+      {authEnabled && (
+        <a className="btn ghost" href="#/account">
+          {hasSession() ? "📜 My games" : "📜 Sign in for game history"}
+        </a>
+      )}
 
       <IosInstallHint />
 
