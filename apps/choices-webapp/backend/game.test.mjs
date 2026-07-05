@@ -4,6 +4,7 @@ import {
   createGame,
   applyElimination,
   applyLinkClick,
+  gameSummary,
   turnAfter,
   liveIndices,
   otherRole,
@@ -217,6 +218,24 @@ test("LINK_PLATFORMS covers the four launch platforms", () => {
     [...LINK_PLATFORMS].sort(),
     ["doordash", "grubhub", "opentable", "ubereats"]
   );
+});
+
+test("gameSummary snapshots a complete game", () => {
+  const g = completedGame();
+  const s = gameSummary(g, 5000);
+  assert.equal(s.number, g.number);
+  assert.equal(s.startedBy, g.startedBy);
+  assert.deepEqual(s.choices, g.choices);
+  assert.deepEqual(s.eliminated, g.eliminated);
+  assert.equal(s.winnerIndex, 3);
+  assert.equal(s.winnerLabel, "Ramen");
+  assert.equal(s.completedAt, 5000);
+  assert.equal(s.linkClicks, undefined); // analytics stay off the archive
+});
+
+test("gameSummary rejects an unfinished game", () => {
+  const g = createGame(CHOICES);
+  assert.throws(() => gameSummary(g), (e) => e.code === "NOT_COMPLETE");
 });
 
 test("GameError carries a code", () => {

@@ -5,21 +5,36 @@
 // rematches. B joins by entering a short human CODE inside the app.
 //
 // Actions: createPairing | claimSeat | getState | eliminate | rematch |
-// subscribe | linkClick
+// subscribe | linkClick | getMe | createCheckoutSession | createPortalSession
+// (+ POST /api/stripe-webhook, routed by path, raw-body signature verified)
+//
+// Accounts are optional: a Cognito ID token in the authorization header
+// links seats to a user (history/streaks); its absence means guest.
 import { randomUUID } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import {
   createGame,
   applyElimination,
   applyLinkClick,
+  gameSummary,
   otherRole,
   GameError,
 } from "./game.mjs";
+import { applyCompletedGame, emptyStats, RECENT_GAMES_CAP } from "./stats.mjs";
+import { verifyIdToken, AuthError } from "./auth.mjs";
+import {
+  billingEnabled,
+  createCheckoutSession,
+  createPortalSession,
+  parseWebhook,
+  BillingError,
+} from "./billing.mjs";
 import { sendPush } from "./push.mjs";
 
 const TABLE = process.env.TABLE_NAME;
@@ -29,6 +44,8 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const pairPk = (id) => `PAIR#${id}`;
 const codePk = (code) => `CODE#${code}`;
 const subPk = (pairingId, role) => `SUB#${pairingId}#${role}`;
+const gamePk = (pairingId, number) => `GAME#${pairingId}#${number}`;
+const userPk = (userId) => `USER#${userId}`;
 const ttlEpoch = () => Math.floor(Date.now() / 1000) + TTL_DAYS * 24 * 3600;
 
 // Human-friendly join code: WORD-NN (e.g. "PLUM-42").
@@ -61,6 +78,21 @@ export async function handler(event) {
   if (method === "OPTIONS") return reply(204, "");
   if (!originAllowed(event)) return reply(403, { error: "Forbidden" });
 
+  // Stripe webhook: routed by path (Stripe posts to a fixed URL, not our
+  // action envelope) and verified against the RAW body before any parsing.
+  const path = event?.rawPath ?? event?.requestContext?.http?.path ?? "";
+  if (method === "POST" && path.endsWith("/stripe-webhook")) {
+    try {
+      return reply(200, await doStripeWebhook(event));
+    } catch (err) {
+      if (err instanceof BillingError) {
+        return reply(err.status, { error: err.message, code: err.code });
+      }
+      console.error("webhook error", err);
+      return reply(500, { error: "Internal error" });
+    }
+  }
+
   let body;
   if (method === "GET") {
     // Cacheable read path: CloudFront only caches GET, so getState is also
@@ -76,11 +108,15 @@ export async function handler(event) {
   }
 
   try {
+    // Optional account identity: guests send no header; a bad token is a hard
+    // 401 (never downgraded to guest — broken clients must not corrupt links).
+    const user = await verifyIdToken(event?.headers?.authorization);
+
     switch (body.action) {
       case "createPairing":
         return reply(200, await doCreatePairing(body));
       case "claimSeat":
-        return reply(200, await doClaimSeat(body));
+        return reply(200, await doClaimSeat(body, user));
       case "getState":
         return reply(200, await doGetState(body), GETSTATE_HEADERS);
       case "eliminate":
@@ -91,10 +127,22 @@ export async function handler(event) {
         return reply(200, await doSubscribe(body));
       case "linkClick":
         return reply(200, await doLinkClick(body));
+      case "getMe":
+        return reply(200, await doGetMe(user));
+      case "createCheckoutSession":
+        return reply(200, await doCreateCheckoutSession(user, body));
+      case "createPortalSession":
+        return reply(200, await doCreatePortalSession(user));
       default:
         return reply(400, { error: "Unknown action" });
     }
   } catch (err) {
+    if (err instanceof AuthError) {
+      return reply(401, { error: err.message, code: err.code });
+    }
+    if (err instanceof BillingError) {
+      return reply(err.status, { error: err.message, code: err.code });
+    }
     if (err instanceof GameError) {
       return reply(409, { error: err.message, code: err.code });
     }
@@ -133,7 +181,7 @@ async function doCreatePairing(body) {
   return { pairingId, code, state: publicState(item) };
 }
 
-async function doClaimSeat(body) {
+async function doClaimSeat(body, user) {
   const code = normalizeCode(body.code);
   if (!code) throw new HttpError(400, "Missing code");
   const seat = body.seat;
@@ -153,8 +201,16 @@ async function doClaimSeat(body) {
     const pairing = await loadPairing(codeRes.Item.pairingId);
     const wasFirstBClaim = seat === "B" && pairing.tokenB == null;
     const token = randomUUID();
-    if (seat === "A") pairing.tokenA = token;
-    else pairing.tokenB = token;
+    // Claiming defines the seat's identity: a signed-in claim links the seat
+    // to the account; an anonymous claim (incl. takeover) unlinks it so a
+    // previous user never accrues someone else's games.
+    if (seat === "A") {
+      pairing.tokenA = token;
+      pairing.userA = user?.sub ?? null;
+    } else {
+      pairing.tokenB = token;
+      pairing.userB = user?.sub ?? null;
+    }
     pairing.updatedAt = Date.now();
     pairing.ttl = ttlEpoch();
     try {
@@ -191,15 +247,62 @@ async function doGetState(body) {
 
 async function doEliminate(body) {
   const { role, gameNumber, index } = body;
-  const { pairing, replay } = await mutatePairing(body, (pairing) => {
-    if (gameNumber !== pairing.gameNumber) {
-      throw new HttpError(409, "This game has moved on.", "STALE_GAME");
-    }
-    pairing.game = applyElimination(pairing.game, role, index);
-  });
+  const { pairing, replay } = await mutatePairing(
+    body,
+    (pairing) => {
+      if (gameNumber !== pairing.gameNumber) {
+        throw new HttpError(409, "This game has moved on.", "STALE_GAME");
+      }
+      pairing.game = applyElimination(pairing.game, role, index);
+    },
+    // The winning move archives the game and folds it into each signed-in
+    // player's stats, all in the same transaction — rematch overwrites
+    // pairing.game, so this is the only moment the record exists.
+    completionItems
+  );
 
   if (!replay) await notifyAfterMove(pairing);
   return { state: publicState(pairing) };
+}
+
+// Extra transact items for a completing move: the GAME# archive plus a
+// stats/recentGames fold into USER# for each seat linked to an account.
+async function completionItems(pairing) {
+  if (pairing.game.status !== "complete") return [];
+  const summary = gameSummary(pairing.game);
+  const pairingId = pairing.pk.slice("PAIR#".length);
+  const items = [archivePut(pairing, pairingId, summary)];
+
+  const rec = {
+    pairingId,
+    number: summary.number,
+    winnerLabel: summary.winnerLabel,
+    choices: summary.choices,
+    completedAt: summary.completedAt,
+  };
+  // A user can hold both seats (two devices); count the game once.
+  const userIds = [...new Set([pairing.userA, pairing.userB].filter(Boolean))];
+  for (const userId of userIds) {
+    const user = (await loadUser(userId)) ?? emptyUser(userId);
+    items.push(userPut(applyCompletedGame(user, rec)));
+  }
+  return items;
+}
+
+// GAME# archive item for a just-completed game (history/streaks source of
+// truth). Unconditional put: a lost-race retry rewrites identical content.
+// Guest-only games age out with the standard TTL; games with a signed-in
+// participant are kept (future premium full-history reads from these).
+function archivePut(pairing, pairingId, summary) {
+  const players = { A: pairing.userA ?? null, B: pairing.userB ?? null };
+  const item = {
+    pk: gamePk(pairingId, summary.number),
+    pairingId,
+    ...summary,
+    players,
+  };
+  if (!players.A && !players.B) item.ttl = ttlEpoch();
+  return { Put: { TableName: TABLE, Item: item } };
 }
 
 async function doRematch(body) {
@@ -257,6 +360,122 @@ async function doLinkClick(body) {
   return { ok: true };
 }
 
+// Account profile + gated stats/history. Free accounts see games played and
+// the 10 most recent games; streaks and choice win counts (topWinners) are
+// premium-gated at the API so the client can't peek. streakLocked/
+// historyLocked are the upsell teaser flags.
+const FREE_RECENT_GAMES = 10;
+
+function isPremium(item) {
+  return ["active", "past_due"].includes(item.premium?.status);
+}
+
+async function doGetMe(user) {
+  if (!user) throw new HttpError(401, "Sign in required.", "SIGN_IN_REQUIRED");
+  const item = await ensureUser(user);
+  const premium = isPremium(item);
+  const recentGames = item.recentGames ?? [];
+  const stats = item.stats ?? emptyStats();
+  return {
+    profile: {
+      userId: item.userId,
+      email: item.email ?? user.email,
+      name: item.name ?? user.name,
+    },
+    premium: item.premium ?? { status: "none" },
+    stats: premium
+      ? {
+          gamesPlayed: stats.gamesPlayed,
+          currentStreak: stats.currentStreak,
+          bestStreak: stats.bestStreak,
+          lastPlayedDay: stats.lastPlayedDay,
+          topWinners: stats.topWinners,
+        }
+      : { gamesPlayed: stats.gamesPlayed, streakLocked: true },
+    recentGames: recentGames.slice(0, premium ? RECENT_GAMES_CAP : FREE_RECENT_GAMES),
+    historyLocked: !premium && recentGames.length > FREE_RECENT_GAMES,
+    billingAvailable: billingEnabled(),
+  };
+}
+
+// Load the USER# item, persisting the skeleton on first visit so billing
+// (Stripe customer id) has a row to attach to. Lost creation races fall
+// through to a reload.
+async function ensureUser(user) {
+  let item = await loadUser(user.sub);
+  if (item) return item;
+  item = { ...emptyUser(user.sub), email: user.email, name: user.name };
+  try {
+    await ddb.send(new PutCommand(userPut(item).Put));
+    item.version = 1;
+  } catch (err) {
+    if (err?.name !== "ConditionalCheckFailedException") throw err;
+    item = await loadUser(user.sub);
+  }
+  return item;
+}
+
+// --- Billing (premium subscription) ---
+
+async function doCreateCheckoutSession(user, body) {
+  if (!user) throw new HttpError(401, "Sign in required.", "SIGN_IN_REQUIRED");
+  if (!billingEnabled()) {
+    throw new HttpError(400, "Billing is not enabled here.", "BILLING_DISABLED");
+  }
+  const item = await ensureUser(user);
+  const { url, customerId } = await createCheckoutSession(
+    item,
+    body.plan,
+    process.env.SITE_URL
+  );
+  // Persist a newly-minted customer id before redirecting; webhooks for
+  // subscription events resolve the user via metadata either way.
+  if (item.premium?.stripeCustomerId !== customerId) {
+    await updateUserPremium(user.sub, { stripeCustomerId: customerId });
+  }
+  return { url };
+}
+
+async function doCreatePortalSession(user) {
+  if (!user) throw new HttpError(401, "Sign in required.", "SIGN_IN_REQUIRED");
+  if (!billingEnabled()) {
+    throw new HttpError(400, "Billing is not enabled here.", "BILLING_DISABLED");
+  }
+  const item = await ensureUser(user);
+  return createPortalSession(item, process.env.SITE_URL);
+}
+
+async function doStripeWebhook(event) {
+  if (!billingEnabled()) {
+    throw new HttpError(400, "Billing is not enabled here.", "BILLING_DISABLED");
+  }
+  const raw = event.isBase64Encoded
+    ? Buffer.from(event.body ?? "", "base64").toString("utf8")
+    : event.body ?? "";
+  const update = parseWebhook(raw, event.headers?.["stripe-signature"]);
+  // Unhandled event types or events missing our metadata: acknowledge so
+  // Stripe stops retrying — there's nothing to apply.
+  if (!update?.userId) return { ok: true };
+  await updateUserPremium(update.userId, update.premium);
+  return { ok: true };
+}
+
+// Merge premium fields onto the USER# item with the usual version condition
+// (retried once — webhooks can race game completions).
+async function updateUserPremium(userId, premium) {
+  for (let attempt = 0; ; attempt++) {
+    const user = (await loadUser(userId)) ?? emptyUser(userId);
+    user.premium = { ...user.premium, ...premium };
+    user.updatedAt = Date.now();
+    try {
+      await ddb.send(new PutCommand(userPut(user).Put));
+      return;
+    } catch (err) {
+      if (err?.name !== "ConditionalCheckFailedException" || attempt >= 1) throw err;
+    }
+  }
+}
+
 // --- Notifications ---
 
 // After an elimination: if active, alert whoever's turn it is now; if complete,
@@ -292,18 +511,27 @@ async function pushTo(pairing, role, payload) {
 
 // Optimistic-lock write: succeeds only if the stored item still carries the
 // version we loaded (legacy items predating `version` age out via TTL and are
-// matched by attribute_not_exists). Bumps version on success.
-async function savePairing(pairing) {
+// matched by attribute_not_exists). Bumps version on success. Extra transact
+// items (e.g. the GAME# archive) commit atomically with the pairing — the
+// pairing put is always TransactItems[0], so cancellation reason 0 is the
+// version check.
+async function savePairing(pairing, extraItems = []) {
   const expected = pairing.version;
   pairing.version = (expected ?? 0) + 1;
-  const params = { TableName: TABLE, Item: pairing };
+  const put = { TableName: TABLE, Item: pairing };
   if (expected == null) {
-    params.ConditionExpression = "attribute_not_exists(version)";
+    put.ConditionExpression = "attribute_not_exists(version)";
   } else {
-    params.ConditionExpression = "version = :v";
-    params.ExpressionAttributeValues = { ":v": expected };
+    put.ConditionExpression = "version = :v";
+    put.ExpressionAttributeValues = { ":v": expected };
   }
-  await ddb.send(new PutCommand(params));
+  if (extraItems.length === 0) {
+    await ddb.send(new PutCommand(put));
+    return;
+  }
+  await ddb.send(
+    new TransactWriteCommand({ TransactItems: [{ Put: put }, ...extraItems] })
+  );
 }
 
 // Load-mutate-save a pairing with optimistic locking and actionId replay
@@ -311,7 +539,7 @@ async function savePairing(pairing) {
 // invalid input). Retried client requests reuse their actionId, so a
 // duplicate that already landed returns { replay: true } with the stored
 // state instead of failing — callers skip side effects (push) on replay.
-async function mutatePairing({ pairingId, role, token, actionId }, mutate) {
+async function mutatePairing({ pairingId, role, token, actionId }, mutate, extraItemsFn) {
   for (let attempt = 0; ; attempt++) {
     const pairing = await loadPairing(pairingId);
     assertToken(pairing, role, token);
@@ -323,16 +551,31 @@ async function mutatePairing({ pairingId, role, token, actionId }, mutate) {
     pairing.updatedAt = Date.now();
     pairing.ttl = ttlEpoch();
     try {
-      await savePairing(pairing);
+      await savePairing(pairing, extraItemsFn ? await extraItemsFn(pairing) : []);
       return { pairing, replay: false };
     } catch (err) {
-      if (err?.name !== "ConditionalCheckFailedException") throw err;
+      if (!lostWriteRace(err)) throw err;
       if (attempt >= 1) {
         throw new HttpError(409, "Conflicting update, try again.", "WRITE_CONFLICT");
       }
       // Lost a write race — reload and re-apply (replay check runs again).
     }
   }
+}
+
+// A version condition can fail two ways: plain put -> Conditional-
+// CheckFailedException; transactional put -> TransactionCanceledException
+// with that item's reason set to ConditionalCheckFailed (the pairing's
+// version at index 0, or a USER# version raced by a concurrent completion).
+// Either way the fix is the same: reload everything and re-apply.
+function lostWriteRace(err) {
+  if (err?.name === "ConditionalCheckFailedException") return true;
+  return (
+    err?.name === "TransactionCanceledException" &&
+    (err.CancellationReasons ?? []).some(
+      (r) => r?.Code === "ConditionalCheckFailed"
+    )
+  );
 }
 
 async function loadPairing(id) {
@@ -342,6 +585,40 @@ async function loadPairing(id) {
   );
   if (!res.Item) throw new HttpError(404, "Pairing not found");
   return res.Item;
+}
+
+async function loadUser(userId) {
+  const res = await ddb.send(
+    new GetCommand({ TableName: TABLE, Key: { pk: userPk(userId) } })
+  );
+  return res.Item || null;
+}
+
+// USER# items never expire (no ttl) — they're the account's durable record.
+function emptyUser(userId, now = Date.now()) {
+  return {
+    pk: userPk(userId),
+    userId,
+    createdAt: now,
+    updatedAt: now,
+    stats: emptyStats(),
+    recentGames: [],
+    premium: { status: "none" },
+  };
+}
+
+// Version-conditioned put for USER# items (same optimistic-lock shape as
+// savePairing); used standalone and inside the completion transaction.
+function userPut(user) {
+  const expected = user.version;
+  const put = { TableName: TABLE, Item: { ...user, version: (expected ?? 0) + 1 } };
+  if (expected == null) {
+    put.ConditionExpression = "attribute_not_exists(version)";
+  } else {
+    put.ConditionExpression = "version = :v";
+    put.ExpressionAttributeValues = { ":v": expected };
+  }
+  return { Put: put };
 }
 
 async function loadSub(pairingId, role) {

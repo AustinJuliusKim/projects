@@ -112,6 +112,26 @@ export function applyLinkClick(game, role, platform, now = Date.now()) {
   return { ...game, linkClicks };
 }
 
+// Snapshot of a finished game for the GAME# archive. Rematch overwrites
+// pairing.game in place, so history/streaks need this captured at the moment
+// of completion. linkClicks are deliberately excluded — they can land after
+// completion and stay on the live game object (analytics, not history).
+export function gameSummary(game, now = Date.now()) {
+  if (game.status !== "complete") {
+    throw new GameError("NOT_COMPLETE", "Only complete games can be archived.");
+  }
+  return {
+    number: game.number,
+    startedBy: game.startedBy,
+    choices: game.choices,
+    eliminated: game.eliminated,
+    winnerIndex: game.winnerIndex,
+    winnerLabel: game.choices[game.winnerIndex],
+    createdAt: game.createdAt,
+    completedAt: now,
+  };
+}
+
 // The other player's role.
 export function otherRole(role) {
   return role === "A" ? "B" : "A";
