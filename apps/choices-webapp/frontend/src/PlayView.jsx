@@ -3,6 +3,7 @@ import confetti from "canvas-confetti";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { getState, eliminate, rematch, linkClick } from "./api.js";
 import { PLATFORMS } from "./affiliates.js";
+import TipJar from "./support.jsx";
 import { clearIdentity } from "./storage.js";
 import { enablePush, pushSupported, isIosSafari, isStandalone } from "./push.js";
 import { isNative } from "./platform.js";
@@ -372,6 +373,9 @@ export default function PlayView({ identity, onLeave }) {
                   <br />
                   Not affiliated with or endorsed by these platforms.
                 </p>
+                <div className="reveal" style={{ "--d": "850ms" }}>
+                  <TipJar compact onTip={reportLinkClick} />
+                </div>
               </div>
             )}
           </div>
