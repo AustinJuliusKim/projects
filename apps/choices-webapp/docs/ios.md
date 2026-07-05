@@ -27,10 +27,15 @@ stack, create `.env.ios.local` (gitignored):
 VITE_API_URL=https://<preview-cloudfront-domain>/api
 ```
 
-Preview CORS is `*`, so the native origin (`capacitor://localhost`) is
-accepted with no infra change. Prod allowlists it explicitly via the
-`CorsAllowOrigin` parameter — **never edit that value in the AWS console**
-(the UI rejects `capacitor://` schemes and would clobber it).
+CORS: the shell's `capacitor://localhost` origin can never be allowlisted on
+the Function URL — Lambda rejects non-http(s) origins (this failed the
+2026-07-04 prod deploy). Instead, `CapacitorHttp` is enabled in
+`capacitor.config.json`: API requests from the shell are made by the native
+layer, so WKWebView CORS never applies. Web builds are unaffected.
+
+**Pitfall:** preview's `CorsAllowOrigin` is `*`, which Lambda accepts and
+which echoes ACAO for *any* origin — so preview cannot validate CORS
+config changes. Verify against a stack with an explicit origin list.
 
 ## Simulator
 
