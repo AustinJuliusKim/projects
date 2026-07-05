@@ -17,9 +17,13 @@ Parameters:
     Default: "mailto:admin@example.com"
     Description: "VAPID subject (mailto: or https: contact URL)"
   CorsAllowOrigin:
-    Type: String
+    Type: CommaDelimitedList
     Default: "*"
-    Description: Allowed CORS origin for the Function URL (set to your CloudFront URL in prod)
+    Description: >
+      Allowed CORS origins for the Function URL, comma-separated (site origin
+      + capacitor://localhost for the iOS app). NEVER edit via the AWS
+      console — its UI rejects custom schemes like capacitor:// and would
+      clobber the value; CloudFormation accepts them.
   CustomDomain:
     Type: String
     Default: ""
@@ -97,7 +101,7 @@ Resources:
           VAPID_PUBLIC_KEY: !Ref VapidPublicKey
           VAPID_PRIVATE_KEY: !Ref VapidPrivateKey
           VAPID_SUBJECT: !Ref VapidSubject
-          CORS_ALLOW_ORIGIN: !Ref CorsAllowOrigin
+          CORS_ALLOW_ORIGIN: !Join [",", !Ref CorsAllowOrigin]
           ORIGIN_VERIFY_SECRET: !Ref OriginVerifySecret
           ENFORCE_ORIGIN_HEADER: !Ref EnforceOriginHeader
       Policies:
@@ -106,13 +110,13 @@ Resources:
       FunctionUrlConfig:
         AuthType: NONE
         Cors:
-          AllowOrigins:
-            - !Ref CorsAllowOrigin
+          AllowOrigins: !Ref CorsAllowOrigin
           AllowMethods:
             - POST
             - GET
           AllowHeaders:
             - content-type
+          MaxAge: 300
 
   # --- Frontend hosting: private S3 bucket served via CloudFront (HTTPS) ---
   SiteBucket:

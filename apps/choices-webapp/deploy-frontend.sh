@@ -29,8 +29,11 @@ if [ -z "$BUCKET" ] || [ "$BUCKET" = "None" ]; then
 fi
 
 echo "Building frontend…"
+# Tip links come from the caller's environment (GitHub Actions repo vars);
+# empty values leave the tip UI hidden.
 ( cd frontend && \
-  printf 'VITE_API_URL=%s\nVITE_VAPID_PUBLIC_KEY=%s\n' "$API_URL" "$VAPID_PUBLIC_KEY" > .env && \
+  printf 'VITE_API_URL=%s\nVITE_VAPID_PUBLIC_KEY=%s\nVITE_TIP_VENMO_URL=%s\nVITE_TIP_STRIPE_URL=%s\n' \
+    "$API_URL" "$VAPID_PUBLIC_KEY" "${VITE_TIP_VENMO_URL:-}" "${VITE_TIP_STRIPE_URL:-}" > .env && \
   npm run build )
 
 echo "Uploading to s3://$BUCKET …"

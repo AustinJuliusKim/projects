@@ -412,6 +412,42 @@ h1 {
   text-align: center;
 }
 
+/* Tip jar + premium tease (growth plan §8) — quiet, post-value placements */
+.tip-jar {
+  margin-top: 20px;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.tip-jar p {
+  margin: 0;
+}
+
+.tip-line {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.tip-line a {
+  color: var(--indigo);
+}
+
+.premium-tease {
+  margin-top: 12px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.premium-tease .link-btn {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 /* Rematch form on winner screen */
 .rematch {
   margin-top: 24px;

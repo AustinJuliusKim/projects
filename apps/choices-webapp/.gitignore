@@ -3,6 +3,8 @@ dist/
 .aws-sam/
 .env
 .env.local
+# per-developer overrides for mode env files (e.g. .env.ios.local)
+.env.*.local
 # Committed on purpose: CI's sam deploy reads the stack config from it,
 # and it holds no secrets (VAPID private key is not saved here).
 !samconfig.toml

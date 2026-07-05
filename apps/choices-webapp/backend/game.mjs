@@ -89,17 +89,24 @@ function liveIndicesFrom(choices, eliminated) {
 // Platforms the winner-screen "order" buttons can report (growth plan §6).
 export const LINK_PLATFORMS = ["ubereats", "doordash", "grubhub", "opentable"];
 
-// Record an outbound order-link click. Only valid once the game is complete —
-// the order card never renders before a winner exists. Returns a NEW game object.
+// Support/interest beacons (growth plan §8): tip-jar clicks and the premium
+// tease ride the same pipeline but aren't tied to a finished game — they can
+// fire from the created screen before any cut is made.
+export const SUPPORT_PLATFORMS = ["tip-venmo", "tip-stripe", "premium-interest"];
+
+// Record an outbound order-link click. Order platforms are only valid once
+// the game is complete — the order card never renders before a winner exists.
+// Returns a NEW game object.
 export function applyLinkClick(game, role, platform, now = Date.now()) {
-  if (game.status !== "complete") {
-    throw new GameError("NO_WINNER_YET", "The game has no winner yet.");
+  const isSupport = SUPPORT_PLATFORMS.includes(platform);
+  if (!isSupport && !LINK_PLATFORMS.includes(platform)) {
+    throw new GameError("BAD_PLATFORM", "Unknown platform.");
   }
   if (role !== "A" && role !== "B") {
     throw new GameError("BAD_ROLE", "Role must be 'A' or 'B'.");
   }
-  if (!LINK_PLATFORMS.includes(platform)) {
-    throw new GameError("BAD_PLATFORM", "Unknown platform.");
+  if (!isSupport && game.status !== "complete") {
+    throw new GameError("NO_WINNER_YET", "The game has no winner yet.");
   }
   const linkClicks = [...(game.linkClicks ?? []), { platform, by: role, at: now }];
   return { ...game, linkClicks };
