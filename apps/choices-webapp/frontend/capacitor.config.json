@@ -1,5 +1,10 @@
 {
   "appId": "com.austinjuliuskim.choices",
   "appName": "Choices",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
 }
