@@ -6,6 +6,7 @@ import PlayView from "./PlayView.jsx";
 import Landing from "./Landing.jsx";
 import { registerServiceWorker } from "./push.js";
 import { loadIdentity } from "./storage.js";
+import { isNative } from "./platform.js";
 import "./styles.css";
 
 // Routing is driven by stored identity, NOT the URL — on iOS an installed PWA
@@ -45,5 +46,7 @@ function App() {
   return <Landing />;
 }
 
-registerServiceWorker();
+// Service workers don't run in the Capacitor WKWebView — skip registration
+// there (push is handled natively in a future phase; polling covers turns).
+if (!isNative) registerServiceWorker();
 createRoot(document.getElementById("root")).render(<App />);

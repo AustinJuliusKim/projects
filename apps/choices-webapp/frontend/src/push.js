@@ -1,17 +1,21 @@
 // Service worker registration + Web Push subscription helpers.
 import { subscribe as apiSubscribe } from "./api.js";
+import { isNative } from "./platform.js";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 export function pushSupported() {
-  return "serviceWorker" in navigator && "PushManager" in window;
+  // Web Push never applies in the Capacitor shell (no SW; APNs is a future
+  // native path). The feature checks would be false there anyway.
+  return !isNative && "serviceWorker" in navigator && "PushManager" in window;
 }
 
-// iOS only allows web push for installed (Home Screen) PWAs.
+// iOS *browser* detection: gates the "Add to Home Screen" hints, which make
+// no sense inside the native app (its UA also matches iPhone/iPad).
 export function isIosSafari() {
   const ua = window.navigator.userAgent;
   const iOS = /iPad|iPhone|iPod/.test(ua);
-  return iOS;
+  return iOS && !isNative;
 }
 
 export function isStandalone() {

@@ -195,6 +195,23 @@ test("applyLinkClick does not mutate the input", () => {
   assert.equal(JSON.stringify(g), before);
 });
 
+test("applyLinkClick accepts support platforms before a winner exists", () => {
+  let g = createGame(CHOICES);
+  g = applyLinkClick(g, "A", "premium-interest", 100);
+  g = applyLinkClick(g, "A", "tip-venmo", 200);
+  g = applyLinkClick(g, "B", "tip-stripe", 300);
+  assert.deepEqual(g.linkClicks, [
+    { platform: "premium-interest", by: "A", at: 100 },
+    { platform: "tip-venmo", by: "A", at: 200 },
+    { platform: "tip-stripe", by: "B", at: 300 },
+  ]);
+});
+
+test("applyLinkClick rejects bad role on support platforms too", () => {
+  const g = createGame(CHOICES);
+  assert.throws(() => applyLinkClick(g, "C", "tip-venmo"), (e) => e.code === "BAD_ROLE");
+});
+
 test("LINK_PLATFORMS covers the four launch platforms", () => {
   assert.deepEqual(
     [...LINK_PLATFORMS].sort(),
