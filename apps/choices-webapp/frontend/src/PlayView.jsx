@@ -4,6 +4,7 @@ import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { getState, eliminate, rematch, linkClick } from "./api.js";
 import { PLATFORMS } from "./affiliates.js";
 import TipJar from "./support.jsx";
+import { WinnerAccountLine } from "./AccountView.jsx";
 import { clearIdentity } from "./storage.js";
 import { enablePush, pushSupported, isIosSafari, isStandalone } from "./push.js";
 import { isNative } from "./platform.js";
@@ -375,6 +376,7 @@ export default function PlayView({ identity, onLeave }) {
                 </p>
                 <div className="reveal" style={{ "--d": "850ms" }}>
                   <TipJar compact onTip={reportLinkClick} />
+                  {complete && <WinnerAccountLine />}
                 </div>
               </div>
             )}

@@ -12,6 +12,17 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { handler } from "./handler.mjs";
 import { createGame, applyElimination } from "./game.mjs";
+import { _setVerifierForTests } from "./auth.mjs";
+
+// Fake Cognito verifier: token "good-token" -> user u-1; anything else throws.
+function fakeVerifier() {
+  return {
+    verify: async (token) => {
+      if (token !== "good-token") throw new Error("bad token");
+      return { sub: "u-1", email: "u1@example.com", name: "U One" };
+    },
+  };
+}
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
 
@@ -55,6 +66,9 @@ beforeEach(() => {
   ddbMock.reset();
   delete process.env.ENFORCE_ORIGIN_HEADER;
   delete process.env.ORIGIN_VERIFY_SECRET;
+  process.env.USER_POOL_ID = "pool";
+  process.env.USER_POOL_CLIENT_ID = "client";
+  _setVerifierForTests(fakeVerifier());
 });
 
 test("GET getState works and never exposes the code", async () => {
@@ -300,6 +314,169 @@ test("claimSeat still returns the code at the top level (state stays clean)", as
   assert.equal(data.code, "PLUM-42");
   assert.ok(data.token);
   assert.equal(data.state.code, undefined);
+});
+
+test("signed-in claimSeat links the seat; anonymous claim unlinks it", async () => {
+  ddbMock
+    .on(GetCommand, { Key: { pk: "CODE#PLUM-42" } })
+    .resolves({ Item: { pk: "CODE#PLUM-42", pairingId: "abc123" } });
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .callsFake(() => ({ Item: pairingItem({ tokenB: null, userB: "old-user" }) }));
+  ddbMock.on(GetCommand, { Key: { pk: "SUB#abc123#A" } }).resolves({});
+  ddbMock.on(PutCommand).resolves({});
+
+  const signedIn = await handler(
+    postEvent(
+      { action: "claimSeat", code: "PLUM-42", seat: "B" },
+      { authorization: "Bearer good-token" }
+    )
+  );
+  assert.equal(signedIn.statusCode, 200);
+  let saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input.Item;
+  assert.equal(saved.userB, "u-1");
+
+  const anon = await handler(postEvent({ action: "claimSeat", code: "PLUM-42", seat: "B" }));
+  assert.equal(anon.statusCode, 200);
+  saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input.Item;
+  assert.equal(saved.userB, null); // takeover unlinks the previous account
+});
+
+test("an invalid token is a hard 401, never a silent guest downgrade", async () => {
+  const res = await handler(
+    postEvent(
+      { action: "claimSeat", code: "PLUM-42", seat: "B" },
+      { authorization: "Bearer forged" }
+    )
+  );
+  assert.equal(res.statusCode, 401);
+  assert.equal(JSON.parse(res.body).code, "BAD_ID_TOKEN");
+});
+
+test("winning eliminate folds stats into linked users, once per distinct user", async () => {
+  // Both seats held by the same account (two devices) — one stats update.
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .resolves({ Item: nearlyWonPairing({ userA: "u-1", userB: "u-1" }) });
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({});
+  ddbMock.on(GetCommand, { Key: { pk: "SUB#abc123#A" } }).resolves({});
+  ddbMock.on(GetCommand, { Key: { pk: "SUB#abc123#B" } }).resolves({});
+  ddbMock.on(TransactWriteCommand).resolves({});
+
+  const res = await handler(
+    postEvent({
+      action: "eliminate",
+      pairingId: "abc123",
+      role: "B",
+      token: "tok-b",
+      gameNumber: 1,
+      index: 2,
+    })
+  );
+  assert.equal(res.statusCode, 200);
+
+  const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
+  assert.equal(tx.TransactItems.length, 3); // pairing + archive + ONE user
+
+  const archive = tx.TransactItems[1].Put.Item;
+  assert.deepEqual(archive.players, { A: "u-1", B: "u-1" });
+  assert.equal(archive.ttl, undefined); // signed-in games are kept
+
+  const userItem = tx.TransactItems[2].Put.Item;
+  assert.equal(userItem.pk, "USER#u-1");
+  assert.equal(userItem.stats.gamesPlayed, 1);
+  assert.equal(userItem.stats.currentStreak, 1);
+  assert.equal(userItem.recentGames[0].winnerLabel, "Ramen");
+  assert.equal(userItem.ttl, undefined); // accounts never expire
+  assert.equal(
+    tx.TransactItems[2].Put.ConditionExpression,
+    "attribute_not_exists(version)"
+  );
+});
+
+test("getMe requires sign-in and gates streaks/history for free accounts", async () => {
+  const anon = await handler(postEvent({ action: "getMe" }));
+  assert.equal(anon.statusCode, 401);
+
+  const recentGames = Array.from({ length: 15 }, (_, i) => ({
+    pairingId: "p",
+    number: i + 1,
+    winnerLabel: "Pizza",
+    completedAt: i,
+  }));
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: {
+      pk: "USER#u-1",
+      userId: "u-1",
+      version: 2,
+      stats: {
+        gamesPlayed: 15,
+        currentStreak: 4,
+        bestStreak: 6,
+        lastPlayedDay: "2026-07-04",
+        topWinners: { Pizza: 15 },
+      },
+      recentGames,
+      premium: { status: "none" },
+    },
+  });
+
+  const res = await handler(
+    postEvent({ action: "getMe" }, { authorization: "Bearer good-token" })
+  );
+  assert.equal(res.statusCode, 200);
+  const me = JSON.parse(res.body);
+  assert.equal(me.stats.gamesPlayed, 15);
+  assert.equal(me.stats.currentStreak, undefined); // premium-gated at the API
+  assert.equal(me.stats.topWinners, undefined);
+  assert.equal(me.stats.streakLocked, true);
+  assert.equal(me.recentGames.length, 10);
+  assert.equal(me.historyLocked, true);
+});
+
+test("getMe returns full stats for premium accounts", async () => {
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: {
+      pk: "USER#u-1",
+      userId: "u-1",
+      version: 2,
+      stats: {
+        gamesPlayed: 3,
+        currentStreak: 2,
+        bestStreak: 2,
+        lastPlayedDay: "2026-07-04",
+        topWinners: { Pizza: 3 },
+      },
+      recentGames: [],
+      premium: { status: "active" },
+    },
+  });
+
+  const res = await handler(
+    postEvent({ action: "getMe" }, { authorization: "Bearer good-token" })
+  );
+  const me = JSON.parse(res.body);
+  assert.equal(me.stats.currentStreak, 2);
+  assert.deepEqual(me.stats.topWinners, { Pizza: 3 });
+  assert.equal(me.historyLocked, false);
+});
+
+test("getMe creates the user skeleton on first visit", async () => {
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({});
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(
+    postEvent({ action: "getMe" }, { authorization: "Bearer good-token" })
+  );
+  assert.equal(res.statusCode, 200);
+  const put = ddbMock.commandCalls(PutCommand)[0].args[0].input;
+  assert.equal(put.Item.pk, "USER#u-1");
+  assert.equal(put.Item.email, "u1@example.com");
+  assert.equal(put.Item.ttl, undefined);
+  assert.equal(put.ConditionExpression, "attribute_not_exists(version)");
+  const me = JSON.parse(res.body);
+  assert.equal(me.stats.gamesPlayed, 0);
+  assert.equal(me.premium.status, "none");
 });
 
 test("origin header enforced only when flag is on", async () => {
