@@ -11,12 +11,16 @@ import { isNative } from "./platform.js";
 const TIP_LINKS = [
   {
     id: "tip-venmo",
-    label: "Venmo",
+    emoji: "☕",
+    label: "Coffee me",
+    via: "Venmo",
     url: import.meta.env.VITE_TIP_VENMO_URL || "",
   },
   {
     id: "tip-stripe",
-    label: "Card",
+    emoji: "🥐",
+    label: "Thanks a latte",
+    via: "Card",
     url: import.meta.env.VITE_TIP_STRIPE_URL || "",
   },
 ].filter((l) => l.url);
@@ -32,25 +36,29 @@ const TIP_LINKS = [
 export default function TipJar({ compact = false, lead, onTip }) {
   if (isNative || TIP_LINKS.length === 0) return null;
 
-  const links = TIP_LINKS.map((l, i) => (
-    <React.Fragment key={l.id}>
-      {i > 0 && " · "}
-      <a
-        href={l.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => onTip && onTip(l.id)}
-      >
-        {l.label}
-      </a>
-    </React.Fragment>
-  ));
+  const links = (
+    <span className="tip-btns">
+      {TIP_LINKS.map((l) => (
+        <a
+          key={l.id}
+          className="tip-btn"
+          href={l.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => onTip && onTip(l.id)}
+        >
+          <span aria-hidden="true">{l.emoji}</span> {l.label}
+          <span className="tip-btn-via">{l.via}</span>
+        </a>
+      ))}
+    </span>
+  );
 
   if (compact) {
     return (
-      <p className="tip-line muted">
-        {lead ?? "☕ Enjoyed it? Tip the dev:"} {links}
-      </p>
+      <div className="tip-line muted">
+        {lead ?? "Enjoyed it? Fuel the dev:"} {links}
+      </div>
     );
   }
 
