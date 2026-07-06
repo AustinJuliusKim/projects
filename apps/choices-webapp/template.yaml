@@ -215,7 +215,7 @@ Resources:
       GenerateSecret: false # public SPA client, PKCE
       SupportedIdentityProviders: [Google]
       AllowedOAuthFlows: [code]
-      AllowedOAuthFlowsUserPoolClientEnabled: true
+      AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthScopes: [openid, email, profile]
       CallbackURLs: [!Ref CognitoCallbackUrl]
       LogoutURLs: [!Ref CognitoCallbackUrl]
