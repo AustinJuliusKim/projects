@@ -1,5 +1,6 @@
 // Thin fetch wrappers around the game API (Function URL or CloudFront /api).
-import { getIdToken } from "./auth.js";
+import { getIdToken, getProfile } from "./auth.js";
+import { writeStreak } from "./streakCache.js";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -54,7 +55,13 @@ export const createPairing = (choices) => post("createPairing", { choices });
 // Signed-in claims link the seat to the account (history/streaks accrue).
 export const claimSeat = async (code, seat) =>
   post("claimSeat", { code, seat }, await authHeaders());
-export const getMe = async () => post("getMe", {}, await authHeaders());
+// Write-through to the streak cache so the corner affordance stays fresh
+// without ever fetching on its own.
+export const getMe = async () => {
+  const data = await post("getMe", {}, await authHeaders());
+  writeStreak(getProfile()?.sub, data.stats);
+  return data;
+};
 export const createCheckoutSession = async (plan) =>
   post("createCheckoutSession", { plan }, await authHeaders());
 export const createPortalSession = async () =>

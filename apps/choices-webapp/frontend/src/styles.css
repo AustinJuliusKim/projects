@@ -448,6 +448,54 @@ h1 {
   color: var(--muted);
 }
 
+/* Persistent corner pill to My games (AccountCorner.jsx). Pinned to the
+   .container's inner right edge on wide screens, the viewport edge on
+   phones. */
+.account-corner {
+  position: fixed;
+  top: max(10px, calc(env(safe-area-inset-top) + 6px));
+  right: max(16px, calc((100vw - 480px) / 2 + 20px));
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    transform 0.15s var(--ease-out-back),
+    border-color 0.15s ease;
+}
+
+.account-corner:hover {
+  border-color: var(--indigo);
+}
+
+.account-corner:active {
+  transform: scale(0.94);
+}
+
+.account-corner.muted-chip {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.account-corner-streak {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Clear the pill on every view while it's mounted — set via body class from
+   AccountCorner so no per-view edits are needed. */
+body.account-corner-active .container {
+  padding-top: max(64px, calc(env(safe-area-inset-top) + 52px));
+}
+
 /* Account view: stats + history */
 .stats-row {
   display: grid;
