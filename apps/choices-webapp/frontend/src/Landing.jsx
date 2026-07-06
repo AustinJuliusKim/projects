@@ -19,9 +19,11 @@ export default function Landing() {
       <a className="btn" href="#/join">
         🔑 Enter a game code
       </a>
-      {authEnabled && (
+      {/* Signed-in users reach My games via the corner pill; this ghost
+          button stays as the guest conversion CTA. */}
+      {authEnabled && !hasSession() && (
         <a className="btn ghost" href="#/account">
-          {hasSession() ? "📜 My games" : "📜 Sign in for game history"}
+          📜 Sign in for game history
         </a>
       )}
 

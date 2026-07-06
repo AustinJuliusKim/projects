@@ -5,6 +5,7 @@
 // sign-in like it hides the tip jar (Apple 3.1.1-adjacent caution), and the
 // hosted-UI redirect flow needs ASWebAuthenticationSession work anyway.
 import { isNative } from "./platform.js";
+import { clearStreak } from "./streakCache.js";
 
 const DOMAIN = import.meta.env.VITE_COGNITO_DOMAIN || "";
 const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID || "";
@@ -63,6 +64,7 @@ export async function signIn() {
 
 export function signOut() {
   localStorage.removeItem(SESSION_KEY);
+  clearStreak();
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     logout_uri: redirectUri(),
@@ -110,6 +112,7 @@ export async function getIdToken() {
     return loadSession().idToken;
   } catch {
     localStorage.removeItem(SESSION_KEY); // refresh revoked/expired: guest
+    clearStreak();
     return null;
   }
 }

@@ -5,6 +5,7 @@ import JoinView from "./JoinView.jsx";
 import PlayView from "./PlayView.jsx";
 import Landing from "./Landing.jsx";
 import AccountView from "./AccountView.jsx";
+import AccountCorner from "./AccountCorner.jsx";
 import { registerServiceWorker } from "./push.js";
 import { loadIdentity } from "./storage.js";
 import { isNative } from "./platform.js";
@@ -28,30 +29,40 @@ function App() {
   const hash = useHash();
   const [identity, setIdentity] = useState(() => loadIdentity());
 
-  // Account view is reachable even mid-game (it has its own back link), so
-  // it's checked ahead of the identity gate.
-  if (hash.startsWith("#/account")) {
-    return <AccountView />;
+  function renderView() {
+    // Account view is reachable even mid-game (it has its own back link), so
+    // it's checked ahead of the identity gate.
+    if (hash.startsWith("#/account")) {
+      return <AccountView />;
+    }
+
+    // If we already have an identity, we're in the game — ignore entry hashes.
+    if (identity) {
+      return <PlayView identity={identity} onLeave={() => setIdentity(loadIdentity())} />;
+    }
+
+    if (hash.startsWith("#/create")) {
+      return <CreatePairingView onReady={() => setIdentity(loadIdentity())} />;
+    }
+    const joinMatch = hash.match(/^#\/join(?:\?code=([^&]+))?/);
+    if (joinMatch) {
+      return (
+        <JoinView
+          prefillCode={joinMatch[1] ? decodeURIComponent(joinMatch[1]) : ""}
+          onReady={() => setIdentity(loadIdentity())}
+        />
+      );
+    }
+    return <Landing />;
   }
 
-  // If we already have an identity, we're in the game — ignore entry hashes.
-  if (identity) {
-    return <PlayView identity={identity} onLeave={() => setIdentity(loadIdentity())} />;
-  }
-
-  if (hash.startsWith("#/create")) {
-    return <CreatePairingView onReady={() => setIdentity(loadIdentity())} />;
-  }
-  const joinMatch = hash.match(/^#\/join(?:\?code=([^&]+))?/);
-  if (joinMatch) {
-    return (
-      <JoinView
-        prefillCode={joinMatch[1] ? decodeURIComponent(joinMatch[1]) : ""}
-        onReady={() => setIdentity(loadIdentity())}
-      />
-    );
-  }
-  return <Landing />;
+  // The corner pill floats over every view except the account view itself.
+  return (
+    <>
+      {!hash.startsWith("#/account") && <AccountCorner />}
+      {renderView()}
+    </>
+  );
 }
 
 // Service workers don't run in the Capacitor WKWebView — skip registration
