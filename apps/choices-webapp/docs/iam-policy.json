@@ -181,14 +181,55 @@
         "cloudfront:DeleteFunction",
         "cloudfront:DescribeFunction",
         "cloudfront:GetFunction",
-        "cloudfront:PublishFunction"
+        "cloudfront:PublishFunction",
+        "cloudfront:CreateCachePolicy",
+        "cloudfront:GetCachePolicy",
+        "cloudfront:GetCachePolicyConfig",
+        "cloudfront:UpdateCachePolicy",
+        "cloudfront:DeleteCachePolicy"
       ],
       "Resource": "*"
     },
     {
-      "Sid": "WafAssociationRead",
+      "Sid": "EdgeWafStack",
       "Effect": "Allow",
-      "Action": ["wafv2:GetWebACL"],
+      "Action": [
+        "wafv2:CreateWebACL",
+        "wafv2:GetWebACL",
+        "wafv2:UpdateWebACL",
+        "wafv2:DeleteWebACL",
+        "wafv2:ListWebACLs",
+        "wafv2:TagResource",
+        "wafv2:UntagResource",
+        "wafv2:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CognitoForAccounts",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:CreateUserPool",
+        "cognito-idp:DeleteUserPool",
+        "cognito-idp:UpdateUserPool",
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:CreateUserPoolClient",
+        "cognito-idp:DeleteUserPoolClient",
+        "cognito-idp:UpdateUserPoolClient",
+        "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:CreateIdentityProvider",
+        "cognito-idp:DeleteIdentityProvider",
+        "cognito-idp:UpdateIdentityProvider",
+        "cognito-idp:DescribeIdentityProvider",
+        "cognito-idp:CreateUserPoolDomain",
+        "cognito-idp:DeleteUserPoolDomain",
+        "cognito-idp:DescribeUserPoolDomain",
+        "cognito-idp:GetUserPoolMfaConfig",
+        "cognito-idp:SetUserPoolMfaConfig",
+        "cognito-idp:TagResource",
+        "cognito-idp:UntagResource",
+        "cognito-idp:ListTagsForResource"
+      ],
       "Resource": "*"
     }
   ]
