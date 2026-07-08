@@ -10,7 +10,8 @@
 //
 // Accounts are optional: a Cognito ID token in the authorization header
 // links seats to a user (history/streaks); its absence means guest.
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -27,6 +28,7 @@ import {
   GameError,
 } from "./game.mjs";
 import { applyCompletedGame, emptyStats, RECENT_GAMES_CAP } from "./stats.mjs";
+import { applyGameToHistory, anonRecord } from "./history.mjs";
 import { verifyIdToken, AuthError } from "./auth.mjs";
 import {
   billingEnabled,
@@ -40,12 +42,14 @@ import { sendPush } from "./push.mjs";
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const s3 = new S3Client({});
 
 const pairPk = (id) => `PAIR#${id}`;
 const codePk = (code) => `CODE#${code}`;
 const subPk = (pairingId, role) => `SUB#${pairingId}#${role}`;
 const gamePk = (pairingId, number) => `GAME#${pairingId}#${number}`;
 const userPk = (userId) => `USER#${userId}`;
+const histPk = (pairingId) => `HIST#${pairingId}`;
 const ttlEpoch = () => Math.floor(Date.now() / 1000) + TTL_DAYS * 24 * 3600;
 
 // Human-friendly join code: WORD-NN (e.g. "PLUM-42").
@@ -261,12 +265,46 @@ async function doEliminate(body) {
     completionItems
   );
 
-  if (!replay) await notifyAfterMove(pairing);
+  if (!replay) {
+    await notifyAfterMove(pairing);
+    if (pairing.game.status === "complete") await putAnonRecord(pairing);
+  }
   return { state: publicState(pairing) };
 }
 
-// Extra transact items for a completing move: the GAME# archive plus a
-// stats/recentGames fold into USER# for each seat linked to an account.
+// Anonymized global-suggestions feed (suggestion engine Phase 0): one small
+// S3 object per finished game, daily-partitioned for the future nightly
+// batch. The keyed pairHash (salt only in this env) lets Phase 2 apply the
+// k-anonymity floor without the store ever holding pairing ids. Best-effort:
+// failures are logged, never surfaced to the move that won the game.
+async function putAnonRecord(pairing) {
+  const bucket = process.env.SUGGEST_BUCKET;
+  const salt = process.env.ANON_SALT;
+  if (!bucket || !salt) return;
+  try {
+    const summary = gameSummary(pairing.game);
+    const pairingId = pairing.pk.slice("PAIR#".length);
+    const pairHash = createHmac("sha256", salt)
+      .update(pairingId)
+      .digest("hex")
+      .slice(0, 16);
+    const record = anonRecord(summary, pairHash);
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: `entries/dt=${record.day}/${Date.now()}-${randomUUID()}.json`,
+        Body: JSON.stringify(record),
+        ContentType: "application/json",
+      })
+    );
+  } catch (err) {
+    console.error("anon record write failed", err);
+  }
+}
+
+// Extra transact items for a completing move: the GAME# archive, a
+// stats/recentGames fold into USER# for each seat linked to an account, and
+// the HIST# pair-memory fold (suggestion engine L1).
 async function completionItems(pairing) {
   if (pairing.game.status !== "complete") return [];
   const summary = gameSummary(pairing.game);
@@ -284,8 +322,14 @@ async function completionItems(pairing) {
   const userIds = [...new Set([pairing.userA, pairing.userB].filter(Boolean))];
   for (const userId of userIds) {
     const user = (await loadUser(userId)) ?? emptyUser(userId);
-    items.push(userPut(applyCompletedGame(user, rec)));
+    items.push(versionedPut(applyCompletedGame(user, rec)));
   }
+
+  // HIST# refreshes its ttl only here, and completions are what keep a
+  // pairing alive — so pair memory expires no later than the pairing itself
+  // (privacy: pair history dies with the pair).
+  const hist = (await loadHist(pairingId)) ?? emptyHist(pairingId);
+  items.push(versionedPut({ ...applyGameToHistory(hist, summary), ttl: ttlEpoch() }));
   return items;
 }
 
@@ -406,7 +450,7 @@ async function ensureUser(user) {
   if (item) return item;
   item = { ...emptyUser(user.sub), email: user.email, name: user.name };
   try {
-    await ddb.send(new PutCommand(userPut(item).Put));
+    await ddb.send(new PutCommand(versionedPut(item).Put));
     item.version = 1;
   } catch (err) {
     if (err?.name !== "ConditionalCheckFailedException") throw err;
@@ -468,7 +512,7 @@ async function updateUserPremium(userId, premium) {
     user.premium = { ...user.premium, ...premium };
     user.updatedAt = Date.now();
     try {
-      await ddb.send(new PutCommand(userPut(user).Put));
+      await ddb.send(new PutCommand(versionedPut(user).Put));
       return;
     } catch (err) {
       if (err?.name !== "ConditionalCheckFailedException" || attempt >= 1) throw err;
@@ -594,6 +638,17 @@ async function loadUser(userId) {
   return res.Item || null;
 }
 
+async function loadHist(pairingId) {
+  const res = await ddb.send(
+    new GetCommand({ TableName: TABLE, Key: { pk: histPk(pairingId) } })
+  );
+  return res.Item || null;
+}
+
+function emptyHist(pairingId) {
+  return { pk: histPk(pairingId), pairingId, entries: {}, createdAt: Date.now() };
+}
+
 // USER# items never expire (no ttl) — they're the account's durable record.
 function emptyUser(userId, now = Date.now()) {
   return {
@@ -607,11 +662,11 @@ function emptyUser(userId, now = Date.now()) {
   };
 }
 
-// Version-conditioned put for USER# items (same optimistic-lock shape as
-// savePairing); used standalone and inside the completion transaction.
-function userPut(user) {
-  const expected = user.version;
-  const put = { TableName: TABLE, Item: { ...user, version: (expected ?? 0) + 1 } };
+// Version-conditioned put for USER#/HIST# items (same optimistic-lock shape
+// as savePairing); used standalone and inside the completion transaction.
+function versionedPut(item) {
+  const expected = item.version;
+  const put = { TableName: TABLE, Item: { ...item, version: (expected ?? 0) + 1 } };
   if (expected == null) {
     put.ConditionExpression = "attribute_not_exists(version)";
   } else {
