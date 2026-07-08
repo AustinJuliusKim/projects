@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getMe, createCheckoutSession, createPortalSession } from "./api.js";
 import { authEnabled, hasSession, getProfile, signIn, signOut } from "./auth.js";
+import AccountSkeleton from "./AccountSkeleton.jsx";
 
 // Premium purchase/manage section. Web-only by construction (AccountView is
 // unreachable in the native shell): Apple 3.1.1 forbids linking to external
@@ -151,12 +152,12 @@ export default function AccountView() {
 
   const profile = getProfile();
   return (
-    <div className="container">
+    <div className="container" aria-busy={!me && !error}>
       <h1>My games</h1>
       <p className="muted">{profile?.name ?? profile?.email ?? ""}</p>
 
       {error && <p className="error">{error}</p>}
-      {!me && !error && <p className="muted">Loading…</p>}
+      {!me && !error && <AccountSkeleton />}
 
       {me && (
         <>
