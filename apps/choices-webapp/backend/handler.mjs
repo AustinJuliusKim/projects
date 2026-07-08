@@ -41,6 +41,7 @@ import {
 import { sendPush } from "./push.mjs";
 import { autocomplete, details, placesEnabled } from "./places.mjs";
 import { aiEnabled, fillFour } from "./suggestai.mjs";
+import { isClean } from "./moderation.mjs";
 
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
@@ -88,6 +89,19 @@ export async function handler(event) {
   // Stripe webhook: routed by path (Stripe posts to a fixed URL, not our
   // action envelope) and verified against the RAW body before any parsing.
   const path = event?.rawPath ?? event?.requestContext?.http?.path ?? "";
+
+  // Share-link preview page: GET /j/{code} (its own CloudFront behavior to
+  // this origin). Crawlers never see the SPA — #/join fragments don't reach
+  // any server — so the OG meta is rendered here; humans get an instant
+  // client redirect into the unchanged join flow.
+  if (method === "GET" && path.startsWith("/j/")) {
+    try {
+      return await ogPreviewPage(decodeURIComponent(path.slice("/j/".length)));
+    } catch (err) {
+      console.error("og preview error", err);
+      return await ogPreviewPage(null);
+    }
+  }
   if (method === "POST" && path.endsWith("/stripe-webhook")) {
     try {
       return reply(200, await doStripeWebhook(event));
@@ -167,6 +181,75 @@ export async function handler(event) {
     console.error("unhandled error", err);
     return reply(500, { error: "Internal error" });
   }
+}
+
+// --- Share-link preview (growth plan §8: OG previews) ---
+
+// The page necessarily carries the code — it IS the invite link, no new
+// exposure vs. today's #/join?code= links — but never tokens, and it rides
+// a CachingDisabled behavior so per-code content can't cross-cache. A
+// profane choice label downgrades the description to the generic line
+// (moderation.mjs); the redirect works either way.
+async function ogPreviewPage(rawCode) {
+  const siteUrl = process.env.SITE_URL || "";
+  const code = normalizeCode(rawCode);
+  let choices = null;
+  if (code) {
+    const codeRes = await ddb.send(
+      new GetCommand({ TableName: TABLE, Key: { pk: codePk(code) } })
+    );
+    if (codeRes.Item) {
+      const pairRes = await ddb.send(
+        new GetCommand({ TableName: TABLE, Key: { pk: pairPk(codeRes.Item.pairingId) } })
+      );
+      choices = pairRes.Item?.game?.choices ?? null;
+    }
+  }
+
+  const description =
+    choices && choices.every(isClean)
+      ? `${choices.join(" vs ")} — cut wisely.`
+      : "4 choices. 3 cuts. 1 winner.";
+  // Relative redirect works on any stack; og:image needs an absolute URL,
+  // so it only renders when SITE_URL is configured.
+  const target = code && choices
+    ? `/#/join?code=${encodeURIComponent(code)}`
+    : "/#/join";
+  const image = siteUrl
+    ? `  <meta property="og:image" content="${siteUrl}og-card.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />\n`
+    : "";
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>You've got Choices 😏</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="You've got Choices 😏" />
+  <meta property="og:description" content="${escapeHtml(description)}" />
+${image}  <meta name="theme-color" content="#0f172a" />
+  <script>location.replace(${JSON.stringify(target)});</script>
+</head>
+<body>
+  <noscript><a href="${escapeHtml(target)}">Open your Choices invite</a></noscript>
+</body>
+</html>`;
+  return {
+    statusCode: 200,
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+    body: html,
+  };
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 // --- Actions ---
