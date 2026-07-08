@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/aukim/personal/ObsidianVault/**)",
+      "Edit(//Users/aukim/personal/ObsidianVault/**)",
+      "Write(//Users/aukim/personal/ObsidianVault/**)"
+    ],
+    "additionalDirectories": ["/Users/aukim/personal/ObsidianVault"]
+  }
+}
