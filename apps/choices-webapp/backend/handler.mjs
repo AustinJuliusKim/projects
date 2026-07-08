@@ -238,8 +238,8 @@ async function doClaimSeat(body, user) {
     // Best-effort: tell A their opponent joined (only on the first B claim).
     if (wasFirstBClaim) {
       await pushTo(pairing, "A", {
-        title: "Your opponent joined!",
-        body: "They're making the first move.",
+        title: "They took the bait 😏",
+        body: "Your opponent is in — they cut first.",
         url: "/",
       });
     }
@@ -378,8 +378,8 @@ async function doRematch(body) {
   // Notify the OTHER player (who eliminates first) that a new game started.
   if (!replay) {
     await pushTo(pairing, otherRole(role), {
-      title: "New game started 🎲",
-      body: `Player ${role} picked 4 new choices. Your move!`,
+      title: "You've got new Choices 🎲",
+      body: `Player ${role} picked 4 fresh ones. You cut first.`,
       url: "/",
     });
   }
@@ -698,15 +698,15 @@ async function notifyAfterMove(pairing) {
     const winnerLabel = game.choices[game.winnerIndex];
     for (const role of ["A", "B"]) {
       await pushTo(pairing, role, {
-        title: "Game over!",
-        body: `Winner: ${winnerLabel}`,
+        title: "Dinner's decided 🏆",
+        body: `${winnerLabel} survived.`,
         url: "/",
       });
     }
   } else {
     await pushTo(pairing, game.turn, {
-      title: "Your turn!",
-      body: "A choice was eliminated. Tap to make your move.",
+      title: "Your move. Cut one. 😏",
+      body: "A choice just got cut. You're up.",
       url: "/",
     });
   }
