@@ -799,6 +799,61 @@ test("placesSuggest biases by the CloudFront viewer-geo headers", async () => {
   assert.ok(!res.body.includes("47.6062"));
 });
 
+// The 📍 Near me toggle off must send an explicit world rectangle — a bare
+// omission would fall back to Google IP-biasing the Lambda's region.
+const WORLD_RECT = {
+  rectangle: {
+    low: { latitude: -90, longitude: -180 },
+    high: { latitude: 90, longitude: 180 },
+  },
+};
+
+test("placesSuggest with nearMe off neutralizes location even when geo headers exist", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  const bodies = [];
+  _setPlacesFetchForTests(async (url, opts) => {
+    bodies.push(JSON.parse(opts.body));
+    return { ok: true, json: async () => ({ suggestions: [] }) };
+  });
+
+  // With geo headers present…
+  await handler(
+    postEvent(
+      { action: "placesSuggest", input: "pizza", nearMe: false },
+      {
+        "cloudfront-viewer-latitude": "47.6062",
+        "cloudfront-viewer-longitude": "-122.3321",
+      }
+    )
+  );
+  // …and without them.
+  await handler(postEvent({ action: "placesSuggest", input: "pizza", nearMe: false }));
+
+  assert.equal(bodies.length, 2);
+  assert.deepEqual(bodies[0].locationBias, WORLD_RECT);
+  assert.deepEqual(bodies[1].locationBias, WORLD_RECT);
+});
+
+test("placesSuggest treats a non-false nearMe as location-aware", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  const bodies = [];
+  _setPlacesFetchForTests(async (url, opts) => {
+    bodies.push(JSON.parse(opts.body));
+    return { ok: true, json: async () => ({ suggestions: [] }) };
+  });
+
+  await handler(
+    postEvent(
+      { action: "placesSuggest", input: "pizza", nearMe: true },
+      {
+        "cloudfront-viewer-latitude": "47.6062",
+        "cloudfront-viewer-longitude": "-122.3321",
+      }
+    )
+  );
+  assert.equal(bodies[0].locationBias.circle.center.latitude, 47.6062);
+});
+
 test("placesSuggest ignores junk or out-of-range geo headers", async () => {
   process.env.PLACES_API_KEY = "places-key";
   const bodies = [];

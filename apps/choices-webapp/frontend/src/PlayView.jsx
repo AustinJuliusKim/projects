@@ -4,6 +4,7 @@ import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour } from "./api.js";
 import ChoiceInput from "./ChoiceInput.jsx";
 import FillMyFour from "./FillMyFour.jsx";
+import NearMeToggle from "./NearMeToggle.jsx";
 import { PLATFORMS } from "./affiliates.js";
 import TipJar from "./support.jsx";
 import { WinnerAccountLine } from "./AccountView.jsx";
@@ -29,6 +30,7 @@ export default function PlayView({ identity, onLeave }) {
   const [bumped, setBumped] = useState(false);
   const [pushPrompted, setPushPrompted] = useState(false);
   const [rematchChoices, setRematchChoices] = useState(["", "", "", ""]);
+  const [nearMe, setNearMe] = useState(true); // session-scoped by design
 
   // Winner-reveal card flip. `complete` (and `iCanRematch`, which hooks also
   // depend on) is computed before the early returns (hooks rule).
@@ -411,12 +413,14 @@ export default function PlayView({ identity, onLeave }) {
             request={(occasion) => fillMyFour({ pairingId, role, token, occasion })}
             onFill={(cs) => setRematchChoices(cs)}
           />
+          <NearMeToggle value={nearMe} onChange={setNearMe} />
           {rematchChoices.map((c, i) => (
             <ChoiceInput
               key={i}
               placeholder={`Choice ${i + 1}`}
               value={c}
               pairEntries={pairEntries}
+              nearMe={nearMe}
               onChange={(v) =>
                 setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
               }

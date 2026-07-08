@@ -8,6 +8,7 @@ import IosInstallHint from "./IosInstallHint.jsx";
 import TipJar, { PremiumTease } from "./support.jsx";
 import ChoiceInput from "./ChoiceInput.jsx";
 import FillMyFour from "./FillMyFour.jsx";
+import NearMeToggle from "./NearMeToggle.jsx";
 
 export default function CreatePairingView({ onReady }) {
   const [choices, setChoices] = useState(["", "", "", ""]);
@@ -15,6 +16,7 @@ export default function CreatePairingView({ onReady }) {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [premiumInterest, setPremiumInterest] = useState(false);
+  const [nearMe, setNearMe] = useState(true); // session-scoped by design
 
   const setChoice = (i, v) =>
     setChoices((cs) => cs.map((c, j) => (j === i ? v : c)));
@@ -136,11 +138,13 @@ export default function CreatePairingView({ onReady }) {
           request={(occasion) => fillMyFour({ occasion })}
           onFill={(cs) => setChoices(cs)}
         />
+        <NearMeToggle value={nearMe} onChange={setNearMe} />
         {choices.map((c, i) => (
           <ChoiceInput
             key={i}
             placeholder={`Choice ${i + 1}`}
             value={c}
+            nearMe={nearMe}
             onChange={(v) => setChoice(i, v)}
           />
         ))}
