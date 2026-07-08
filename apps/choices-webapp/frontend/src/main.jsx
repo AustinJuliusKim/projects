@@ -6,6 +6,7 @@ import PlayView from "./PlayView.jsx";
 import Landing from "./Landing.jsx";
 import AccountView from "./AccountView.jsx";
 import AccountCorner from "./AccountCorner.jsx";
+import NearMeToggle from "./NearMeToggle.jsx";
 import { registerServiceWorker } from "./push.js";
 import { loadIdentity } from "./storage.js";
 import { isNative } from "./platform.js";
@@ -56,10 +57,16 @@ function App() {
     return <Landing />;
   }
 
-  // The corner pill floats over every view except the account view itself.
+  // The corner tools float over every view except the account view itself:
+  // the 📍 near-me pin (hidden when Places is dormant) + the account pill.
   return (
     <>
-      {!hash.startsWith("#/account") && <AccountCorner />}
+      {!hash.startsWith("#/account") && (
+        <div className="corner-tools">
+          <NearMeToggle />
+          <AccountCorner />
+        </div>
+      )}
       {renderView()}
     </>
   );
