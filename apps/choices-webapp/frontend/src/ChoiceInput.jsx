@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { placesSuggest, placeDetails } from "./api.js";
 import { rankSuggestions } from "./suggest.js";
+import { useNearMe } from "./nearMeStore.js";
 
 // Places layer (L3) is stack-config-gated: blank means the client never
 // calls the proxy at all and this renders exactly like the plain input.
@@ -13,12 +14,15 @@ const MIN_QUERY = 2;
 // Autocomplete via our Lambda proxy — debounced, one session token per input
 // focus, terminated by placeDetails on selection (that's what closes the
 // billing session).
-export default function ChoiceInput({ value, onChange, placeholder, pairEntries = [], nearMe = true }) {
+export default function ChoiceInput({ value, onChange, placeholder, pairEntries = [] }) {
   const [placesResults, setPlacesResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
   const sessionRef = useRef(null);
   const seqRef = useRef(0); // drops out-of-order responses
+  // Corner 📍 pin state: coords ride along only while the pin is lit.
+  const { enabled: nearMe, coords } = useNearMe();
+  const geo = nearMe ? coords : null;
 
   const suggestions = open
     ? rankSuggestions(value, pairEntries, placesResults)
@@ -34,14 +38,14 @@ export default function ChoiceInput({ value, onChange, placeholder, pairEntries 
     const seq = ++seqRef.current;
     const timer = setTimeout(async () => {
       try {
-        const res = await placesSuggest(q, sessionRef.current, nearMe);
+        const res = await placesSuggest(q, sessionRef.current, geo);
         if (seq === seqRef.current) setPlacesResults(res.suggestions ?? []);
       } catch {
         /* suggestions are best-effort */
       }
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [value, open, nearMe]);
+  }, [value, open, geo]);
 
   function onFocus() {
     if (!sessionRef.current) sessionRef.current = crypto.randomUUID();
