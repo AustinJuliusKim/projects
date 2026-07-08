@@ -19,8 +19,13 @@ export function placesEnabled() {
   return Boolean(process.env.PLACES_API_KEY);
 }
 
+// Soft bias circle around the viewer's approximate (IP-derived) location;
+// generous radius because the source is city-level. Bias, not restriction —
+// a strong-name query still wins over distance.
+const BIAS_RADIUS_METERS = 30000;
+
 // -> { suggestions: [{ text, placeId }], enabled }
-export async function autocomplete(input, sessionToken) {
+export async function autocomplete(input, sessionToken, geo) {
   if (!placesEnabled()) return { suggestions: [], enabled: false };
   try {
     const res = await withTimeout((signal) =>
@@ -34,6 +39,9 @@ export async function autocomplete(input, sessionToken) {
           input,
           sessionToken,
           includedPrimaryTypes: ["restaurant"],
+          ...(geo && {
+            locationBias: { circle: { center: geo, radius: BIAS_RADIUS_METERS } },
+          }),
         }),
         signal,
       })

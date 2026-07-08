@@ -769,7 +769,56 @@ test("placesSuggest proxies with the session token and clamps results", async ()
   assert.equal(body.input, "pizza");
   assert.equal(body.sessionToken, "s-1");
   assert.deepEqual(body.includedPrimaryTypes, ["restaurant"]);
+  assert.equal(body.locationBias, undefined); // no geo headers -> no bias
   assert.equal(seen.opts.headers["X-Goog-Api-Key"], "places-key");
+});
+
+test("placesSuggest biases by the CloudFront viewer-geo headers", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  let seen;
+  _setPlacesFetchForTests(async (url, opts) => {
+    seen = { url, opts };
+    return { ok: true, json: async () => ({ suggestions: [] }) };
+  });
+
+  const res = await handler(
+    postEvent(
+      { action: "placesSuggest", input: "pizza", sessionToken: "s-1" },
+      {
+        "cloudfront-viewer-latitude": "47.6062",
+        "cloudfront-viewer-longitude": "-122.3321",
+      }
+    )
+  );
+  assert.equal(res.statusCode, 200);
+  const body = JSON.parse(seen.opts.body);
+  assert.deepEqual(body.locationBias, {
+    circle: { center: { latitude: 47.6062, longitude: -122.3321 }, radius: 30000 },
+  });
+  // Coordinates are used upstream only — never echoed to the client.
+  assert.ok(!res.body.includes("47.6062"));
+});
+
+test("placesSuggest ignores junk or out-of-range geo headers", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  const bodies = [];
+  _setPlacesFetchForTests(async (url, opts) => {
+    bodies.push(JSON.parse(opts.body));
+    return { ok: true, json: async () => ({ suggestions: [] }) };
+  });
+
+  for (const headers of [
+    { "cloudfront-viewer-latitude": "abc", "cloudfront-viewer-longitude": "-122" },
+    { "cloudfront-viewer-latitude": "999", "cloudfront-viewer-longitude": "-122" },
+    { "cloudfront-viewer-longitude": "-122" }, // latitude missing entirely
+  ]) {
+    const res = await handler(
+      postEvent({ action: "placesSuggest", input: "pizza" }, headers)
+    );
+    assert.equal(res.statusCode, 200);
+  }
+  assert.equal(bodies.length, 3);
+  assert.ok(bodies.every((b) => b.locationBias === undefined));
 });
 
 test("placesSuggest validates input length without calling upstream", async () => {
