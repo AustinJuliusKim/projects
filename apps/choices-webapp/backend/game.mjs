@@ -24,7 +24,15 @@ export function createGame(choices, opts = {}, now = Date.now()) {
   if (!Array.isArray(choices) || choices.length !== 4) {
     throw new GameError("EXACTLY_FOUR", "Provide exactly 4 choices.");
   }
-  const cleaned = choices.map((c) => String(c ?? "").trim());
+  // Server-side mirror of the client's 60-char cap, plus control/zero-width
+  // stripping (labels feed link previews and share cards).
+  const cleaned = choices.map((c) =>
+    String(c ?? "")
+      .replace(/[\u0000-\u001f\u007f\u200b-\u200d\ufeff]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 60)
+  );
   if (cleaned.some((c) => c.length === 0)) {
     throw new GameError("EMPTY_CHOICE", "Choices cannot be empty.");
   }

@@ -63,11 +63,12 @@ export default function CreatePairingView({ onReady }) {
 
   function joinLink(code) {
     // Inside the native shell the location origin is capacitor://localhost —
-    // recipients need the web app.
+    // recipients need the web app. The /j/ path serves an OG preview card to
+    // crawlers and instantly redirects humans into the join flow.
     const base = isNative
       ? `${WEB_ORIGIN}/`
       : `${window.location.origin}${window.location.pathname}`;
-    return `${base}#/join?code=${encodeURIComponent(code)}`;
+    return `${base}j/${encodeURIComponent(code)}`;
   }
 
   async function onShare() {
