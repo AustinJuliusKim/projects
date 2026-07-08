@@ -434,7 +434,10 @@ async function doPlacesSuggest(body, geo) {
   if (input.length < 2 || input.length > 60) {
     return { suggestions: [], enabled: placesEnabled() };
   }
-  return autocomplete(input, sessionToken(body), geo);
+  // The 📍 Near me toggle: explicitly off -> ignore the viewer's location
+  // (road-trip case: picking choices for where you're headed). Absent/true
+  // keeps the geo-header bias — old clients never send the field.
+  return autocomplete(input, sessionToken(body), body.nearMe === false ? "off" : geo);
 }
 
 // Approximate viewer location from CloudFront's IP-derived geo headers
