@@ -107,6 +107,15 @@ Parameters:
     Type: String
     Default: ""
     Description: Stripe Price id for the annual premium plan ($24/yr)
+  AnonSalt:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >
+      HMAC salt for the anonymized suggestion feed's pairHash (suggestion
+      engine Phase 0). Generate with `openssl rand -hex 32` and pass via
+      --parameter-overrides. Blank = anonymized S3 logging disabled
+      (HIST# pair memory still recorded).
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
@@ -161,9 +170,13 @@ Resources:
           # set when billing is; deriving from SiteDistribution would be a
           # circular dependency (distribution -> function URL -> function).
           SITE_URL: !Ref CognitoCallbackUrl
+          SUGGEST_BUCKET: !Ref SuggestDataBucket
+          ANON_SALT: !Ref AnonSalt
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GamesTable
+        - S3WritePolicy:
+            BucketName: !Ref SuggestDataBucket
       FunctionUrlConfig:
         AuthType: NONE
         Cors:
@@ -226,6 +239,19 @@ Resources:
     Properties:
       UserPoolId: !Ref UserPool
       Domain: !Ref CognitoDomainPrefix
+
+  # Anonymized suggestion feed (suggestion engine Phase 0): one small JSON
+  # object per finished game under entries/dt=YYYY-MM-DD/. Private, written
+  # only by the Lambda; the Phase 2 nightly batch will read it. Never reuse
+  # SiteBucket here — deploy-frontend.sh syncs it with --delete.
+  SuggestDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
   # --- Frontend hosting: private S3 bucket served via CloudFront (HTTPS) ---
   SiteBucket:
