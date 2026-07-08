@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
-import { getState, eliminate, rematch, linkClick, getPairHistory } from "./api.js";
+import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour } from "./api.js";
 import ChoiceInput from "./ChoiceInput.jsx";
+import FillMyFour from "./FillMyFour.jsx";
+import { useNearMe } from "./nearMeStore.js";
 import { PLATFORMS } from "./affiliates.js";
 import TipJar from "./support.jsx";
 import { WinnerAccountLine } from "./AccountView.jsx";
@@ -28,6 +30,7 @@ export default function PlayView({ identity, onLeave }) {
   const [bumped, setBumped] = useState(false);
   const [pushPrompted, setPushPrompted] = useState(false);
   const [rematchChoices, setRematchChoices] = useState(["", "", "", ""]);
+  const nearMe = useNearMe(); // corner 📍 pin state
 
   // Winner-reveal card flip. `complete` (and `iCanRematch`, which hooks also
   // depend on) is computed before the early returns (hooks rule).
@@ -406,12 +409,17 @@ export default function PlayView({ identity, onLeave }) {
           <p className="muted">
             Pick 4 new choices. Player {other} cuts first.
           </p>
+          <FillMyFour
+            request={(occasion) => fillMyFour({ pairingId, role, token, occasion })}
+            onFill={(cs) => setRematchChoices(cs)}
+          />
           {rematchChoices.map((c, i) => (
             <ChoiceInput
               key={i}
               placeholder={`Choice ${i + 1}`}
               value={c}
               pairEntries={pairEntries}
+              nearMe={nearMe}
               onChange={(v) =>
                 setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
               }
