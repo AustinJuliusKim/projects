@@ -37,12 +37,12 @@ async function post(action, payload, headers = {}) {
 // requests replay the stored result), so retrying on network errors / 429 /
 // 5xx can never double-apply a move. Other 4xx (409 turn conflicts etc.) are
 // real answers — never retried.
-async function mutate(action, payload) {
+async function mutate(action, payload, headers = {}) {
   if (!API_URL) throw new Error("VITE_API_URL is not configured");
   const actionId = crypto.randomUUID();
   for (let attempt = 0; ; attempt++) {
     try {
-      return await post(action, { ...payload, actionId });
+      return await post(action, { ...payload, actionId }, headers);
     } catch (err) {
       const retryable = err.status == null || RETRYABLE.has(err.status);
       if (!retryable || attempt >= 2) throw err;
@@ -92,3 +92,8 @@ export const placesSuggest = (input, sessionToken) =>
   post("placesSuggest", { input, sessionToken });
 export const placeDetails = (placeId, sessionToken) =>
   post("placeDetails", { placeId, sessionToken });
+// "Fill my 4": with a pairing (rematch) the seat token authorizes and the
+// counter lives on the pairing; without one (create screen) the auth header
+// identifies the account the counter lives on.
+export const fillMyFour = async ({ pairingId, role, token, occasion }) =>
+  mutate("fillMyFour", { pairingId, role, token, occasion }, await authHeaders());

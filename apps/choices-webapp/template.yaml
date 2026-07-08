@@ -126,6 +126,15 @@ Parameters:
       Google Cloud console). Blank = Places layer dormant: the proxy returns
       empty results and the client (via the PlacesEnabled output) never
       calls it.
+  BedrockModelId:
+    Type: String
+    Default: ""
+    Description: >
+      Bedrock model id for "Fill my 4" — use the US cross-region inference
+      profile us.anthropic.claude-haiku-4-5-20251001-v1:0 (enable Anthropic
+      model access in the Bedrock console first). Blank = feature dormant:
+      fillMyFour 400s and the client (via the AiEnabled output) hides the
+      button.
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
@@ -133,6 +142,7 @@ Conditions:
   HasOriginSecret: !Not [!Equals [!Ref OriginVerifySecret, ""]]
   HasCognito: !Not [!Equals [!Ref GoogleClientId, ""]]
   HasPlacesKey: !Not [!Equals [!Ref PlacesApiKey, ""]]
+  HasBedrock: !Not [!Equals [!Ref BedrockModelId, ""]]
 
 Globals:
   Function:
@@ -184,11 +194,20 @@ Resources:
           SUGGEST_BUCKET: !Ref SuggestDataBucket
           ANON_SALT: !Ref AnonSalt
           PLACES_API_KEY: !Ref PlacesApiKey
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GamesTable
         - S3WritePolicy:
             BucketName: !Ref SuggestDataBucket
+        # Cross-region inference profiles need InvokeModel on both the
+        # profile and the underlying regional foundation-model ARNs.
+        - Statement:
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource:
+                - !Sub "arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*"
+                - "arn:aws:bedrock:*::foundation-model/anthropic.*"
       FunctionUrlConfig:
         AuthType: NONE
         Cors:
@@ -423,3 +442,6 @@ Outputs:
   PlacesEnabled:
     Description: Whether the Places typeahead layer is live (VITE_PLACES_ENABLED)
     Value: !If [HasPlacesKey, "true", "false"]
+  AiEnabled:
+    Description: Whether "Fill my 4" is live (VITE_AI_ENABLED)
+    Value: !If [HasBedrock, "true", "false"]

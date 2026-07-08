@@ -6,6 +6,7 @@
 //
 // Actions: createPairing | claimSeat | getState | eliminate | rematch |
 // subscribe | linkClick | getMe | createCheckoutSession | createPortalSession
+// | getPairHistory | placesSuggest | placeDetails | fillMyFour
 // (+ POST /api/stripe-webhook, routed by path, raw-body signature verified)
 //
 // Accounts are optional: a Cognito ID token in the authorization header
@@ -39,6 +40,7 @@ import {
 } from "./billing.mjs";
 import { sendPush } from "./push.mjs";
 import { autocomplete, details, placesEnabled } from "./places.mjs";
+import { aiEnabled, fillFour } from "./suggestai.mjs";
 
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
@@ -138,6 +140,8 @@ export async function handler(event) {
         return reply(200, await doPlacesSuggest(body));
       case "placeDetails":
         return reply(200, await doPlaceDetails(body));
+      case "fillMyFour":
+        return reply(200, await doFillMyFour(body, user));
       case "getMe":
         return reply(200, await doGetMe(user));
       case "createCheckoutSession":
@@ -446,6 +450,111 @@ async function doPlaceDetails(body) {
 function sessionToken(body) {
   const t = body.sessionToken;
   return typeof t === "string" && t.length > 0 && t.length <= 64 ? t : undefined;
+}
+
+// --- "Fill my 4" (suggestion engine Phase 3) ---
+//
+// One Bedrock call per use, gated at AI_FREE_USES per calendar month
+// (premium = unlimited). Two contexts:
+//  - rematch (pairingId present): counter on the pairing item, premium if
+//    either linked seat's account is premium. Idempotent via actionId.
+//  - create screen (no pairing exists yet, so "counter on the pairing" is
+//    impossible there): requires sign-in; counter on the USER# item. The
+//    join flow and manual creation stay untouched and free.
+const AI_FREE_USES = 3;
+const utcMonth = () => new Date().toISOString().slice(0, 7);
+const AI_LIMIT_MSG = "You're out of free fills this month. Premium never runs out. 😏";
+
+async function doFillMyFour(body, user) {
+  if (!aiEnabled()) {
+    throw new HttpError(400, "AI fills are not enabled here.", "AI_DISABLED");
+  }
+  const occasion =
+    typeof body.occasion === "string" ? body.occasion.trim().slice(0, 40) : "";
+  if (body.pairingId) return fillForPairing(body, occasion);
+  return fillForUser(user, occasion);
+}
+
+async function fillForPairing(body, occasion) {
+  const { pairingId, role, token, actionId } = body;
+  const pairing = await loadPairing(pairingId);
+  assertToken(pairing, role, token);
+  // Replay of a landed fill: return the stored result, no second Bedrock
+  // call (mirrors mutatePairing's replay contract).
+  if (actionId && pairing.lastActionId === actionId && pairing.ai?.lastResult) {
+    return { choices: pairing.ai.lastResult, usesLeft: pairing.ai.usesLeft ?? null };
+  }
+
+  const month = utcMonth();
+  const uses = pairing.ai?.month === month ? pairing.ai.uses : 0;
+  const premium = await pairingHasPremium(pairing);
+  if (!premium && uses >= AI_FREE_USES) {
+    throw new HttpError(409, AI_LIMIT_MSG, "AI_LIMIT");
+  }
+
+  const hist = await loadHist(pairingId);
+  const choices = await fillFour({
+    historyEntries: Object.values(hist?.entries ?? {}),
+    occasion,
+  });
+  if (!choices) {
+    throw new HttpError(502, "Couldn't fill your 4 — try again.", "AI_FAILED");
+  }
+
+  const usesLeft = premium ? null : AI_FREE_USES - uses - 1;
+  await mutatePairing(body, (p) => {
+    const u = p.ai?.month === month ? p.ai.uses : 0;
+    if (!premium && u >= AI_FREE_USES) {
+      throw new HttpError(409, AI_LIMIT_MSG, "AI_LIMIT");
+    }
+    p.ai = { month, uses: u + 1, lastResult: choices, usesLeft };
+  });
+  return { choices, usesLeft };
+}
+
+async function fillForUser(user, occasion) {
+  if (!user) {
+    throw new HttpError(401, "Sign in to fill your 4.", "SIGN_IN_REQUIRED");
+  }
+  const item = await ensureUser(user);
+  const premium = isPremium(item);
+  const month = utcMonth();
+  const uses = item.aiUses?.month === month ? item.aiUses.uses : 0;
+  if (!premium && uses >= AI_FREE_USES) {
+    throw new HttpError(409, AI_LIMIT_MSG, "AI_LIMIT");
+  }
+
+  const choices = await fillFour({ occasion });
+  if (!choices) {
+    throw new HttpError(502, "Couldn't fill your 4 — try again.", "AI_FAILED");
+  }
+  await bumpUserAiUses(user.sub, month);
+  return { choices, usesLeft: premium ? null : AI_FREE_USES - uses - 1 };
+}
+
+async function pairingHasPremium(pairing) {
+  const userIds = [...new Set([pairing.userA, pairing.userB].filter(Boolean))];
+  for (const userId of userIds) {
+    const u = await loadUser(userId);
+    if (u && isPremium(u)) return true;
+  }
+  return false;
+}
+
+// Same optimistic-lock loop shape as updateUserPremium.
+async function bumpUserAiUses(userId, month) {
+  for (let attempt = 0; ; attempt++) {
+    const u = (await loadUser(userId)) ?? emptyUser(userId);
+    const uses = u.aiUses?.month === month ? u.aiUses.uses : 0;
+    u.aiUses = { month, uses: uses + 1 };
+    u.updatedAt = Date.now();
+    try {
+      await ddb.send(new PutCommand(versionedPut(u).Put));
+      return;
+    } catch (err) {
+      if (err?.name !== "ConditionalCheckFailedException" || attempt >= 1) throw err;
+    }
+  }
 }
 
 // Account profile + gated stats/history. Free accounts see games played and
