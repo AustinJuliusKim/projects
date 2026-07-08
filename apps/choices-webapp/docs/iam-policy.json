@@ -77,6 +77,21 @@
       ]
     },
     {
+      "Sid": "SuggestDataBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketTagging",
+        "s3:TagResource",
+        "s3:UntagResource",
+        "s3:ListBucket",
+        "s3:Get*"
+      ],
+      "Resource": "arn:aws:s3:::choiceswebapp-suggestdatabucket-*"
+    },
+    {
       "Sid": "LambdaManage",
       "Effect": "Allow",
       "Action": [
