@@ -137,7 +137,7 @@ export async function handler(event) {
       case "getPairHistory":
         return reply(200, await doGetPairHistory(body));
       case "placesSuggest":
-        return reply(200, await doPlacesSuggest(body));
+        return reply(200, await doPlacesSuggest(body, viewerGeo(event)));
       case "placeDetails":
         return reply(200, await doPlaceDetails(body));
       case "fillMyFour":
@@ -429,12 +429,27 @@ async function doGetPairHistory(body) {
 // L3 Places proxy. Unauthenticated by design — the create screen has no
 // pairing yet. Backstops: WAF per-IP rate cap, input validation here, and a
 // Places-API-restricted key that can be pulled (blanked) at any time.
-async function doPlacesSuggest(body) {
+async function doPlacesSuggest(body, geo) {
   const input = typeof body.input === "string" ? body.input.trim() : "";
   if (input.length < 2 || input.length > 60) {
     return { suggestions: [], enabled: placesEnabled() };
   }
-  return autocomplete(input, sessionToken(body));
+  // The 📍 Near me toggle: explicitly off -> ignore the viewer's location
+  // (road-trip case: picking choices for where you're headed). Absent/true
+  // keeps the geo-header bias — old clients never send the field.
+  return autocomplete(input, sessionToken(body), body.nearMe === false ? "off" : geo);
+}
+
+// Approximate viewer location from CloudFront's IP-derived geo headers
+// (added by the custom /api* origin request policy). City-level accuracy;
+// used only to bias the Places query upstream — never stored, never returned
+// (privacy posture). Absent on direct Function URL calls.
+function viewerGeo(event) {
+  const latitude = Number.parseFloat(event?.headers?.["cloudfront-viewer-latitude"]);
+  const longitude = Number.parseFloat(event?.headers?.["cloudfront-viewer-longitude"]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+  return { latitude, longitude };
 }
 
 async function doPlaceDetails(body) {

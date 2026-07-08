@@ -323,6 +323,34 @@ Resources:
           return request;
         }
 
+  # Custom origin request policy for /api*: forwards the viewer headers the
+  # API actually reads PLUS CloudFront's IP-derived geo headers, which power
+  # Places locationBias (suggestion engine L3) with zero permission prompts.
+  # Whitelist mode is forced: the managed AllViewerAndCloudFrontHeaders
+  # policy would forward Host, which Lambda Function URLs reject (same
+  # reason /api* previously used AllViewerExceptHostHeader). stripe-signature
+  # is load-bearing — the Stripe webhook rides this behavior and whitelist
+  # mode drops unlisted viewer headers. x-origin-verify is unaffected (it's
+  # an OriginCustomHeaders injection, not a viewer header).
+  ApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub "${AWS::StackName}-api-origin-request"
+        Comment: Viewer headers the API reads + CloudFront geo for Places bias
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - content-type
+            - authorization
+            - stripe-signature
+            - cloudfront-viewer-latitude
+            - cloudfront-viewer-longitude
+        CookiesConfig:
+          CookieBehavior: none
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
   SiteDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -379,9 +407,7 @@ Resources:
             # restore a custom 1s-TTL policy here (keyed on the getState
             # query strings) so the edge absorbs retry storms.
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            # AWS managed "AllViewerExceptHostHeader" origin request policy
-            # (Function URLs reject a forwarded viewer Host header)
-            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
 
   SiteBucketPolicy:
     Type: AWS::S3::BucketPolicy

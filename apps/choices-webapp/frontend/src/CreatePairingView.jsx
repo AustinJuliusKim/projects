@@ -8,6 +8,7 @@ import IosInstallHint from "./IosInstallHint.jsx";
 import TipJar, { PremiumTease } from "./support.jsx";
 import ChoiceInput from "./ChoiceInput.jsx";
 import FillMyFour from "./FillMyFour.jsx";
+import { useNearMe } from "./nearMeStore.js";
 
 export default function CreatePairingView({ onReady }) {
   const [choices, setChoices] = useState(["", "", "", ""]);
@@ -15,6 +16,7 @@ export default function CreatePairingView({ onReady }) {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [premiumInterest, setPremiumInterest] = useState(false);
+  const nearMe = useNearMe(); // corner 📍 pin state
 
   const setChoice = (i, v) =>
     setChoices((cs) => cs.map((c, j) => (j === i ? v : c)));
@@ -141,6 +143,7 @@ export default function CreatePairingView({ onReady }) {
             key={i}
             placeholder={`Choice ${i + 1}`}
             value={c}
+            nearMe={nearMe}
             onChange={(v) => setChoice(i, v)}
           />
         ))}
