@@ -159,6 +159,46 @@ h1 {
   font-size: 0.85rem;
 }
 
+/* Corner tools row: 📍 near-me pin + account pill share the fixed slot
+   (positioning moved up from .account-corner, which now lays out inside). */
+.corner-tools {
+  position: fixed;
+  top: max(10px, calc(env(safe-area-inset-top) + 6px));
+  right: max(16px, calc((100vw - 480px) / 2 + 20px));
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.near-me-pin {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  font-size: 1rem;
+  cursor: pointer;
+  transition:
+    transform 0.15s var(--ease-out-back),
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.near-me-pin:hover {
+  border-color: var(--indigo);
+}
+
+.near-me-pin:active {
+  transform: scale(0.94);
+}
+
+.near-me-pin.off {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
 .btn {
   display: block;
   width: 100%;
@@ -567,14 +607,9 @@ h1 {
   color: var(--muted);
 }
 
-/* Persistent corner pill to My games (AccountCorner.jsx). Pinned to the
-   .container's inner right edge on wide screens, the viewport edge on
-   phones. */
+/* Persistent corner pill to My games (AccountCorner.jsx). Lays out inside
+   .corner-tools, which owns the fixed corner positioning. */
 .account-corner {
-  position: fixed;
-  top: max(10px, calc(env(safe-area-inset-top) + 6px));
-  right: max(16px, calc((100vw - 480px) / 2 + 20px));
-  z-index: 50;
   display: inline-flex;
   align-items: center;
   gap: 6px;
