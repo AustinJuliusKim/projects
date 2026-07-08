@@ -1,7 +1,7 @@
 {
-  "name": "Choices — Elimination Game",
+  "name": "Choices — Decide what to eat, together",
   "short_name": "Choices",
-  "description": "Pick 4, take turns eliminating, last one wins.",
+  "description": "Decide what to eat, together. 4 choices, 3 cuts, 1 winner.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
