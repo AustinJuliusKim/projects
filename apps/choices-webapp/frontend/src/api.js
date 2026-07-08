@@ -88,9 +88,10 @@ export const linkClick = (pairingId, role, token, gameNumber, platform) =>
 // suggestion request is fine; the next keystroke is the retry).
 export const getPairHistory = (pairingId, role, token) =>
   post("getPairHistory", { pairingId, role, token });
-// nearMe travels only when off (absent = location-aware, the default).
-export const placesSuggest = (input, sessionToken, nearMe = true) =>
-  post("placesSuggest", { input, sessionToken, ...(nearMe ? {} : { nearMe: false }) });
+// geo ({latitude, longitude}, pre-rounded by nearMeStore) rides along only
+// while the 📍 pin is lit; absent = neutral suggestions.
+export const placesSuggest = (input, sessionToken, geo = null) =>
+  post("placesSuggest", { input, sessionToken, ...(geo ? { geo } : {}) });
 export const placeDetails = (placeId, sessionToken) =>
   post("placeDetails", { placeId, sessionToken });
 // "Fill my 4": with a pairing (rematch) the seat token authorizes and the

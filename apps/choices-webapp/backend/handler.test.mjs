@@ -769,11 +769,21 @@ test("placesSuggest proxies with the session token and clamps results", async ()
   assert.equal(body.input, "pizza");
   assert.equal(body.sessionToken, "s-1");
   assert.deepEqual(body.includedPrimaryTypes, ["restaurant"]);
-  assert.equal(body.locationBias, undefined); // no geo headers -> no bias
+  assert.ok(body.locationBias.rectangle); // no coords -> neutral world rect
   assert.equal(seen.opts.headers["X-Goog-Api-Key"], "places-key");
 });
 
-test("placesSuggest biases by the CloudFront viewer-geo headers", async () => {
+// Bias comes from body coords (browser geolocation via the 📍 pin) — a
+// world rectangle otherwise, because a bare omission would fall back to
+// Google IP-biasing the Lambda's region.
+const WORLD_RECT = {
+  rectangle: {
+    low: { latitude: -90, longitude: -180 },
+    high: { latitude: 90, longitude: 180 },
+  },
+};
+
+test("placesSuggest biases by body coords and never echoes them", async () => {
   process.env.PLACES_API_KEY = "places-key";
   let seen;
   _setPlacesFetchForTests(async (url, opts) => {
@@ -782,33 +792,23 @@ test("placesSuggest biases by the CloudFront viewer-geo headers", async () => {
   });
 
   const res = await handler(
-    postEvent(
-      { action: "placesSuggest", input: "pizza", sessionToken: "s-1" },
-      {
-        "cloudfront-viewer-latitude": "47.6062",
-        "cloudfront-viewer-longitude": "-122.3321",
-      }
-    )
+    postEvent({
+      action: "placesSuggest",
+      input: "pizza",
+      sessionToken: "s-1",
+      geo: { latitude: 47.61, longitude: -122.33 },
+    })
   );
   assert.equal(res.statusCode, 200);
   const body = JSON.parse(seen.opts.body);
   assert.deepEqual(body.locationBias, {
-    circle: { center: { latitude: 47.6062, longitude: -122.3321 }, radius: 30000 },
+    circle: { center: { latitude: 47.61, longitude: -122.33 }, radius: 30000 },
   });
   // Coordinates are used upstream only — never echoed to the client.
-  assert.ok(!res.body.includes("47.6062"));
+  assert.ok(!res.body.includes("47.61"));
 });
 
-// The 📍 Near me toggle off must send an explicit world rectangle — a bare
-// omission would fall back to Google IP-biasing the Lambda's region.
-const WORLD_RECT = {
-  rectangle: {
-    low: { latitude: -90, longitude: -180 },
-    high: { latitude: 90, longitude: 180 },
-  },
-};
-
-test("placesSuggest with nearMe off neutralizes location even when geo headers exist", async () => {
+test("placesSuggest without coords sends the neutral world rectangle", async () => {
   process.env.PLACES_API_KEY = "places-key";
   const bodies = [];
   _setPlacesFetchForTests(async (url, opts) => {
@@ -816,17 +816,8 @@ test("placesSuggest with nearMe off neutralizes location even when geo headers e
     return { ok: true, json: async () => ({ suggestions: [] }) };
   });
 
-  // With geo headers present…
-  await handler(
-    postEvent(
-      { action: "placesSuggest", input: "pizza", nearMe: false },
-      {
-        "cloudfront-viewer-latitude": "47.6062",
-        "cloudfront-viewer-longitude": "-122.3321",
-      }
-    )
-  );
-  // …and without them.
+  await handler(postEvent({ action: "placesSuggest", input: "pizza" }));
+  // Old clients may still send the retired nearMe flag — same neutral path.
   await handler(postEvent({ action: "placesSuggest", input: "pizza", nearMe: false }));
 
   assert.equal(bodies.length, 2);
@@ -834,7 +825,7 @@ test("placesSuggest with nearMe off neutralizes location even when geo headers e
   assert.deepEqual(bodies[1].locationBias, WORLD_RECT);
 });
 
-test("placesSuggest treats a non-false nearMe as location-aware", async () => {
+test("placesSuggest treats junk or out-of-range body coords as absent", async () => {
   process.env.PLACES_API_KEY = "places-key";
   const bodies = [];
   _setPlacesFetchForTests(async (url, opts) => {
@@ -842,38 +833,17 @@ test("placesSuggest treats a non-false nearMe as location-aware", async () => {
     return { ok: true, json: async () => ({ suggestions: [] }) };
   });
 
-  await handler(
-    postEvent(
-      { action: "placesSuggest", input: "pizza", nearMe: true },
-      {
-        "cloudfront-viewer-latitude": "47.6062",
-        "cloudfront-viewer-longitude": "-122.3321",
-      }
-    )
-  );
-  assert.equal(bodies[0].locationBias.circle.center.latitude, 47.6062);
-});
-
-test("placesSuggest ignores junk or out-of-range geo headers", async () => {
-  process.env.PLACES_API_KEY = "places-key";
-  const bodies = [];
-  _setPlacesFetchForTests(async (url, opts) => {
-    bodies.push(JSON.parse(opts.body));
-    return { ok: true, json: async () => ({ suggestions: [] }) };
-  });
-
-  for (const headers of [
-    { "cloudfront-viewer-latitude": "abc", "cloudfront-viewer-longitude": "-122" },
-    { "cloudfront-viewer-latitude": "999", "cloudfront-viewer-longitude": "-122" },
-    { "cloudfront-viewer-longitude": "-122" }, // latitude missing entirely
+  for (const geo of [
+    { latitude: "abc", longitude: -122 },
+    { latitude: 999, longitude: -122 },
+    { longitude: -122 }, // latitude missing entirely
+    "not-an-object",
   ]) {
-    const res = await handler(
-      postEvent({ action: "placesSuggest", input: "pizza" }, headers)
-    );
+    const res = await handler(postEvent({ action: "placesSuggest", input: "pizza", geo }));
     assert.equal(res.statusCode, 200);
   }
-  assert.equal(bodies.length, 3);
-  assert.ok(bodies.every((b) => b.locationBias === undefined));
+  assert.equal(bodies.length, 4);
+  assert.ok(bodies.every((b) => JSON.stringify(b.locationBias) === JSON.stringify(WORLD_RECT)));
 });
 
 test("placesSuggest validates input length without calling upstream", async () => {
