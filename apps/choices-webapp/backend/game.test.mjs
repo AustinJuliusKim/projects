@@ -44,6 +44,15 @@ test("createGame trims whitespace", () => {
   assert.deepEqual(g.choices, ["a", "b", "c", "d"]);
 });
 
+test("createGame strips control characters and caps label length", () => {
+  const g = createGame(["a\u0007b", "x".repeat(80), "c", "d  e"]);
+  assert.deepEqual(g.choices, ["ab", "x".repeat(60), "c", "d e"]);
+  assert.throws(
+    () => createGame(["\u200b", "b", "c", "d"]),
+    (e) => e.code === "EMPTY_CHOICE"
+  );
+});
+
 test("createGame rejects wrong count", () => {
   assert.throws(() => createGame(["a", "b", "c"]), (e) => e.code === "EXACTLY_FOUR");
   assert.throws(() => createGame(["a", "b", "c", "d", "e"]), (e) => e.code === "EXACTLY_FOUR");

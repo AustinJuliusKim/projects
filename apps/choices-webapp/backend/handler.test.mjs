@@ -1123,6 +1123,75 @@ test("fillMyFour surfaces an unparseable model reply as AI_FAILED", async () => 
   assert.equal(JSON.parse(res.body).code, "AI_FAILED");
 });
 
+const jEvent = (path) => ({
+  requestContext: { http: { method: "GET", path } },
+  rawPath: path,
+  headers: {},
+});
+
+test("GET /j/{code} renders an OG page with the choices and a join redirect", async () => {
+  process.env.SITE_URL = "https://example.test/";
+  ddbMock
+    .on(GetCommand, { Key: { pk: "CODE#PLUM-42" } })
+    .resolves({ Item: { pk: "CODE#PLUM-42", pairingId: "abc123" } });
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .resolves({ Item: pairingItem() });
+
+  const res = await handler(jEvent("/j/plum-42"));
+  assert.equal(res.statusCode, 200);
+  assert.match(res.headers["content-type"], /text\/html/);
+  assert.equal(res.headers["cache-control"], "no-store");
+  assert.ok(res.body.includes("Pizza vs Tacos vs Sushi vs Ramen"));
+  assert.ok(res.body.includes("/#/join?code=PLUM-42"));
+  assert.ok(res.body.includes("https://example.test/og-card.png"));
+  // The code IS the invite; tokens must never appear.
+  assert.ok(!res.body.includes("tok-a"));
+  assert.ok(!res.body.includes("tok-b"));
+  delete process.env.SITE_URL;
+});
+
+test("GET /j/{code} downgrades a profane label to the generic description", async () => {
+  ddbMock
+    .on(GetCommand, { Key: { pk: "CODE#PLUM-42" } })
+    .resolves({ Item: { pk: "CODE#PLUM-42", pairingId: "abc123" } });
+  const item = pairingItem();
+  item.game = createGame(["Pizza", "fuck this place", "Sushi", "Ramen"]);
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({ Item: item });
+
+  const res = await handler(jEvent("/j/PLUM-42"));
+  assert.equal(res.statusCode, 200);
+  assert.ok(res.body.includes("4 choices. 3 cuts. 1 winner."));
+  assert.ok(!res.body.includes("fuck"));
+  // The join redirect still carries the code — moderation never blocks play.
+  assert.ok(res.body.includes("/#/join?code=PLUM-42"));
+});
+
+test("GET /j/ with an unknown or missing code falls back to the generic page", async () => {
+  ddbMock.on(GetCommand).resolves({});
+
+  const unknown = await handler(jEvent("/j/NOPE-99"));
+  assert.equal(unknown.statusCode, 200);
+  assert.ok(unknown.body.includes("4 choices. 3 cuts. 1 winner."));
+  assert.ok(unknown.body.includes("/#/join"));
+  assert.ok(!unknown.body.includes("join?code="));
+
+  const missing = await handler(jEvent("/j/"));
+  assert.equal(missing.statusCode, 200);
+});
+
+test("GET /j/ escapes HTML in choice labels", async () => {
+  ddbMock
+    .on(GetCommand, { Key: { pk: "CODE#PLUM-42" } })
+    .resolves({ Item: { pk: "CODE#PLUM-42", pairingId: "abc123" } });
+  const item = pairingItem();
+  item.game = createGame(['a"><script>x</script>', "b", "c", "d"]);
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({ Item: item });
+
+  const res = await handler(jEvent("/j/PLUM-42"));
+  assert.ok(!res.body.includes("<script>x</script>"));
+});
+
 test("origin header enforced only when flag is on", async () => {
   ddbMock.on(GetCommand).resolves({ Item: pairingItem() });
   const query = { action: "getState", pairingId: "abc123", role: "A", token: "tok-a" };
