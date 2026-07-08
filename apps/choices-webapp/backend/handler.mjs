@@ -38,6 +38,7 @@ import {
   BillingError,
 } from "./billing.mjs";
 import { sendPush } from "./push.mjs";
+import { autocomplete, details, placesEnabled } from "./places.mjs";
 
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
@@ -131,6 +132,12 @@ export async function handler(event) {
         return reply(200, await doSubscribe(body));
       case "linkClick":
         return reply(200, await doLinkClick(body));
+      case "getPairHistory":
+        return reply(200, await doGetPairHistory(body));
+      case "placesSuggest":
+        return reply(200, await doPlacesSuggest(body));
+      case "placeDetails":
+        return reply(200, await doPlaceDetails(body));
       case "getMe":
         return reply(200, await doGetMe(user));
       case "createCheckoutSession":
@@ -402,6 +409,43 @@ async function doLinkClick(body) {
     pairing.game = applyLinkClick(pairing.game, role, platform);
   });
   return { ok: true };
+}
+
+// --- Suggestions (typeahead, suggestion engine Phase 1) ---
+
+// L1 pair memory for the rematch form. Seat-token-authed; called once per
+// session by the client, never on the poll path.
+async function doGetPairHistory(body) {
+  const pairing = await loadPairing(body.pairingId);
+  assertToken(pairing, body.role, body.token);
+  const hist = await loadHist(body.pairingId);
+  return { entries: Object.values(hist?.entries ?? {}) };
+}
+
+// L3 Places proxy. Unauthenticated by design — the create screen has no
+// pairing yet. Backstops: WAF per-IP rate cap, input validation here, and a
+// Places-API-restricted key that can be pulled (blanked) at any time.
+async function doPlacesSuggest(body) {
+  const input = typeof body.input === "string" ? body.input.trim() : "";
+  if (input.length < 2 || input.length > 60) {
+    return { suggestions: [], enabled: placesEnabled() };
+  }
+  return autocomplete(input, sessionToken(body));
+}
+
+async function doPlaceDetails(body) {
+  const { placeId } = body;
+  if (typeof placeId !== "string" || !placeId || placeId.length > 300) {
+    throw new HttpError(400, "Missing placeId");
+  }
+  return details(placeId, sessionToken(body));
+}
+
+// Client-generated per-focus token forwarded verbatim (Places session
+// billing); anything oversized or non-string is dropped, never rejected.
+function sessionToken(body) {
+  const t = body.sessionToken;
+  return typeof t === "string" && t.length > 0 && t.length <= 64 ? t : undefined;
 }
 
 // Account profile + gated stats/history. Free accounts see games played and

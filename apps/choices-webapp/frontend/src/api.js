@@ -84,3 +84,11 @@ export const subscribe = (pairingId, role, token, subscription) =>
   post("subscribe", { pairingId, role, token, subscription });
 export const linkClick = (pairingId, role, token, gameNumber, platform) =>
   mutate("linkClick", { pairingId, role, token, gameNumber, platform });
+// Suggestion lookups are best-effort plain posts — no retry wrapper (a lost
+// suggestion request is fine; the next keystroke is the retry).
+export const getPairHistory = (pairingId, role, token) =>
+  post("getPairHistory", { pairingId, role, token });
+export const placesSuggest = (input, sessionToken) =>
+  post("placesSuggest", { input, sessionToken });
+export const placeDetails = (placeId, sessionToken) =>
+  post("placeDetails", { placeId, sessionToken });

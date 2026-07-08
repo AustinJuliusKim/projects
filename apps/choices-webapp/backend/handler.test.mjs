@@ -15,6 +15,7 @@ import { handler } from "./handler.mjs";
 import { createGame, applyElimination } from "./game.mjs";
 import { _setVerifierForTests } from "./auth.mjs";
 import { _setStripeForTests } from "./billing.mjs";
+import { _setPlacesFetchForTests } from "./places.mjs";
 
 // Fake Cognito verifier: token "good-token" -> user u-1; anything else throws.
 function fakeVerifier() {
@@ -73,6 +74,8 @@ beforeEach(() => {
   delete process.env.STRIPE_SECRET_KEY;
   delete process.env.SUGGEST_BUCKET;
   delete process.env.ANON_SALT;
+  delete process.env.PLACES_API_KEY;
+  _setPlacesFetchForTests(null);
   process.env.USER_POOL_ID = "pool";
   process.env.USER_POOL_CLIENT_ID = "client";
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
@@ -678,6 +681,153 @@ test("billing actions 400 when Stripe is not configured", async () => {
   );
   assert.equal(res.statusCode, 400);
   assert.equal(JSON.parse(res.body).code, "BILLING_DISABLED");
+});
+
+test("getPairHistory requires a valid seat token", async () => {
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .resolves({ Item: pairingItem() });
+
+  const res = await handler(
+    postEvent({ action: "getPairHistory", pairingId: "abc123", role: "A", token: "wrong" })
+  );
+  assert.equal(res.statusCode, 403);
+});
+
+test("getPairHistory returns entries, empty before any game finishes, and never leaks credentials", async () => {
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .resolves({ Item: pairingItem() });
+  ddbMock.on(GetCommand, { Key: { pk: "HIST#abc123" } }).resolves({});
+
+  const empty = await handler(
+    postEvent({ action: "getPairHistory", pairingId: "abc123", role: "A", token: "tok-a" })
+  );
+  assert.equal(empty.statusCode, 200);
+  assert.deepEqual(JSON.parse(empty.body), { entries: [] });
+
+  const entry = { label: "Ramen", entryCount: 2, winCount: 1, lastAt: 1000 };
+  ddbMock
+    .on(GetCommand, { Key: { pk: "HIST#abc123" } })
+    .resolves({ Item: { pk: "HIST#abc123", entries: { ramen: entry } } });
+
+  const res = await handler(
+    postEvent({ action: "getPairHistory", pairingId: "abc123", role: "A", token: "tok-a" })
+  );
+  assert.deepEqual(JSON.parse(res.body).entries, [entry]);
+  assert.ok(!res.body.includes("PLUM-42"));
+  assert.ok(!res.body.includes("tok-a"));
+  assert.ok(!res.body.includes("tok-b"));
+});
+
+test("placesSuggest without a key reports disabled and never calls upstream", async () => {
+  let called = 0;
+  _setPlacesFetchForTests(async () => {
+    called++;
+    return { ok: true, json: async () => ({}) };
+  });
+
+  const res = await handler(
+    postEvent({ action: "placesSuggest", input: "piz", sessionToken: "s-1" })
+  );
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(JSON.parse(res.body), { suggestions: [], enabled: false });
+  assert.equal(called, 0);
+});
+
+test("placesSuggest proxies with the session token and clamps results", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  let seen;
+  _setPlacesFetchForTests(async (url, opts) => {
+    seen = { url, opts };
+    return {
+      ok: true,
+      json: async () => ({
+        suggestions: Array.from({ length: 8 }, (_, i) => ({
+          placePrediction: {
+            placeId: `place-${i}`,
+            structuredFormat: { mainText: { text: `Pizza Spot ${i}` } },
+          },
+        })),
+      }),
+    };
+  });
+
+  const res = await handler(
+    postEvent({ action: "placesSuggest", input: "pizza", sessionToken: "s-1" })
+  );
+  assert.equal(res.statusCode, 200);
+  const data = JSON.parse(res.body);
+  assert.equal(data.enabled, true);
+  assert.equal(data.suggestions.length, 5); // clamped
+  assert.deepEqual(data.suggestions[0], { text: "Pizza Spot 0", placeId: "place-0" });
+
+  const body = JSON.parse(seen.opts.body);
+  assert.equal(body.input, "pizza");
+  assert.equal(body.sessionToken, "s-1");
+  assert.deepEqual(body.includedPrimaryTypes, ["restaurant"]);
+  assert.equal(seen.opts.headers["X-Goog-Api-Key"], "places-key");
+});
+
+test("placesSuggest validates input length without calling upstream", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  let called = 0;
+  _setPlacesFetchForTests(async () => {
+    called++;
+    return { ok: true, json: async () => ({}) };
+  });
+
+  const short = await handler(postEvent({ action: "placesSuggest", input: "p" }));
+  assert.deepEqual(JSON.parse(short.body), { suggestions: [], enabled: true });
+  const long = await handler(
+    postEvent({ action: "placesSuggest", input: "x".repeat(61) })
+  );
+  assert.deepEqual(JSON.parse(long.body), { suggestions: [], enabled: true });
+  assert.equal(called, 0);
+});
+
+test("placesSuggest degrades to empty results when upstream fails", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  _setPlacesFetchForTests(async () => ({ ok: false, status: 429, json: async () => ({}) }));
+
+  const res = await handler(postEvent({ action: "placesSuggest", input: "pizza" }));
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(JSON.parse(res.body), { suggestions: [], enabled: true });
+});
+
+test("placeDetails terminates the session with the Essentials field mask", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  let seen;
+  _setPlacesFetchForTests(async (url, opts) => {
+    seen = { url, opts };
+    return {
+      ok: true,
+      json: async () => ({
+        id: "place-1",
+        displayName: { text: "Pizza Spot" },
+        formattedAddress: "1 Main St",
+      }),
+    };
+  });
+
+  const res = await handler(
+    postEvent({ action: "placeDetails", placeId: "place-1", sessionToken: "s-1" })
+  );
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(JSON.parse(res.body).place, {
+    id: "place-1",
+    name: "Pizza Spot",
+    address: "1 Main St",
+  });
+  assert.ok(seen.url.includes("/places/place-1"));
+  assert.ok(seen.url.includes("sessionToken=s-1"));
+  assert.equal(
+    seen.opts.headers["X-Goog-FieldMask"],
+    "id,displayName,formattedAddress"
+  );
+
+  const missing = await handler(postEvent({ action: "placeDetails" }));
+  assert.equal(missing.statusCode, 400);
 });
 
 test("origin header enforced only when flag is on", async () => {

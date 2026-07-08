@@ -5,6 +5,7 @@ import { enablePush, pushSupported } from "./push.js";
 import { isNative, WEB_ORIGIN } from "./platform.js";
 import IosInstallHint from "./IosInstallHint.jsx";
 import TipJar, { PremiumTease } from "./support.jsx";
+import ChoiceInput from "./ChoiceInput.jsx";
 
 export default function CreatePairingView({ onReady }) {
   const [choices, setChoices] = useState(["", "", "", ""]);
@@ -129,13 +130,11 @@ export default function CreatePairingView({ onReady }) {
       </p>
       <form onSubmit={onCreate}>
         {choices.map((c, i) => (
-          <input
+          <ChoiceInput
             key={i}
-            className="choice-input"
             placeholder={`Choice ${i + 1}`}
             value={c}
-            maxLength={60}
-            onChange={(e) => setChoice(i, e.target.value)}
+            onChange={(v) => setChoice(i, v)}
           />
         ))}
         {error && <p className="error">{error}</p>}
