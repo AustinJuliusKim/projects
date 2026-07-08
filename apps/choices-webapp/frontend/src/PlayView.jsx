@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
-import { getState, eliminate, rematch, linkClick, getPairHistory } from "./api.js";
+import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour } from "./api.js";
 import ChoiceInput from "./ChoiceInput.jsx";
+import FillMyFour from "./FillMyFour.jsx";
 import { PLATFORMS } from "./affiliates.js";
 import TipJar from "./support.jsx";
 import { WinnerAccountLine } from "./AccountView.jsx";
@@ -406,6 +407,10 @@ export default function PlayView({ identity, onLeave }) {
           <p className="muted">
             Pick 4 new choices. Player {other} cuts first.
           </p>
+          <FillMyFour
+            request={(occasion) => fillMyFour({ pairingId, role, token, occasion })}
+            onFill={(cs) => setRematchChoices(cs)}
+          />
           {rematchChoices.map((c, i) => (
             <ChoiceInput
               key={i}

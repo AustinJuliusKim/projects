@@ -128,6 +128,37 @@ h1 {
   color: var(--muted);
 }
 
+/* "Fill my 4" (occasion chips + fill button) */
+.fill-four {
+  margin-bottom: 16px;
+}
+
+.occasion-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.chip.active {
+  border-color: var(--indigo);
+  background: rgba(79, 70, 229, 0.25);
+}
+
+.fill-note {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+}
+
 .btn {
   display: block;
   width: 100%;

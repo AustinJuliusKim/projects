@@ -16,6 +16,7 @@ import { createGame, applyElimination } from "./game.mjs";
 import { _setVerifierForTests } from "./auth.mjs";
 import { _setStripeForTests } from "./billing.mjs";
 import { _setPlacesFetchForTests } from "./places.mjs";
+import { _setBedrockForTests } from "./suggestai.mjs";
 
 // Fake Cognito verifier: token "good-token" -> user u-1; anything else throws.
 function fakeVerifier() {
@@ -75,7 +76,9 @@ beforeEach(() => {
   delete process.env.SUGGEST_BUCKET;
   delete process.env.ANON_SALT;
   delete process.env.PLACES_API_KEY;
+  delete process.env.BEDROCK_MODEL_ID;
   _setPlacesFetchForTests(null);
+  _setBedrockForTests(null);
   process.env.USER_POOL_ID = "pool";
   process.env.USER_POOL_CLIENT_ID = "client";
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
@@ -828,6 +831,222 @@ test("placeDetails terminates the session with the Essentials field mask", async
 
   const missing = await handler(postEvent({ action: "placeDetails" }));
   assert.equal(missing.statusCode, 400);
+});
+
+// Fake Bedrock: counts invocations, returns a canned 4-choice reply.
+function fakeBedrock(reply = '["Pizza", "Tacos", "Sushi", "Ramen"]') {
+  const calls = [];
+  return {
+    calls,
+    send: async (cmd) => {
+      calls.push(cmd);
+      return { output: { message: { content: [{ text: reply }] } } };
+    },
+  };
+}
+
+const CURRENT_MONTH = new Date().toISOString().slice(0, 7);
+
+test("fillMyFour 400s when Bedrock is not configured", async () => {
+  const res = await handler(postEvent({ action: "fillMyFour" }));
+  assert.equal(res.statusCode, 400);
+  assert.equal(JSON.parse(res.body).code, "AI_DISABLED");
+});
+
+test("fillMyFour on the create screen requires sign-in", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  _setBedrockForTests(fakeBedrock());
+  const res = await handler(postEvent({ action: "fillMyFour", occasion: "Date night" }));
+  assert.equal(res.statusCode, 401);
+  assert.equal(JSON.parse(res.body).code, "SIGN_IN_REQUIRED");
+});
+
+test("fillMyFour on the create screen counts uses on the account", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  const bedrock = fakeBedrock();
+  _setBedrockForTests(bedrock);
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: {
+      pk: "USER#u-1", userId: "u-1", version: 1,
+      stats: {}, recentGames: [], premium: { status: "none" },
+    },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(
+    postEvent(
+      { action: "fillMyFour", occasion: "Date night" },
+      { authorization: "Bearer good-token" }
+    )
+  );
+  assert.equal(res.statusCode, 200);
+  const data = JSON.parse(res.body);
+  assert.deepEqual(data.choices, ["Pizza", "Tacos", "Sushi", "Ramen"]);
+  assert.equal(data.usesLeft, 2);
+  assert.equal(bedrock.calls.length, 1);
+
+  const saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input.Item;
+  assert.deepEqual(saved.aiUses, { month: CURRENT_MONTH, uses: 1 });
+});
+
+test("fillMyFour enforces the monthly cap and resets on rollover", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  const bedrock = fakeBedrock();
+  _setBedrockForTests(bedrock);
+  const userItem = (aiUses) => ({
+    pk: "USER#u-1", userId: "u-1", version: 1,
+    stats: {}, recentGames: [], premium: { status: "none" }, aiUses,
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  // At the cap this month -> blocked before any Bedrock call.
+  ddbMock
+    .on(GetCommand, { Key: { pk: "USER#u-1" } })
+    .resolves({ Item: userItem({ month: CURRENT_MONTH, uses: 3 }) });
+  const blocked = await handler(
+    postEvent({ action: "fillMyFour" }, { authorization: "Bearer good-token" })
+  );
+  assert.equal(blocked.statusCode, 409);
+  assert.equal(JSON.parse(blocked.body).code, "AI_LIMIT");
+  assert.equal(bedrock.calls.length, 0);
+
+  // Same uses recorded against an old month -> fresh allowance.
+  ddbMock
+    .on(GetCommand, { Key: { pk: "USER#u-1" } })
+    .resolves({ Item: userItem({ month: "2020-01", uses: 3 }) });
+  const rolled = await handler(
+    postEvent({ action: "fillMyFour" }, { authorization: "Bearer good-token" })
+  );
+  assert.equal(rolled.statusCode, 200);
+  assert.equal(JSON.parse(rolled.body).usesLeft, 2);
+});
+
+test("fillMyFour is unlimited for premium accounts", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  _setBedrockForTests(fakeBedrock());
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: {
+      pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [],
+      premium: { status: "active" },
+      aiUses: { month: CURRENT_MONTH, uses: 99 },
+    },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(
+    postEvent({ action: "fillMyFour" }, { authorization: "Bearer good-token" })
+  );
+  assert.equal(res.statusCode, 200);
+  assert.equal(JSON.parse(res.body).usesLeft, null);
+});
+
+test("fillMyFour on a pairing counts on the pairing and feeds pair history to the prompt", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  const bedrock = fakeBedrock();
+  _setBedrockForTests(bedrock);
+  ddbMock.on(GetCommand).resolves({});
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .resolves({ Item: pairingItem() });
+  ddbMock.on(GetCommand, { Key: { pk: "HIST#abc123" } }).resolves({
+    Item: {
+      pk: "HIST#abc123",
+      entries: { ramen: { label: "Ramen", entryCount: 2, winCount: 1, lastAt: 1 } },
+    },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(
+    postEvent({
+      action: "fillMyFour",
+      pairingId: "abc123",
+      role: "A",
+      token: "tok-a",
+      occasion: "Date night",
+      actionId: "aid-fill",
+    })
+  );
+  assert.equal(res.statusCode, 200);
+  const data = JSON.parse(res.body);
+  assert.equal(data.usesLeft, 2);
+
+  const prompt = bedrock.calls[0].input.messages[0].content[0].text;
+  assert.ok(prompt.includes("Ramen (won 1x)"));
+  assert.ok(prompt.includes("Occasion: Date night"));
+
+  const saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input;
+  assert.equal(saved.Item.pk, "PAIR#abc123");
+  assert.equal(saved.Item.ai.uses, 1);
+  assert.equal(saved.Item.ai.month, CURRENT_MONTH);
+  assert.deepEqual(saved.Item.ai.lastResult, ["Pizza", "Tacos", "Sushi", "Ramen"]);
+  assert.equal(saved.ConditionExpression, "version = :v");
+});
+
+test("fillMyFour on a pairing blocks at the cap without calling Bedrock", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  const bedrock = fakeBedrock();
+  _setBedrockForTests(bedrock);
+  ddbMock.on(GetCommand).resolves({});
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({
+    Item: pairingItem({ ai: { month: CURRENT_MONTH, uses: 3 } }),
+  });
+
+  const res = await handler(
+    postEvent({ action: "fillMyFour", pairingId: "abc123", role: "A", token: "tok-a" })
+  );
+  assert.equal(res.statusCode, 409);
+  assert.equal(JSON.parse(res.body).code, "AI_LIMIT");
+  assert.equal(bedrock.calls.length, 0);
+});
+
+test("fillMyFour replays a duplicate actionId without a second Bedrock call", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  const bedrock = fakeBedrock();
+  _setBedrockForTests(bedrock);
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({
+    Item: pairingItem({
+      lastActionId: "aid-fill",
+      ai: {
+        month: CURRENT_MONTH,
+        uses: 1,
+        usesLeft: 2,
+        lastResult: ["Pizza", "Tacos", "Sushi", "Ramen"],
+      },
+    }),
+  });
+
+  const res = await handler(
+    postEvent({
+      action: "fillMyFour",
+      pairingId: "abc123",
+      role: "A",
+      token: "tok-a",
+      actionId: "aid-fill",
+    })
+  );
+  assert.equal(res.statusCode, 200);
+  const data = JSON.parse(res.body);
+  assert.deepEqual(data.choices, ["Pizza", "Tacos", "Sushi", "Ramen"]);
+  assert.equal(data.usesLeft, 2);
+  assert.equal(bedrock.calls.length, 0);
+  assert.equal(ddbMock.commandCalls(PutCommand).length, 0);
+});
+
+test("fillMyFour surfaces an unparseable model reply as AI_FAILED", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  _setBedrockForTests(fakeBedrock("I would suggest pizza and tacos!"));
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: {
+      pk: "USER#u-1", userId: "u-1", version: 1,
+      stats: {}, recentGames: [], premium: { status: "none" },
+    },
+  });
+
+  const res = await handler(
+    postEvent({ action: "fillMyFour" }, { authorization: "Bearer good-token" })
+  );
+  assert.equal(res.statusCode, 502);
+  assert.equal(JSON.parse(res.body).code, "AI_FAILED");
 });
 
 test("origin header enforced only when flag is on", async () => {

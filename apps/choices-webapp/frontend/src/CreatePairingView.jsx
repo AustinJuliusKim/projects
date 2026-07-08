@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { createPairing, claimSeat, linkClick } from "./api.js";
+import { createPairing, claimSeat, linkClick, fillMyFour } from "./api.js";
+import { hasSession } from "./auth.js";
 import { saveIdentity } from "./storage.js";
 import { enablePush, pushSupported } from "./push.js";
 import { isNative, WEB_ORIGIN } from "./platform.js";
 import IosInstallHint from "./IosInstallHint.jsx";
 import TipJar, { PremiumTease } from "./support.jsx";
 import ChoiceInput from "./ChoiceInput.jsx";
+import FillMyFour from "./FillMyFour.jsx";
 
 export default function CreatePairingView({ onReady }) {
   const [choices, setChoices] = useState(["", "", "", ""]);
@@ -129,6 +131,11 @@ export default function CreatePairingView({ onReady }) {
         last one standing wins.
       </p>
       <form onSubmit={onCreate}>
+        <FillMyFour
+          signedIn={hasSession()}
+          request={(occasion) => fillMyFour({ occasion })}
+          onFill={(cs) => setChoices(cs)}
+        />
         {choices.map((c, i) => (
           <ChoiceInput
             key={i}
