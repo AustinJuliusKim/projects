@@ -116,12 +116,23 @@ Parameters:
       engine Phase 0). Generate with `openssl rand -hex 32` and pass via
       --parameter-overrides. Blank = anonymized S3 logging disabled
       (HIST# pair memory still recorded).
+  PlacesApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >
+      Google Places API (New) key for the typeahead L3 layer, used only
+      server-side by the Lambda proxy (restrict the key to that API in the
+      Google Cloud console). Blank = Places layer dormant: the proxy returns
+      empty results and the client (via the PlacesEnabled output) never
+      calls it.
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
   HasWebAcl: !Not [!Equals [!Ref WebAclArn, ""]]
   HasOriginSecret: !Not [!Equals [!Ref OriginVerifySecret, ""]]
   HasCognito: !Not [!Equals [!Ref GoogleClientId, ""]]
+  HasPlacesKey: !Not [!Equals [!Ref PlacesApiKey, ""]]
 
 Globals:
   Function:
@@ -172,6 +183,7 @@ Resources:
           SITE_URL: !Ref CognitoCallbackUrl
           SUGGEST_BUCKET: !Ref SuggestDataBucket
           ANON_SALT: !Ref AnonSalt
+          PLACES_API_KEY: !Ref PlacesApiKey
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GamesTable
@@ -408,3 +420,6 @@ Outputs:
     Description: Public SPA client id (VITE_COGNITO_CLIENT_ID)
     Condition: HasCognito
     Value: !Ref UserPoolClient
+  PlacesEnabled:
+    Description: Whether the Places typeahead layer is live (VITE_PLACES_ENABLED)
+    Value: !If [HasPlacesKey, "true", "false"]
