@@ -33,6 +33,8 @@ COGNITO_CLIENT_ID="$(get_output UserPoolClientId)"
 # "true" only when the stack holds a Places key ("None" on older stacks).
 PLACES_ENABLED="$(get_output PlacesEnabled)"
 [ "$PLACES_ENABLED" = "None" ] && PLACES_ENABLED="false"
+AI_ENABLED="$(get_output AiEnabled)"
+[ "$AI_ENABLED" = "None" ] && AI_ENABLED="false"
 
 if [ -z "$BUCKET" ] || [ "$BUCKET" = "None" ]; then
   echo "ERROR: SiteBucketName output not found. Did you run 'sam deploy' with the latest template?" >&2
@@ -43,9 +45,9 @@ echo "Building frontend…"
 # Tip links come from the caller's environment (GitHub Actions repo vars);
 # empty values leave the tip UI hidden.
 ( cd frontend && \
-  printf 'VITE_API_URL=%s\nVITE_VAPID_PUBLIC_KEY=%s\nVITE_TIP_VENMO_URL=%s\nVITE_TIP_STRIPE_URL=%s\nVITE_COGNITO_DOMAIN=%s\nVITE_COGNITO_CLIENT_ID=%s\nVITE_PLACES_ENABLED=%s\n' \
+  printf 'VITE_API_URL=%s\nVITE_VAPID_PUBLIC_KEY=%s\nVITE_TIP_VENMO_URL=%s\nVITE_TIP_STRIPE_URL=%s\nVITE_COGNITO_DOMAIN=%s\nVITE_COGNITO_CLIENT_ID=%s\nVITE_PLACES_ENABLED=%s\nVITE_AI_ENABLED=%s\n' \
     "$API_URL" "$VAPID_PUBLIC_KEY" "${VITE_TIP_VENMO_URL:-}" "${VITE_TIP_STRIPE_URL:-}" \
-    "$COGNITO_DOMAIN" "$COGNITO_CLIENT_ID" "$PLACES_ENABLED" > .env && \
+    "$COGNITO_DOMAIN" "$COGNITO_CLIENT_ID" "$PLACES_ENABLED" "$AI_ENABLED" > .env && \
   npm run build )
 
 echo "Uploading to s3://$BUCKET …"

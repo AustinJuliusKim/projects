@@ -13,7 +13,7 @@ const MIN_QUERY = 2;
 // Autocomplete via our Lambda proxy — debounced, one session token per input
 // focus, terminated by placeDetails on selection (that's what closes the
 // billing session).
-export default function ChoiceInput({ value, onChange, placeholder, pairEntries = [] }) {
+export default function ChoiceInput({ value, onChange, placeholder, pairEntries = [], nearMe = true }) {
   const [placesResults, setPlacesResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
@@ -34,14 +34,14 @@ export default function ChoiceInput({ value, onChange, placeholder, pairEntries 
     const seq = ++seqRef.current;
     const timer = setTimeout(async () => {
       try {
-        const res = await placesSuggest(q, sessionRef.current);
+        const res = await placesSuggest(q, sessionRef.current, nearMe);
         if (seq === seqRef.current) setPlacesResults(res.suggestions ?? []);
       } catch {
         /* suggestions are best-effort */
       }
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [value, open]);
+  }, [value, open, nearMe]);
 
   function onFocus() {
     if (!sessionRef.current) sessionRef.current = crypto.randomUUID();
