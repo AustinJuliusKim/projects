@@ -210,10 +210,12 @@ test("applyLinkClick accepts support platforms before a winner exists", () => {
   g = applyLinkClick(g, "A", "premium-interest", 100);
   g = applyLinkClick(g, "A", "tip-venmo", 200);
   g = applyLinkClick(g, "B", "tip-stripe", 300);
+  g = applyLinkClick(g, "B", "share-reveal", 400);
   assert.deepEqual(g.linkClicks, [
     { platform: "premium-interest", by: "A", at: 100 },
     { platform: "tip-venmo", by: "A", at: 200 },
     { platform: "tip-stripe", by: "B", at: 300 },
+    { platform: "share-reveal", by: "B", at: 400 },
   ]);
 });
 

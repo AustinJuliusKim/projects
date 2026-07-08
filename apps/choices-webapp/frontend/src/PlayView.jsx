@@ -4,6 +4,7 @@ import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour } from "./api.js";
 import ChoiceInput from "./ChoiceInput.jsx";
 import FillMyFour from "./FillMyFour.jsx";
+import { drawRevealCard } from "./revealCard.js";
 import { PLATFORMS } from "./affiliates.js";
 import TipJar from "./support.jsx";
 import { WinnerAccountLine } from "./AccountView.jsx";
@@ -223,6 +224,50 @@ export default function PlayView({ identity, onLeave }) {
     linkClick(pairingId, role, token, state.gameNumber, platform).catch(() => {});
   }
 
+  // Reveal card share (growth §8 channel #1). Canvas -> native share sheet
+  // (Capacitor), web share sheet, or a plain download — whichever this
+  // device supports.
+  async function onShareReveal() {
+    reportLinkClick("share-reveal");
+    const canvas = document.createElement("canvas");
+    drawRevealCard(canvas, {
+      winner: winnerName,
+      losers: game.choices.filter((_, i) => i !== game.winnerIndex),
+    });
+    if (isNative) {
+      try {
+        const { Filesystem, Directory } = await import("@capacitor/filesystem");
+        const { Share } = await import("@capacitor/share");
+        const file = await Filesystem.writeFile({
+          path: "choices-reveal.png",
+          data: canvas.toDataURL("image/png").split(",")[1],
+          directory: Directory.Cache,
+        });
+        await Share.share({ title: "Choices", files: [file.uri] });
+      } catch {
+        /* sheet dismissed */
+      }
+      return;
+    }
+    const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+    if (!blob) return;
+    const file = new File([blob], "choices-reveal.png", { type: "image/png" });
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        return;
+      } catch {
+        /* cancelled -> fall through to download */
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "choices-reveal.png";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
   // Native shell: target="_blank" handling in WKWebView is unreliable — open
   // outbound links in SFSafariViewController (user stays in the app,
   // affiliate redirect chains work).
@@ -290,7 +335,7 @@ export default function PlayView({ identity, onLeave }) {
   return (
     <div className="container">
       <h1 key={complete ? "won" : "play"} className="fade-swap">
-        {complete ? "We have a winner! 🏆" : "Cut a choice"}
+        {complete ? "Dinner's decided 🏆" : "Cut a choice"}
       </h1>
 
       {!state.bothJoined &&
@@ -310,8 +355,8 @@ export default function PlayView({ identity, onLeave }) {
       {!complete && state.bothJoined && (
         <div className={`banner ${myTurn ? "your-turn" : "waiting"}`}>
           {myTurn
-            ? "Your turn — tap a choice to cut it."
-            : `Waiting for player ${game.turn}…`}
+            ? "Your move. Cut one. 😏"
+            : `Waiting on player ${game.turn} to cut…`}
         </div>
       )}
 
@@ -390,6 +435,9 @@ export default function PlayView({ identity, onLeave }) {
                   Not affiliated with or endorsed by these platforms.
                 </p>
                 <div className="reveal" style={{ "--d": "850ms" }}>
+                  <button className="btn" onClick={onShareReveal}>
+                    📸 Share the reveal
+                  </button>
                   <TipJar compact onTip={reportLinkClick} />
                   {complete && <WinnerAccountLine />}
                 </div>
@@ -403,7 +451,7 @@ export default function PlayView({ identity, onLeave }) {
 
       {complete && iCanRematch && (
         <form className="rematch" onSubmit={onRematch}>
-          <h2>Start the next game</h2>
+          <h2>Give them Choices</h2>
           <p className="muted">
             Pick 4 new choices. Player {other} cuts first.
           </p>
