@@ -137,7 +137,7 @@ export async function handler(event) {
       case "getPairHistory":
         return reply(200, await doGetPairHistory(body));
       case "placesSuggest":
-        return reply(200, await doPlacesSuggest(body, viewerGeo(event)));
+        return reply(200, await doPlacesSuggest(body));
       case "placeDetails":
         return reply(200, await doPlaceDetails(body));
       case "fillMyFour":
@@ -429,24 +429,24 @@ async function doGetPairHistory(body) {
 // L3 Places proxy. Unauthenticated by design — the create screen has no
 // pairing yet. Backstops: WAF per-IP rate cap, input validation here, and a
 // Places-API-restricted key that can be pulled (blanked) at any time.
-async function doPlacesSuggest(body, geo) {
+async function doPlacesSuggest(body) {
   const input = typeof body.input === "string" ? body.input.trim() : "";
   if (input.length < 2 || input.length > 60) {
     return { suggestions: [], enabled: placesEnabled() };
   }
-  // The 📍 Near me toggle: explicitly off -> ignore the viewer's location
-  // (road-trip case: picking choices for where you're headed). Absent/true
-  // keeps the geo-header bias — old clients never send the field.
-  return autocomplete(input, sessionToken(body), body.nearMe === false ? "off" : geo);
+  // Location comes from browser geolocation in the body (the 📍 pin is the
+  // consent surface) — CloudFront's geo headers were rejected by prod's
+  // pricing plan (see template.yaml). No coords -> neutral world-rect bias,
+  // never the Lambda's own IP location.
+  return autocomplete(input, sessionToken(body), clientGeo(body));
 }
 
-// Approximate viewer location from CloudFront's IP-derived geo headers
-// (added by the custom /api* origin request policy). City-level accuracy;
-// used only to bias the Places query upstream — never stored, never returned
-// (privacy posture). Absent on direct Function URL calls.
-function viewerGeo(event) {
-  const latitude = Number.parseFloat(event?.headers?.["cloudfront-viewer-latitude"]);
-  const longitude = Number.parseFloat(event?.headers?.["cloudfront-viewer-longitude"]);
+// Validated {latitude, longitude} from the request body, or null. Used only
+// to bias the Places query upstream — never stored, never returned (privacy
+// posture; the client rounds before sending).
+function clientGeo(body) {
+  const { latitude, longitude } = body.geo ?? {};
+  if (typeof latitude !== "number" || typeof longitude !== "number") return null;
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
   if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
   return { latitude, longitude };
