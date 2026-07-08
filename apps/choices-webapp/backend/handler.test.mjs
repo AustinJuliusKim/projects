@@ -10,6 +10,7 @@ import {
   PutCommand,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { handler } from "./handler.mjs";
 import { createGame, applyElimination } from "./game.mjs";
 import { _setVerifierForTests } from "./auth.mjs";
@@ -26,6 +27,7 @@ function fakeVerifier() {
 }
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
+const s3Mock = mockClient(S3Client);
 
 const CHOICES = ["Pizza", "Tacos", "Sushi", "Ramen"];
 
@@ -65,9 +67,12 @@ function conditionalCheckError() {
 
 beforeEach(() => {
   ddbMock.reset();
+  s3Mock.reset();
   delete process.env.ENFORCE_ORIGIN_HEADER;
   delete process.env.ORIGIN_VERIFY_SECRET;
   delete process.env.STRIPE_SECRET_KEY;
+  delete process.env.SUGGEST_BUCKET;
+  delete process.env.ANON_SALT;
   process.env.USER_POOL_ID = "pool";
   process.env.USER_POOL_CLIENT_ID = "client";
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
@@ -202,7 +207,10 @@ function nearlyWonPairing(overrides = {}) {
 }
 
 test("winning eliminate archives the game atomically with the pairing save", async () => {
-  ddbMock.on(GetCommand).resolves({ Item: nearlyWonPairing() });
+  ddbMock.on(GetCommand).resolves({});
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .resolves({ Item: nearlyWonPairing() });
   ddbMock.on(TransactWriteCommand).resolves({});
 
   const res = await handler(
@@ -220,7 +228,7 @@ test("winning eliminate archives the game atomically with the pairing save", asy
   assert.equal(ddbMock.commandCalls(PutCommand).length, 0);
 
   const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
-  assert.equal(tx.TransactItems.length, 2);
+  assert.equal(tx.TransactItems.length, 3);
 
   const pairingPut = tx.TransactItems[0].Put;
   assert.equal(pairingPut.Item.pk, "PAIR#abc123");
@@ -236,6 +244,77 @@ test("winning eliminate archives the game atomically with the pairing save", asy
   assert.equal(archive.eliminated.length, 3);
   assert.deepEqual(archive.players, { A: null, B: null });
   assert.ok(archive.ttl > 0);
+
+  // Pair-memory fold (suggestion engine Phase 0) rides the same transaction.
+  const histPut = tx.TransactItems[2].Put;
+  const hist = histPut.Item;
+  assert.equal(hist.pk, "HIST#abc123");
+  assert.equal(hist.entries.ramen.winCount, 1);
+  assert.equal(hist.entries.ramen.entryCount, 1);
+  assert.equal(hist.entries.pizza.winCount, 0);
+  assert.equal(Object.keys(hist.entries).length, 4);
+  assert.ok(hist.ttl > 0);
+  assert.equal(histPut.ConditionExpression, "attribute_not_exists(version)");
+
+  // Anonymized S3 feed is config-gated and off by default.
+  assert.equal(s3Mock.commandCalls(PutObjectCommand).length, 0);
+});
+
+test("completing eliminate writes the anonymized S3 record when configured", async () => {
+  process.env.SUGGEST_BUCKET = "suggest-bucket";
+  process.env.ANON_SALT = "test-salt";
+  ddbMock.on(GetCommand).resolves({});
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .resolves({ Item: nearlyWonPairing() });
+  ddbMock.on(TransactWriteCommand).resolves({});
+  s3Mock.on(PutObjectCommand).resolves({});
+
+  const res = await handler(
+    postEvent({
+      action: "eliminate",
+      pairingId: "abc123",
+      role: "B",
+      token: "tok-b",
+      gameNumber: 1,
+      index: 2,
+    })
+  );
+  assert.equal(res.statusCode, 200);
+
+  const put = s3Mock.commandCalls(PutObjectCommand)[0].args[0].input;
+  assert.equal(put.Bucket, "suggest-bucket");
+  assert.match(put.Key, /^entries\/dt=\d{4}-\d{2}-\d{2}\//);
+  const record = JSON.parse(put.Body);
+  assert.deepEqual(record.choices, ["pizza", "tacos", "sushi", "ramen"]);
+  assert.equal(record.winner, "ramen");
+  assert.equal(record.pairHash.length, 16);
+  assert.equal(record.pairingId, undefined); // never linkable back to a pair
+  assert.ok(!put.Body.includes("abc123"));
+});
+
+test("anonymized record failure never breaks the winning move", async () => {
+  process.env.SUGGEST_BUCKET = "suggest-bucket";
+  process.env.ANON_SALT = "test-salt";
+  ddbMock.on(GetCommand).resolves({});
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .resolves({ Item: nearlyWonPairing() });
+  ddbMock.on(TransactWriteCommand).resolves({});
+  s3Mock.on(PutObjectCommand).rejects(new Error("bucket unavailable"));
+
+  const res = await handler(
+    postEvent({
+      action: "eliminate",
+      pairingId: "abc123",
+      role: "B",
+      token: "tok-b",
+      gameNumber: 1,
+      index: 2,
+    })
+  );
+  assert.equal(res.statusCode, 200);
+  assert.equal(JSON.parse(res.body).state.game.status, "complete");
 });
 
 test("mid-game eliminate stays on the plain conditional put", async () => {
@@ -255,6 +334,10 @@ test("mid-game eliminate stays on the plain conditional put", async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(ddbMock.commandCalls(TransactWriteCommand).length, 0);
   assert.equal(ddbMock.commandCalls(PutCommand).length, 1);
+  // No history work on the hot path: HIST# is only touched on completion.
+  const gets = ddbMock.commandCalls(GetCommand).map((c) => c.args[0].input.Key.pk);
+  assert.ok(!gets.some((pk) => pk.startsWith("HIST#")));
+  assert.equal(s3Mock.commandCalls(PutObjectCommand).length, 0);
 });
 
 test("winning eliminate retries after losing the transactional write race", async () => {
@@ -363,6 +446,7 @@ test("winning eliminate folds stats into linked users, once per distinct user", 
     .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
     .resolves({ Item: nearlyWonPairing({ userA: "u-1", userB: "u-1" }) });
   ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({});
+  ddbMock.on(GetCommand, { Key: { pk: "HIST#abc123" } }).resolves({});
   ddbMock.on(GetCommand, { Key: { pk: "SUB#abc123#A" } }).resolves({});
   ddbMock.on(GetCommand, { Key: { pk: "SUB#abc123#B" } }).resolves({});
   ddbMock.on(TransactWriteCommand).resolves({});
@@ -380,7 +464,7 @@ test("winning eliminate folds stats into linked users, once per distinct user", 
   assert.equal(res.statusCode, 200);
 
   const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
-  assert.equal(tx.TransactItems.length, 3); // pairing + archive + ONE user
+  assert.equal(tx.TransactItems.length, 4); // pairing + archive + ONE user + hist
 
   const archive = tx.TransactItems[1].Put.Item;
   assert.deepEqual(archive.players, { A: "u-1", B: "u-1" });
