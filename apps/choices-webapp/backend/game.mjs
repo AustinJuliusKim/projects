@@ -89,10 +89,16 @@ function liveIndicesFrom(choices, eliminated) {
 // Platforms the winner-screen "order" buttons can report (growth plan §6).
 export const LINK_PLATFORMS = ["ubereats", "doordash", "grubhub", "opentable"];
 
-// Support/interest beacons (growth plan §8): tip-jar clicks and the premium
-// tease ride the same pipeline but aren't tied to a finished game — they can
-// fire from the created screen before any cut is made.
-export const SUPPORT_PLATFORMS = ["tip-venmo", "tip-stripe", "premium-interest"];
+// Support/interest beacons (growth plan §8): tip-jar clicks, the premium
+// tease, and reveal-card shares ride the same pipeline but aren't tied to a
+// finished game — they can fire from the created screen before any cut is
+// made.
+export const SUPPORT_PLATFORMS = [
+  "tip-venmo",
+  "tip-stripe",
+  "premium-interest",
+  "share-reveal",
+];
 
 // Record an outbound order-link click. Order platforms are only valid once
 // the game is complete — the order card never renders before a winner exists.

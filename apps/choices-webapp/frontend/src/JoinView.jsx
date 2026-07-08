@@ -62,8 +62,8 @@ export default function JoinView({ prefillCode = "", onReady }) {
 
   return (
     <div className="container">
-      <h1>Join a game</h1>
-      <p className="muted">Enter the code your friend shared with you.</p>
+      <h1>You've been given Choices</h1>
+      <p className="muted">Enter the code and cut wisely. 😏</p>
 
       <IosInstallHint />
 

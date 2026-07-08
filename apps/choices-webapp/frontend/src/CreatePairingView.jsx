@@ -71,7 +71,7 @@ export default function CreatePairingView({ onReady }) {
   }
 
   async function onShare() {
-    const text = `Join my game on Choices! Open the app and enter code: ${created.code}`;
+    const text = `You've got Choices 😏 Enter code ${created.code} and cut wisely.`;
     const shareData = { title: "Choices", text, url: joinLink(created.code) };
     if (isNative) {
       const { Share } = await import("@capacitor/share");
@@ -99,8 +99,8 @@ export default function CreatePairingView({ onReady }) {
       <div className="container">
         <h1>Game created 🎉</h1>
         <p className="muted">
-          Share this code with your friend. They open the app, tap “Join with a
-          code,” enter it, and pick “I was invited.”
+          Give them Choices: share this code. They tap “Enter a game code,”
+          pick “I was invited,” and cut first.
         </p>
 
         <div className="code-display">{created.code}</div>
@@ -127,8 +127,8 @@ export default function CreatePairingView({ onReady }) {
     <div className="container">
       <h1>Pick 4 choices</h1>
       <p className="muted">
-        Seed four options. Your friend cuts one first, then you, then them —
-        last one standing wins.
+        Give them Choices. They cut one first, then you, then them — the last
+        one standing is dinner.
       </p>
       <form onSubmit={onCreate}>
         <FillMyFour
