@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
-import { getState, eliminate, rematch, linkClick } from "./api.js";
+import { getState, eliminate, rematch, linkClick, getPairHistory } from "./api.js";
+import ChoiceInput from "./ChoiceInput.jsx";
 import { PLATFORMS } from "./affiliates.js";
 import TipJar from "./support.jsx";
 import { WinnerAccountLine } from "./AccountView.jsx";
@@ -28,9 +29,10 @@ export default function PlayView({ identity, onLeave }) {
   const [pushPrompted, setPushPrompted] = useState(false);
   const [rematchChoices, setRematchChoices] = useState(["", "", "", ""]);
 
-  // Winner-reveal card flip. `complete` is computed before the early returns
-  // so the hooks below can depend on it (hooks rule).
+  // Winner-reveal card flip. `complete` (and `iCanRematch`, which hooks also
+  // depend on) is computed before the early returns (hooks rule).
   const complete = state?.game?.status === "complete";
+  const iCanRematch = complete && state?.nextStarter === role;
   const sceneRef = useRef(null); // confetti origin
   const prevCompleteRef = useRef(null); // null = no snapshot yet (fresh load)
   const lastWinnerRef = useRef(null); // keeps back face populated during flip-back
@@ -153,6 +155,19 @@ export default function PlayView({ identity, onLeave }) {
     };
   }, [pairingId, role, token, pollMode]);
 
+  // Pair memory (suggestion engine L1) for the rematch typeahead: fetched
+  // once, only when the rematch form first becomes visible — never on the
+  // poll path.
+  const [pairEntries, setPairEntries] = useState([]);
+  const histFetchedRef = useRef(false);
+  useEffect(() => {
+    if (!iCanRematch || histFetchedRef.current) return;
+    histFetchedRef.current = true;
+    getPairHistory(pairingId, role, token)
+      .then((res) => setPairEntries(res.entries ?? []))
+      .catch(() => {});
+  }, [iCanRematch, pairingId, role, token]);
+
   // Offer push once (only meaningful inside an installed app on iOS).
   useEffect(() => {
     if (
@@ -264,7 +279,6 @@ export default function PlayView({ identity, onLeave }) {
   const game = state.game;
   const eliminatedSet = new Set(game.eliminated.map((e) => e.index));
   const myTurn = game.status === "active" && game.turn === role;
-  const iCanRematch = complete && state.nextStarter === role;
   const other = role === "A" ? "B" : "A";
 
   // winnerIndex resets to null the moment a rematch starts; keep the last
@@ -393,16 +407,13 @@ export default function PlayView({ identity, onLeave }) {
             Pick 4 new choices. Player {other} cuts first.
           </p>
           {rematchChoices.map((c, i) => (
-            <input
+            <ChoiceInput
               key={i}
-              className="choice-input"
               placeholder={`Choice ${i + 1}`}
               value={c}
-              maxLength={60}
-              onChange={(e) =>
-                setRematchChoices((cs) =>
-                  cs.map((x, j) => (j === i ? e.target.value : x))
-                )
+              pairEntries={pairEntries}
+              onChange={(v) =>
+                setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
               }
             />
           ))}

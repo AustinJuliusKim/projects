@@ -79,6 +79,55 @@ h1 {
   border-color: var(--indigo);
 }
 
+/* Typeahead dropdown (ChoiceInput) */
+.choice-input-wrap {
+  position: relative;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% - 8px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--indigo);
+  border-radius: var(--radius-card);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 1rem;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.suggestion.active,
+.suggestion:hover {
+  background: rgba(79, 70, 229, 0.25);
+}
+
+.suggestion .tag {
+  flex: none;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 .btn {
   display: block;
   width: 100%;
