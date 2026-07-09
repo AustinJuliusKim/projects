@@ -42,6 +42,11 @@ fi
 
 echo "Building frontend…"
 npm ci
+# The file:-linked @guided-repl/* packages are symlinked; the vite build
+# resolves their imports (e.g. protocol's `zod`) through the symlink's real
+# path, so each linked package's own node_modules must be populated here.
+npm ci --prefix ../../packages/guided-repl-protocol
+npm ci --prefix ../../packages/guided-repl-lessons
 npm run build
 
 echo "Uploading to s3://$BUCKET (long-cache, immutable)…"
