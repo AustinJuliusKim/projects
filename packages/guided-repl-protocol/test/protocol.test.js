@@ -78,7 +78,8 @@ test("isServerFrame accepts all known frame types", () => {
   assert.ok(isServerFrame({ type: "file_content", payload: { path: "a.txt", content: "x" } }));
   assert.ok(isServerFrame({ type: "done" }));
   assert.ok(isServerFrame({ type: "error", payload: { message: "oops", code: "E1" } }));
-  assert.equal(SERVER_TYPES.size, 10);
+  assert.ok(isServerFrame({ type: "tty_chunk", payload: { data: "$ ls\n" } }));
+  assert.equal(SERVER_TYPES.size, 11);
 });
 
 test("isServerFrame accepts a usage frame without costUsd", () => {
@@ -113,6 +114,69 @@ test("validateFixture accepts a well-formed fixture", () => {
     assertion: { type: "file-contains", path: "index.html", match: "<h1>" },
   };
   assert.doesNotThrow(() => validateFixture(fixture));
+});
+
+test("validateFixture accepts an explicit claudeStream kind and skippable events", () => {
+  const fixture = {
+    fixtureVersion: 1,
+    kind: "claudeStream",
+    claudeCodeVersion: "2.1.198",
+    lessonId: "l1",
+    branchId: "vague",
+    recordedAt: "2026-07-02T00:00:00Z",
+    seedSnapshotId: "l1-input",
+    permissionMode: "acceptEdits",
+    expectedPrompt: "make a page about me",
+    events: [{ frame: { type: "text", payload: { delta: "Sure" } }, delayMs: 100, skippable: true }],
+    assertion: { type: "file-exists", path: "index.html" },
+  };
+  assert.doesNotThrow(() => validateFixture(fixture));
+});
+
+test("validateFixture accepts a shellTranscript fixture without prompt/permission/assertion", () => {
+  const fixture = {
+    fixtureVersion: 1,
+    kind: "shellTranscript",
+    claudeCodeVersion: "2.1.198",
+    lessonId: "l6",
+    branchId: "drill",
+    recordedAt: "2026-07-09T00:00:00Z",
+    seedSnapshotId: "l6-output",
+    events: [
+      { frame: { type: "tty_chunk", payload: { data: "$ git diff\n" } }, delayMs: 0 },
+      { frame: { type: "done" }, delayMs: 0 },
+    ],
+  };
+  assert.doesNotThrow(() => validateFixture(fixture));
+});
+
+test("validateFixture rejects an unknown kind", () => {
+  assert.throws(
+    () => validateFixture({ fixtureVersion: 1, kind: "movie" }),
+    /kind must be "claudeStream" or "shellTranscript"/,
+  );
+});
+
+test("validateFixture rejects a non-boolean skippable", () => {
+  assert.throws(() =>
+    validateFixture({
+      fixtureVersion: 1,
+      claudeCodeVersion: "x",
+      lessonId: "l1",
+      branchId: "b",
+      recordedAt: "t",
+      seedSnapshotId: "s",
+      permissionMode: "plan",
+      expectedPrompt: "p",
+      events: [{ frame: { type: "done" }, delayMs: 0, skippable: "yes" }],
+      assertion: { type: "file-exists", path: "index.html" },
+    }),
+  );
+});
+
+test("isServerFrame accepts a tty_chunk frame", () => {
+  assert.ok(isServerFrame({ type: "tty_chunk", payload: { data: "$ ls\n" } }));
+  assert.ok(!isServerFrame({ type: "tty_chunk", payload: {} }));
 });
 
 test("validateFixture rejects non-object", () => {

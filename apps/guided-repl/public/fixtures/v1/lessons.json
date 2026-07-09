@@ -1,272 +1,751 @@
 {
+  "schemaVersion": 1,
   "lessons": [
     {
-      "lessonId": "l1",
+      "schemaVersion": 1,
+      "id": "l1",
+      "slug": "ship-a-page-in-90-seconds",
       "title": "Ship a page in 90 seconds",
-      "branches": ["vague", "constrained", "plan-mode"],
-      "seedSnapshotId": "l1-input",
-      "promptChoices": {
-        "task": ["make a page", "make a personal landing page"],
-        "subject": ["about me", "for my photography"],
-        "constraint": ["in index.html", "single index.html file, inline CSS"]
+      "track": "guided",
+      "order": 1,
+      "durationTargetSec": 300,
+      "prereqs": [],
+      "snapshot": {
+        "snapshotId": "l1-input"
       },
-      "branchConfig": {
+      "steps": [
+        {
+          "type": "instruction",
+          "id": "intro",
+          "md": "**Ship a page in 90 seconds.** Pick a prompt below and run it — you'll watch Claude Code explore the workspace, plan, edit files, and verify, ending with a live personal page in the preview pane."
+        },
+        {
+          "type": "promptBuilder",
+          "id": "compose",
+          "suggestions": [
+            {
+              "text": "make a page about me, in index.html",
+              "description": "the vague prompt",
+              "branchId": "vague"
+            },
+            {
+              "text": "make a personal landing page about me, single index.html file, inline CSS",
+              "description": "a constrained prompt",
+              "branchId": "constrained"
+            },
+            {
+              "text": "make a personal landing page for my photography, single index.html file, inline CSS",
+              "description": "constrained, in plan mode",
+              "branchId": "plan-mode"
+            }
+          ]
+        },
+        {
+          "type": "run",
+          "id": "run",
+          "branches": {
+            "vague": {
+              "fixture": "vague",
+              "expectedPrompt": "make a page about me, in index.html",
+              "permissionMode": "acceptEdits"
+            },
+            "constrained": {
+              "fixture": "constrained",
+              "expectedPrompt": "make a personal landing page about me, single index.html file, inline CSS",
+              "permissionMode": "acceptEdits"
+            },
+            "plan-mode": {
+              "fixture": "plan-mode",
+              "expectedPrompt": "make a personal landing page for my photography, single index.html file, inline CSS",
+              "permissionMode": "plan"
+            }
+          }
+        },
+        {
+          "type": "annotation",
+          "id": "first-write",
+          "fixtureKey": "constrained",
+          "anchor": {
+            "ordinal": 1,
+            "frameType": "tool_use",
+            "where": {
+              "tool": "Write",
+              "pathIncludes": "index.html"
+            }
+          },
+          "md": "This is the moment Claude Code goes from talking to acting: the Write tool creates `index.html` in one shot because the prompt already pinned down the file name and styling constraints.",
+          "resolvedEventIndex": 4
+        },
+        {
+          "type": "assertion",
+          "id": "grade",
+          "rule": {
+            "type": "file-contains",
+            "path": "index.html",
+            "match": "<h1>"
+          }
+        }
+      ],
+      "fixtures": {
         "vague": {
-          "expectedPrompt": "make a page about me, in index.html",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l1/vague.json"
+          "path": "fixtures/l1/vague.json",
+          "kind": "claudeStream"
         },
         "constrained": {
-          "expectedPrompt": "make a personal landing page about me, single index.html file, inline CSS",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l1/constrained.json"
+          "path": "fixtures/l1/constrained.json",
+          "kind": "claudeStream"
         },
         "plan-mode": {
-          "expectedPrompt": "make a personal landing page for my photography, single index.html file, inline CSS",
-          "permissionMode": "plan",
-          "fixture": "fixtures/l1/plan-mode.json"
+          "path": "fixtures/l1/plan-mode.json",
+          "kind": "claudeStream"
         }
       },
-      "assertion": { "type": "file-contains", "path": "index.html", "match": "<h1>" }
+      "completion": {
+        "assertionIds": [
+          "grade"
+        ],
+        "next": "l2"
+      }
     },
     {
-      "lessonId": "l2",
+      "schemaVersion": 1,
+      "id": "l2",
+      "slug": "why-did-it-do-that",
       "title": "Why did it do that?",
+      "track": "guided",
+      "order": 2,
+      "durationTargetSec": 300,
+      "prereqs": [
+        "l1"
+      ],
       "locked": false,
-      "playback": "step",
-      "branches": ["walkthrough"],
-      "seedSnapshotId": "l1-input",
-      "promptChoices": {
-        "task": ["make a personal landing page"],
-        "subject": ["about me"],
-        "constraint": ["single index.html file, inline CSS"]
+      "snapshot": {
+        "snapshotId": "l1-input"
       },
-      "branchConfig": {
+      "steps": [
+        {
+          "type": "instruction",
+          "id": "intro",
+          "md": "**Why did it do that?** This replays Lesson 1's run one beat at a time. At each pause, read the annotation: which tool ran, why, and what entered the context window."
+        },
+        {
+          "type": "promptBuilder",
+          "id": "compose",
+          "suggestions": [
+            {
+              "text": "make a personal landing page about me, single index.html file, inline CSS",
+              "description": "replay Lesson 1's run step by step",
+              "branchId": "walkthrough"
+            }
+          ]
+        },
+        {
+          "type": "run",
+          "id": "run",
+          "branches": {
+            "walkthrough": {
+              "fixture": "walkthrough",
+              "expectedPrompt": "make a personal landing page about me, single index.html file, inline CSS",
+              "permissionMode": "acceptEdits"
+            }
+          },
+          "pacing": "step"
+        },
+        {
+          "type": "quiz",
+          "id": "quiz",
+          "question": "Which step in this replay is the agent's explore/plan step, done before any file is written?",
+          "options": [
+            "The streamed reasoning text before any tool call",
+            "The Write tool call that creates index.html",
+            "The tool_result confirming the file was created",
+            "The final summary message after the write"
+          ],
+          "answerIdx": 0
+        },
+        {
+          "type": "assertion",
+          "id": "grade",
+          "rule": {
+            "type": "quizCorrect",
+            "stepId": "quiz"
+          }
+        }
+      ],
+      "fixtures": {
         "walkthrough": {
-          "expectedPrompt": "make a personal landing page about me, single index.html file, inline CSS",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l2/walkthrough.json"
+          "path": "fixtures/l2/walkthrough.json",
+          "kind": "claudeStream"
         }
       },
-      "assertion": {
-        "type": "quiz",
-        "question": "Which step in this replay is the agent's explore/plan step, done before any file is written?",
-        "choices": [
-          "The streamed reasoning text before any tool call",
-          "The Write tool call that creates index.html",
-          "The tool_result confirming the file was created",
-          "The final summary message after the write"
+      "completion": {
+        "assertionIds": [
+          "grade"
         ],
-        "correctIndex": 0
+        "next": "l3"
       }
     },
     {
-      "lessonId": "l3",
+      "schemaVersion": 1,
+      "id": "l3",
+      "slug": "the-prompt-ladder",
       "title": "The prompt ladder",
+      "track": "guided",
+      "order": 3,
+      "durationTargetSec": 300,
+      "prereqs": [
+        "l2"
+      ],
       "locked": false,
-      "branches": ["vague", "constrained", "plan-mode"],
-      "seedSnapshotId": "l1-output",
-      "promptChoices": {
-        "task": ["restyle the page"],
-        "subject": ["with a dark theme", "with a dark theme and a new accent color"],
-        "constraint": ["", "keep it one file, no frameworks"]
+      "snapshot": {
+        "snapshotId": "l1-output"
       },
-      "branchConfig": {
+      "steps": [
+        {
+          "type": "instruction",
+          "id": "intro",
+          "md": "**The prompt ladder.** Restyle the page three ways — vague, constrained, and planned. Run each branch and compare the diffs: more specific prompts produce more controlled outcomes."
+        },
+        {
+          "type": "promptBuilder",
+          "id": "compose",
+          "suggestions": [
+            {
+              "text": "restyle the page with a dark theme",
+              "description": "the vague restyle",
+              "branchId": "vague"
+            },
+            {
+              "text": "restyle the page with a dark theme, keep it one file, no frameworks",
+              "description": "the constrained restyle",
+              "branchId": "constrained"
+            },
+            {
+              "text": "restyle the page with a dark theme and a new accent color, keep it one file, no frameworks",
+              "description": "constrained, with a reviewed plan",
+              "branchId": "plan-mode"
+            }
+          ]
+        },
+        {
+          "type": "run",
+          "id": "run",
+          "branches": {
+            "vague": {
+              "fixture": "vague",
+              "expectedPrompt": "restyle the page with a dark theme",
+              "permissionMode": "acceptEdits"
+            },
+            "constrained": {
+              "fixture": "constrained",
+              "expectedPrompt": "restyle the page with a dark theme, keep it one file, no frameworks",
+              "permissionMode": "acceptEdits"
+            },
+            "plan-mode": {
+              "fixture": "plan-mode",
+              "expectedPrompt": "restyle the page with a dark theme and a new accent color, keep it one file, no frameworks",
+              "permissionMode": "plan"
+            }
+          }
+        },
+        {
+          "type": "quiz",
+          "id": "quiz",
+          "question": "Comparing the three restyle diffs, which prompt produced the most tightly controlled outcome?",
+          "options": [
+            "The vague prompt",
+            "The constrained prompt",
+            "The plan-mode prompt (constrained, plus a reviewed plan)"
+          ],
+          "answerIdx": 2
+        },
+        {
+          "type": "assertion",
+          "id": "grade",
+          "rule": {
+            "type": "quizCorrect",
+            "stepId": "quiz"
+          }
+        }
+      ],
+      "fixtures": {
         "vague": {
-          "expectedPrompt": "restyle the page with a dark theme",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l3/vague.json"
+          "path": "fixtures/l3/vague.json",
+          "kind": "claudeStream"
         },
         "constrained": {
-          "expectedPrompt": "restyle the page with a dark theme, keep it one file, no frameworks",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l3/constrained.json"
+          "path": "fixtures/l3/constrained.json",
+          "kind": "claudeStream"
         },
         "plan-mode": {
-          "expectedPrompt": "restyle the page with a dark theme and a new accent color, keep it one file, no frameworks",
-          "permissionMode": "plan",
-          "fixture": "fixtures/l3/plan-mode.json"
+          "path": "fixtures/l3/plan-mode.json",
+          "kind": "claudeStream"
         }
       },
-      "assertion": {
-        "type": "quiz",
-        "question": "Comparing the three restyle diffs, which prompt produced the most tightly controlled outcome?",
-        "choices": [
-          "The vague prompt",
-          "The constrained prompt",
-          "The plan-mode prompt (constrained, plus a reviewed plan)"
+      "completion": {
+        "assertionIds": [
+          "grade"
         ],
-        "correctIndex": 2
+        "next": "l4"
       }
     },
     {
-      "lessonId": "l4",
+      "schemaVersion": 1,
+      "id": "l4",
+      "slug": "plan-mode-prompt-planning",
       "title": "Plan mode & prompt planning",
+      "track": "guided",
+      "order": 4,
+      "durationTargetSec": 300,
+      "prereqs": [
+        "l3"
+      ],
       "locked": false,
-      "branches": ["approve", "revise"],
-      "seedSnapshotId": "l3-output",
-      "promptChoices": {
-        "task": ["add a skills section to the page"],
-        "subject": ["listing 3 example skills"],
-        "constraint": ["keep it one file"]
+      "snapshot": {
+        "snapshotId": "l3-output"
       },
-      "branchConfig": {
+      "steps": [
+        {
+          "type": "instruction",
+          "id": "intro",
+          "md": "**Plan mode.** Ask for a plan before any file changes. You can approve it as-is, or revise it first and watch execution follow the revised plan."
+        },
+        {
+          "type": "promptBuilder",
+          "id": "compose",
+          "suggestions": [
+            {
+              "text": "add a skills section to the page listing 3 example skills, keep it one file",
+              "description": "approve the plan as-is",
+              "branchId": "approve"
+            },
+            {
+              "text": "add a skills section to the page listing 3 example skills, keep it one file",
+              "description": "revise the plan before approving",
+              "branchId": "revise"
+            }
+          ]
+        },
+        {
+          "type": "run",
+          "id": "run",
+          "branches": {
+            "approve": {
+              "fixture": "approve",
+              "expectedPrompt": "add a skills section to the page listing 3 example skills, keep it one file",
+              "permissionMode": "plan"
+            },
+            "revise": {
+              "fixture": "revise",
+              "expectedPrompt": "add a skills section to the page listing 3 example skills, keep it one file",
+              "permissionMode": "plan"
+            }
+          }
+        },
+        {
+          "type": "quiz",
+          "id": "quiz",
+          "question": "What's the main benefit of revising a plan before approving it, rather than approving immediately?",
+          "options": [
+            "You catch mismatches between what you asked for and what the agent intends to do, before any files change",
+            "It makes the agent respond faster",
+            "It skips the permission gate entirely",
+            "It automatically switches to a cheaper model"
+          ],
+          "answerIdx": 0
+        },
+        {
+          "type": "assertion",
+          "id": "grade",
+          "rule": {
+            "type": "quizCorrect",
+            "stepId": "quiz"
+          }
+        }
+      ],
+      "fixtures": {
         "approve": {
-          "expectedPrompt": "add a skills section to the page listing 3 example skills, keep it one file",
-          "permissionMode": "plan",
-          "fixture": "fixtures/l4/approve.json"
+          "path": "fixtures/l4/approve.json",
+          "kind": "claudeStream"
         },
         "revise": {
-          "expectedPrompt": "add a skills section to the page listing 3 example skills, keep it one file",
-          "permissionMode": "plan",
-          "fixture": "fixtures/l4/revise.json"
+          "path": "fixtures/l4/revise.json",
+          "kind": "claudeStream"
         }
       },
-      "assertion": {
-        "type": "quiz",
-        "question": "What's the main benefit of revising a plan before approving it, rather than approving immediately?",
-        "choices": [
-          "You catch mismatches between what you asked for and what the agent intends to do, before any files change",
-          "It makes the agent respond faster",
-          "It skips the permission gate entirely",
-          "It automatically switches to a cheaper model"
+      "completion": {
+        "assertionIds": [
+          "grade"
         ],
-        "correctIndex": 0
+        "next": "l5"
       }
     },
     {
-      "lessonId": "l5",
+      "schemaVersion": 1,
+      "id": "l5",
+      "slug": "permission-modes-the-leash",
       "title": "Permission modes & the leash",
+      "track": "guided",
+      "order": 5,
+      "durationTargetSec": 300,
+      "prereqs": [
+        "l4"
+      ],
       "locked": false,
-      "branches": ["plan", "acceptEdits", "bypass"],
-      "seedSnapshotId": "l4-output",
-      "promptChoices": {
-        "task": ["rewrite the projects section"],
-        "subject": ["removing the placeholder cards"],
-        "constraint": ["keep it one file"]
+      "snapshot": {
+        "snapshotId": "l4-output"
       },
-      "branchConfig": {
+      "steps": [
+        {
+          "type": "instruction",
+          "id": "intro",
+          "md": "**Permission modes are the leash.** Run the same change in plan, acceptEdits, and bypassPermissions modes. Notice where each mode pauses for your review — and where it doesn't."
+        },
+        {
+          "type": "promptBuilder",
+          "id": "compose",
+          "suggestions": [
+            {
+              "text": "rewrite the projects section removing the placeholder cards, keep it one file",
+              "description": "run in plan mode",
+              "branchId": "plan"
+            },
+            {
+              "text": "rewrite the projects section removing the placeholder cards, keep it one file",
+              "description": "run in acceptEdits mode",
+              "branchId": "acceptEdits"
+            },
+            {
+              "text": "rewrite the projects section removing the placeholder cards, keep it one file",
+              "description": "run with bypassPermissions",
+              "branchId": "bypass"
+            }
+          ]
+        },
+        {
+          "type": "run",
+          "id": "run",
+          "branches": {
+            "plan": {
+              "fixture": "plan",
+              "expectedPrompt": "rewrite the projects section removing the placeholder cards, keep it one file",
+              "permissionMode": "plan"
+            },
+            "acceptEdits": {
+              "fixture": "acceptEdits",
+              "expectedPrompt": "rewrite the projects section removing the placeholder cards, keep it one file",
+              "permissionMode": "acceptEdits"
+            },
+            "bypass": {
+              "fixture": "bypass",
+              "expectedPrompt": "rewrite the projects section removing the placeholder cards, keep it one file",
+              "permissionMode": "bypassPermissions"
+            }
+          }
+        },
+        {
+          "type": "quiz",
+          "id": "quiz",
+          "question": "Which permission mode pauses for your review before a risky edit is applied?",
+          "options": [
+            "plan mode",
+            "acceptEdits",
+            "bypassPermissions"
+          ],
+          "answerIdx": 0
+        },
+        {
+          "type": "assertion",
+          "id": "grade",
+          "rule": {
+            "type": "quizCorrect",
+            "stepId": "quiz"
+          }
+        }
+      ],
+      "fixtures": {
         "plan": {
-          "expectedPrompt": "rewrite the projects section removing the placeholder cards, keep it one file",
-          "permissionMode": "plan",
-          "fixture": "fixtures/l5/plan.json"
+          "path": "fixtures/l5/plan.json",
+          "kind": "claudeStream"
         },
         "acceptEdits": {
-          "expectedPrompt": "rewrite the projects section removing the placeholder cards, keep it one file",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l5/acceptEdits.json"
+          "path": "fixtures/l5/acceptEdits.json",
+          "kind": "claudeStream"
         },
         "bypass": {
-          "expectedPrompt": "rewrite the projects section removing the placeholder cards, keep it one file",
-          "permissionMode": "bypassPermissions",
-          "fixture": "fixtures/l5/bypass.json"
+          "path": "fixtures/l5/bypass.json",
+          "kind": "claudeStream"
         }
       },
-      "assertion": {
-        "type": "quiz",
-        "question": "Which permission mode pauses for your review before a risky edit is applied?",
-        "choices": ["plan mode", "acceptEdits", "bypassPermissions"],
-        "correctIndex": 0
+      "completion": {
+        "assertionIds": [
+          "grade"
+        ],
+        "next": "l6"
       }
     },
     {
-      "lessonId": "l6",
+      "schemaVersion": 1,
+      "id": "l6",
+      "slug": "reading-diffs-verifying",
       "title": "Reading diffs & verifying",
+      "track": "guided",
+      "order": 6,
+      "durationTargetSec": 300,
+      "prereqs": [
+        "l5"
+      ],
       "locked": false,
-      "branches": ["clean", "planted-bug"],
-      "seedSnapshotId": "l5-output",
-      "promptChoices": {
-        "task": ["add a testimonials section to the page"],
-        "subject": ["with two example quotes"],
-        "constraint": [
-          "style it with a CSS class named .testimonial-card defined in the stylesheet",
-          "reference a CSS class named .testimonial-card in the HTML but do not add a .testimonial-card rule anywhere in the stylesheet"
-        ]
+      "snapshot": {
+        "snapshotId": "l5-output"
       },
-      "branchConfig": {
+      "steps": [
+        {
+          "type": "instruction",
+          "id": "intro",
+          "md": "**Review before you accept.** Two runs add a testimonials section; one plants a bug. Read the diffs in the workspace pane and catch it before it ships."
+        },
+        {
+          "type": "promptBuilder",
+          "id": "compose",
+          "suggestions": [
+            {
+              "text": "add a testimonials section to the page with two example quotes, style it with a CSS class named .testimonial-card defined in the stylesheet",
+              "description": "the clean change",
+              "branchId": "clean"
+            },
+            {
+              "text": "add a testimonials section to the page with two example quotes, reference a CSS class named .testimonial-card in the HTML but do not add a .testimonial-card rule anywhere in the stylesheet",
+              "description": "the change with a planted bug",
+              "branchId": "planted-bug"
+            }
+          ]
+        },
+        {
+          "type": "run",
+          "id": "run",
+          "branches": {
+            "clean": {
+              "fixture": "clean",
+              "expectedPrompt": "add a testimonials section to the page with two example quotes, style it with a CSS class named .testimonial-card defined in the stylesheet",
+              "permissionMode": "acceptEdits"
+            },
+            "planted-bug": {
+              "fixture": "planted-bug",
+              "expectedPrompt": "add a testimonials section to the page with two example quotes, reference a CSS class named .testimonial-card in the HTML but do not add a .testimonial-card rule anywhere in the stylesheet",
+              "permissionMode": "acceptEdits"
+            }
+          }
+        },
+        {
+          "type": "assertion",
+          "id": "grade",
+          "rule": {
+            "type": "file-contains",
+            "path": "index.html",
+            "match": ".testimonial-card {"
+          }
+        }
+      ],
+      "fixtures": {
         "clean": {
-          "expectedPrompt": "add a testimonials section to the page with two example quotes, style it with a CSS class named .testimonial-card defined in the stylesheet",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l6/clean.json"
+          "path": "fixtures/l6/clean.json",
+          "kind": "claudeStream"
         },
         "planted-bug": {
-          "expectedPrompt": "add a testimonials section to the page with two example quotes, reference a CSS class named .testimonial-card in the HTML but do not add a .testimonial-card rule anywhere in the stylesheet",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l6/planted-bug.json"
+          "path": "fixtures/l6/planted-bug.json",
+          "kind": "claudeStream"
         }
       },
-      "assertion": { "type": "file-contains", "path": "index.html", "match": ".testimonial-card {" }
-    },
-    {
-      "lessonId": "l7",
-      "title": "CLAUDE.md — teaching your agent",
-      "locked": false,
-      "branches": ["without", "with"],
-      "seedSnapshotId": "l7-input-plain",
-      "promptChoices": {
-        "task": ["add a call-to-action button to the page"],
-        "subject": ["using a new highlight color"],
-        "constraint": ["define the highlight as a CSS custom property"]
-      },
-      "branchConfig": {
-        "without": {
-          "expectedPrompt": "add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l7/without.json"
-        },
-        "with": {
-          "expectedPrompt": "add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l7/with.json",
-          "seedSnapshotId": "l7-input-claudemd"
-        }
-      },
-      "assertion": {
-        "type": "quiz",
-        "question": "The 'with CLAUDE.md' run named its new CSS variable --gp-highlight instead of --highlight. What caused that?",
-        "choices": [
-          "A convention defined in the workspace's CLAUDE.md file",
-          "A different prompt text",
-          "A different permission mode",
-          "Random variation between runs"
+      "completion": {
+        "assertionIds": [
+          "grade"
         ],
-        "correctIndex": 0
+        "next": "l7"
       }
     },
     {
-      "lessonId": "l8",
-      "title": "Cost, models & going live",
+      "schemaVersion": 1,
+      "id": "l7",
+      "slug": "claude-md-teaching-your-agent",
+      "title": "CLAUDE.md — teaching your agent",
+      "track": "guided",
+      "order": 7,
+      "durationTargetSec": 300,
+      "prereqs": [
+        "l6"
+      ],
       "locked": false,
-      "branches": ["haiku", "sonnet"],
-      "seedSnapshotId": "l7-output",
-      "promptChoices": {
-        "task": ["update the call-to-action button label"],
-        "subject": ["to say Get in touch"],
-        "constraint": ["keep everything else the same"]
+      "snapshot": {
+        "snapshotId": "l7-input-plain"
       },
-      "branchConfig": {
-        "haiku": {
-          "expectedPrompt": "update the call-to-action button label to say Get in touch, keep everything else the same",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l8/haiku.json",
-          "model": "claude-haiku-4-5-20251001"
+      "steps": [
+        {
+          "type": "instruction",
+          "id": "intro",
+          "md": "**Teach your agent.** The same prompt, with and without a CLAUDE.md conventions file in the workspace. Watch how the conventions change what Claude writes."
         },
-        "sonnet": {
-          "expectedPrompt": "update the call-to-action button label to say Get in touch, keep everything else the same",
-          "permissionMode": "acceptEdits",
-          "fixture": "fixtures/l8/sonnet.json"
+        {
+          "type": "promptBuilder",
+          "id": "compose",
+          "suggestions": [
+            {
+              "text": "add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property",
+              "description": "run without CLAUDE.md",
+              "branchId": "without"
+            },
+            {
+              "text": "add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property",
+              "description": "run with a CLAUDE.md conventions file",
+              "branchId": "with"
+            }
+          ]
+        },
+        {
+          "type": "run",
+          "id": "run",
+          "branches": {
+            "without": {
+              "fixture": "without",
+              "expectedPrompt": "add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property",
+              "permissionMode": "acceptEdits"
+            },
+            "with": {
+              "fixture": "with",
+              "expectedPrompt": "add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property",
+              "permissionMode": "acceptEdits",
+              "seedSnapshotId": "l7-input-claudemd"
+            }
+          }
+        },
+        {
+          "type": "quiz",
+          "id": "quiz",
+          "question": "The 'with CLAUDE.md' run named its new CSS variable --gp-highlight instead of --highlight. What caused that?",
+          "options": [
+            "A convention defined in the workspace's CLAUDE.md file",
+            "A different prompt text",
+            "A different permission mode",
+            "Random variation between runs"
+          ],
+          "answerIdx": 0
+        },
+        {
+          "type": "assertion",
+          "id": "grade",
+          "rule": {
+            "type": "quizCorrect",
+            "stepId": "quiz"
+          }
+        }
+      ],
+      "fixtures": {
+        "without": {
+          "path": "fixtures/l7/without.json",
+          "kind": "claudeStream"
+        },
+        "with": {
+          "path": "fixtures/l7/with.json",
+          "kind": "claudeStream"
         }
       },
-      "assertion": {
-        "type": "quiz",
-        "question": "For a small, well-specified text tweak like this one, which model is the better cost/quality tradeoff?",
-        "choices": [
-          "Haiku — the task is simple and well-scoped",
-          "Sonnet — always default to the most capable model",
-          "Neither — this needs a human to do it by hand",
-          "Cost doesn't matter, model choice is irrelevant"
+      "completion": {
+        "assertionIds": [
+          "grade"
         ],
-        "correctIndex": 0
+        "next": "l8"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "l8",
+      "slug": "cost-models-going-live",
+      "title": "Cost, models & going live",
+      "track": "guided",
+      "order": 8,
+      "durationTargetSec": 300,
+      "prereqs": [
+        "l7"
+      ],
+      "locked": false,
+      "snapshot": {
+        "snapshotId": "l7-output"
+      },
+      "steps": [
+        {
+          "type": "instruction",
+          "id": "intro",
+          "md": "**Cost & models.** Run the same small tweak on Haiku and on Sonnet with the token meter on, and decide which model this task actually needs."
+        },
+        {
+          "type": "promptBuilder",
+          "id": "compose",
+          "suggestions": [
+            {
+              "text": "update the call-to-action button label to say Get in touch, keep everything else the same",
+              "description": "run on Haiku",
+              "branchId": "haiku"
+            },
+            {
+              "text": "update the call-to-action button label to say Get in touch, keep everything else the same",
+              "description": "run on Sonnet",
+              "branchId": "sonnet"
+            }
+          ]
+        },
+        {
+          "type": "run",
+          "id": "run",
+          "branches": {
+            "haiku": {
+              "fixture": "haiku",
+              "expectedPrompt": "update the call-to-action button label to say Get in touch, keep everything else the same",
+              "permissionMode": "acceptEdits",
+              "model": "claude-haiku-4-5-20251001"
+            },
+            "sonnet": {
+              "fixture": "sonnet",
+              "expectedPrompt": "update the call-to-action button label to say Get in touch, keep everything else the same",
+              "permissionMode": "acceptEdits"
+            }
+          }
+        },
+        {
+          "type": "quiz",
+          "id": "quiz",
+          "question": "For a small, well-specified text tweak like this one, which model is the better cost/quality tradeoff?",
+          "options": [
+            "Haiku — the task is simple and well-scoped",
+            "Sonnet — always default to the most capable model",
+            "Neither — this needs a human to do it by hand",
+            "Cost doesn't matter, model choice is irrelevant"
+          ],
+          "answerIdx": 0
+        },
+        {
+          "type": "assertion",
+          "id": "grade",
+          "rule": {
+            "type": "quizCorrect",
+            "stepId": "quiz"
+          }
+        }
+      ],
+      "fixtures": {
+        "haiku": {
+          "path": "fixtures/l8/haiku.json",
+          "kind": "claudeStream"
+        },
+        "sonnet": {
+          "path": "fixtures/l8/sonnet.json",
+          "kind": "claudeStream"
+        }
+      },
+      "completion": {
+        "assertionIds": [
+          "grade"
+        ],
+        "next": null
       }
     }
   ]

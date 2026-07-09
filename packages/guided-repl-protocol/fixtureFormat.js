@@ -4,22 +4,25 @@
  * @typedef {import("./frames.js").ServerFrame} ServerFrame
  * @typedef {import("./assertions.js").Assertion} Assertion
  *
+ * @typedef {"claudeStream"|"shellTranscript"} FixtureKind
+ *
  * @typedef {{title: string, body: string}} Annotation
- * @typedef {{frame: ServerFrame, delayMs: number, origDelayMs?: number, annotation?: Annotation}} FrameEvent
+ * @typedef {{frame: ServerFrame, delayMs: number, origDelayMs?: number, annotation?: Annotation, skippable?: boolean}} FrameEvent
  * @typedef {{awaitClient: "permission", choices: string[]}} AwaitClientMarker
  * @typedef {FrameEvent|AwaitClientMarker} FixtureEvent
  *
  * @typedef {object} FixtureEnvelope
  * @property {1} fixtureVersion
+ * @property {FixtureKind} [kind] Absent means "claudeStream".
  * @property {string} claudeCodeVersion
  * @property {string} lessonId
  * @property {string} branchId
  * @property {string} recordedAt
  * @property {string} seedSnapshotId
- * @property {string} permissionMode
- * @property {string} expectedPrompt
+ * @property {string} [permissionMode] Required for claudeStream fixtures.
+ * @property {string} [expectedPrompt] Required for claudeStream fixtures.
  * @property {FixtureEvent[]} events
- * @property {Assertion} assertion
+ * @property {Assertion} [assertion] Required for claudeStream fixtures.
  *
  * @typedef {{path: string, content: string}} SnapshotFile
  * @typedef {{snapshotId: string, files: SnapshotFile[]}} SnapshotManifest
@@ -64,6 +67,9 @@ function validateFixtureEvent(e, i) {
   if ("origDelayMs" in e && !isNumber(e.origDelayMs)) {
     throw new Error(`Invalid fixture: events[${i}].origDelayMs must be a number`);
   }
+  if ("skippable" in e && typeof e.skippable !== "boolean") {
+    throw new Error(`Invalid fixture: events[${i}].skippable must be a boolean`);
+  }
   if ("annotation" in e) {
     if (!isPlainObject(e.annotation)) {
       throw new Error(`Invalid fixture: events[${i}].annotation must be an object`);
@@ -92,7 +98,16 @@ export function validateFixture(obj) {
   if (obj.fixtureVersion !== 1) {
     throw new Error("Invalid fixture: fixtureVersion must be 1");
   }
-  for (const key of ["claudeCodeVersion", "lessonId", "branchId", "recordedAt", "seedSnapshotId", "permissionMode", "expectedPrompt"]) {
+  if ("kind" in obj && obj.kind !== "claudeStream" && obj.kind !== "shellTranscript") {
+    throw new Error('Invalid fixture: kind must be "claudeStream" or "shellTranscript"');
+  }
+  // Absent kind means claudeStream — all pre-kind fixtures stay valid.
+  const isShellTranscript = obj.kind === "shellTranscript";
+  const requiredStrings = ["claudeCodeVersion", "lessonId", "branchId", "recordedAt", "seedSnapshotId"];
+  if (!isShellTranscript) {
+    requiredStrings.push("permissionMode", "expectedPrompt");
+  }
+  for (const key of requiredStrings) {
     if (!isString(obj[key])) {
       throw new Error(`Invalid fixture: ${key} must be a string`);
     }
@@ -102,6 +117,9 @@ export function validateFixture(obj) {
   }
   obj.events.forEach(validateFixtureEvent);
 
+  // shellTranscript fixtures grade via a drillPassed lesson step, not an
+  // embedded assertion.
+  if (isShellTranscript && !("assertion" in obj)) return;
   try {
     validateAssertion(obj.assertion);
   } catch (err) {

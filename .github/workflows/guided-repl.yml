@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths:
       - "packages/guided-repl-protocol/**"
+      - "packages/guided-repl-lessons/**"
       - "services/guided-repl-seeder/**"
       - "apps/guided-repl/**"
       - ".github/workflows/guided-repl.yml"
   pull_request:
     paths:
       - "packages/guided-repl-protocol/**"
+      - "packages/guided-repl-lessons/**"
       - "services/guided-repl-seeder/**"
       - "apps/guided-repl/**"
       - ".github/workflows/guided-repl.yml"
@@ -31,6 +33,31 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  lessons:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/guided-repl-lessons
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: packages/guided-repl-lessons/package-lock.json
+      - run: npm ci
+      # The file:-linked protocol package is symlinked; Node resolves its
+      # `zod` import via the symlink's real path, so protocol's own
+      # node_modules must be populated here.
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
+      - run: npm test
+      - run: npm run build
+      # Drift gate: the app's committed lessons.json must match the compiled
+      # YAML sources byte-for-byte.
+      - run: npm run check
+
   seeder:
     runs-on: ubuntu-latest
     defaults:
@@ -44,6 +71,11 @@ jobs:
           cache: npm
           cache-dependency-path: services/guided-repl-seeder/package-lock.json
       - run: npm ci
+      # Populate the file:-linked protocol package's node_modules so its
+      # `zod` import resolves through the symlink's real path.
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
       - run: npm test
 
   app:
@@ -59,6 +91,16 @@ jobs:
           cache: npm
           cache-dependency-path: apps/guided-repl/package-lock.json
       - run: npm ci
+      # Populate the file:-linked packages' node_modules: the app src and
+      # scripts/checkLessons.js import @guided-repl/protocol (zod) and
+      # @guided-repl/lessons (yaml), which resolve through the symlinks'
+      # real paths, not the app's own node_modules.
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
+      - name: Install linked lessons deps
+        run: npm ci
+        working-directory: packages/guided-repl-lessons
       - run: npm test
       - run: npm run build
       - run: npm run check:lessons
@@ -76,6 +118,11 @@ jobs:
           cache: npm
           cache-dependency-path: apps/guided-repl/package-lock.json
       - run: npm ci
+      # The vite build imports the protocol barrel (zod); populate the
+      # symlinked package's node_modules so it resolves.
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v4
@@ -98,7 +145,7 @@ jobs:
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [protocol, seeder, app, e2e]
+    needs: [protocol, lessons, seeder, app, e2e]
     runs-on: ubuntu-latest
     permissions:
       id-token: write # for OIDC role assumption

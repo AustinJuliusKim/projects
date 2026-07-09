@@ -75,8 +75,102 @@ body {
   flex: 0 0 400px;
 }
 
+.pane-stage {
+  border-right: 1px solid var(--cli-border);
+  flex: 0 0 400px;
+}
+
 .pane-right {
   flex: 1;
+}
+
+/* Rail — the lesson spine (left). Collapses to a thin progress strip while
+   a run plays so the stage owns the viewport. */
+
+.rail {
+  flex: 0 0 300px;
+  border-right: 1px solid var(--cli-border);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: auto;
+  transition: flex-basis 0.2s ease;
+}
+
+.rail-collapsed {
+  flex: 0 0 44px;
+  padding: 1rem 0.5rem;
+  overflow: hidden;
+}
+
+.rail-progress {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.rail-collapsed .rail-progress {
+  flex-direction: column;
+}
+
+.rail-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--cli-border);
+  flex: none;
+}
+
+.rail-dot-active {
+  background: var(--cli-accent);
+}
+
+.rail-dot-done {
+  background: var(--cli-add, #4caf50);
+}
+
+.rail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.rail-instruction {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--cli-fg);
+}
+
+.rail-instruction p {
+  margin: 0 0 0.5rem;
+}
+
+.rail-instruction code {
+  background: var(--cli-bg-panel-raised);
+  border-radius: 4px;
+  padding: 0.05em 0.3em;
+}
+
+.rail-continue,
+.rail-retry {
+  align-self: flex-start;
+  background: var(--cli-accent);
+  color: var(--cli-accent-fg);
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rail-retry {
+  background: var(--cli-bg-panel-raised);
+  color: var(--cli-fg);
+  border: 1px solid var(--cli-border);
 }
 
 /* LessonRail */
@@ -188,6 +282,17 @@ button.lesson-item:hover {
   color: var(--cli-del);
 }
 
+/* Raw terminal output from shellTranscript playback (drills). */
+.msg-tty {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  background: var(--cli-bg-panel);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  color: var(--cli-fg);
+}
+
 .msg-tool {
   color: var(--cli-fg);
 }
@@ -252,9 +357,10 @@ button.lesson-item:hover {
   100% { content: ""; }
 }
 
-/* PromptBuilder */
+/* PromptComposer — slash-command-menu-styled autocompletion in the
+   terminal pane. */
 
-.prompt-builder {
+.prompt-composer {
   border-top: 1px solid var(--cli-border);
   padding-top: 0.75rem;
   display: flex;
@@ -262,39 +368,63 @@ button.lesson-item:hover {
   gap: 0.5rem;
 }
 
-.choice-group {
-  border: none;
-  padding: 0;
-  margin: 0;
+.composer-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.45rem;
 }
 
-.choice-group legend {
-  width: 100%;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.composer-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--cli-fg);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+}
+
+.composer-input::placeholder {
   color: var(--cli-muted);
-  margin-bottom: 0.25rem;
+  font-style: italic;
 }
 
-.choice-option {
+.composer-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
   background: var(--cli-bg-panel-raised);
   border: 1px solid var(--cli-border);
-  color: var(--cli-fg);
-  border-radius: 999px;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
-  font-family: inherit;
-  cursor: pointer;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
 }
 
-.choice-option-selected {
+.composer-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.composer-option-active {
   background: var(--cli-accent);
-  border-color: var(--cli-accent);
   color: var(--cli-accent-fg);
+}
+
+.composer-option-desc {
+  font-size: 0.72rem;
+  color: var(--cli-muted);
+}
+
+.composer-option-active .composer-option-desc {
+  color: var(--cli-accent-fg);
+  opacity: 0.85;
 }
 
 /* CLI-style bordered input box (evokes the ╭─╮ Claude Code prompt box via

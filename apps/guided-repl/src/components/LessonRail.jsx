@@ -7,7 +7,7 @@
 import { lessonKind } from "../lessons/lessonKind.js";
 
 /**
- * @param {{lessons: Array<{lessonId: string, title: string, locked: boolean, assertion?: object}>, activeLessonId: string, onSelect: (lessonId: string) => void}} props
+ * @param {{lessons: Array<{lessonId: string, title: string, locked: boolean, steps?: Array<object>}>, activeLessonId: string, onSelect: (lessonId: string) => void}} props
  */
 export default function LessonRail({ lessons, activeLessonId, onSelect }) {
   return (
@@ -32,7 +32,7 @@ export default function LessonRail({ lessons, activeLessonId, onSelect }) {
           );
         }
 
-        const kind = lessonKind(lesson.assertion);
+        const kind = lessonKind(lesson.steps);
         return (
           <button
             type="button"

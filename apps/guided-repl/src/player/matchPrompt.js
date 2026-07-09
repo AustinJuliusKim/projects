@@ -23,6 +23,9 @@ function normalize(text) {
 export function matchPrompt(inputText, branches) {
   const normalizedInput = normalize(inputText);
   for (const branch of branches) {
+    // Drill pseudo-branches carry no expectedPrompt — they are only
+    // reachable via an explicit branchId, never by prompt matching.
+    if (branch.expectedPrompt == null) continue;
     if (normalize(branch.expectedPrompt) === normalizedInput) {
       return { branchId: branch.branchId };
     }

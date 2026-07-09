@@ -165,6 +165,13 @@
   resolved "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.21.5.tgz"
   integrity sha512-DwqXqZyuk5AiWWf3UfLiRDJ5EDd49zg6O9wclZ7kUMv2WRFr4HKjXp/5t8JZ11QbQfUS6/cRCKGwYhtNAY88kQ==
 
+"@guided-repl/lessons@file:../../packages/guided-repl-lessons":
+  version "0.1.0"
+  resolved "file:../../packages/guided-repl-lessons"
+  dependencies:
+    "@guided-repl/protocol" "file:../guided-repl-protocol"
+    yaml "^2.5.0"
+
 "@guided-repl/protocol@file:../../packages/guided-repl-protocol":
   version "0.1.0"
   resolved "file:../../packages/guided-repl-protocol"

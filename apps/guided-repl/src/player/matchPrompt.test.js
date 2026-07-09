@@ -18,3 +18,9 @@ test("matchPrompt matches after trim + whitespace collapse", () => {
 test("matchPrompt returns null on no match", () => {
   assert.equal(matchPrompt("make a completely different thing", branches), null);
 });
+
+test("matchPrompt skips prompt-less drill pseudo-branches", () => {
+  const withDrill = [{ branchId: "drill:try-git", expectedPrompt: null }, ...branches];
+  assert.deepEqual(matchPrompt("make a page about me", withDrill), { branchId: "vague" });
+  assert.equal(matchPrompt("git diff", withDrill), null);
+});

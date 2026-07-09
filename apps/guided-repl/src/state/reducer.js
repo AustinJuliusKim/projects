@@ -97,6 +97,18 @@ export function reducer(state, action) {
       return { ...state, files };
     }
 
+    case "tty_chunk": {
+      const { data } = action.payload;
+      const messages = state.messages.slice();
+      const last = messages[messages.length - 1];
+      if (last && last.role === "tty") {
+        messages[messages.length - 1] = { ...last, text: last.text + data };
+      } else {
+        messages.push({ role: "tty", text: data });
+      }
+      return { ...state, messages };
+    }
+
     case "done":
       return { ...state, status: "done" };
 
