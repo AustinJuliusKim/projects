@@ -152,3 +152,27 @@ fixture needed to change shape):
   step-playback advance.
 - `lessons.json` (app-owned, not a protocol typedef): added `playback` and
   per-branch `seedSnapshotId`/`model` overrides in `branchConfig`.
+
+## v1.2 additive amendments (Lesson Engine Spec)
+
+`fixtureVersion` is still `1` — additive changes made for the Lesson Engine
+migration (YAML-authored lessons, TerminalDrill support):
+
+- `fixtureFormat.js`: added optional envelope `kind`
+  (`"claudeStream" | "shellTranscript"`; absent means `claudeStream`).
+  `shellTranscript` fixtures replay scripted shell sessions (git/CLI drills)
+  through the same player and terminal pane; for that kind,
+  `permissionMode`, `expectedPrompt`, and `assertion` are optional (drills
+  grade via a `drillPassed` lesson step instead).
+- `fixtureFormat.js`: added optional per-event `skippable` boolean
+  (pacing metadata; dormant in v1 playback).
+- `frames.js`: added the `tty_chunk` frame (`{payload: {data}}`) — raw
+  terminal output chunks for `shellTranscript` fixtures.
+- `lessonSchema.js` (new): Zod schema for authored lesson documents
+  (`Lesson`/`Step`/`AssertionRule`/`SemanticAnchor`) — the single source of
+  truth for the compiled `lessons.json` manifest, which replaces the
+  app-owned shape described above (see `@guided-repl/lessons`).
+- `anchors.js` (new): `resolveAnchor(anchor, events)` — semantic-anchor
+  resolution shared by the lessons compiler, CI checks, and the app.
+- `cmdMatch.js` (new): `matchCommand(matcher, input)` for TerminalDrill
+  expectations.

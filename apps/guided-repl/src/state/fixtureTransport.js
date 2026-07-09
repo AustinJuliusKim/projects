@@ -17,9 +17,10 @@ import { createFixturePlayer } from "../player/fixturePlayer.js";
  * @param {import("@guided-repl/protocol").SnapshotManifest} opts.snapshot
  * @param {number} [opts.speedMultiplier]
  * @param {boolean} [opts.stepMode]
+ * @param {Record<string, Record<number, object>>} [opts.annotations] anchored annotations, keyed by branchId → event index
  * @returns {Transport}
  */
-export function fixtureTransport({ branches, snapshot, speedMultiplier = 1, stepMode = false }) {
+export function fixtureTransport({ branches, snapshot, speedMultiplier = 1, stepMode = false, annotations }) {
   /** @type {TransportHandlers|null} */
   let handlers = null;
   /** @type {ReturnType<typeof createFixturePlayer>|null} */
@@ -37,7 +38,13 @@ export function fixtureTransport({ branches, snapshot, speedMultiplier = 1, step
 
     switch (msg.type) {
       case "prompt": {
-        const match = matchPrompt(msg.text, branches);
+        // Explicit branchId (composer suggestions, drill transcripts) takes
+        // precedence — it disambiguates branches that share an
+        // expectedPrompt (l4/l5/l7/l8 counterfactuals). Prompt matching is
+        // the fallback for plain typed text.
+        const match = msg.branchId
+          ? branches.some((b) => b.branchId === msg.branchId) && { branchId: msg.branchId }
+          : matchPrompt(msg.text, branches);
         if (!match) {
           handlers.onStatus({ kind: "hint", text: msg.text });
           return;
@@ -50,6 +57,7 @@ export function fixtureTransport({ branches, snapshot, speedMultiplier = 1, step
           snapshot: branch.snapshot ?? snapshot,
           speedMultiplier,
           stepMode,
+          annotationsByIndex: annotations?.[match.branchId],
           onFrame: (frame) => handlers.onFrame(frame),
           onStateChange: (state) => handlers.onStatus?.({ kind: "player_state", state }),
           onStatus: (status) => handlers.onStatus?.(status),

@@ -1,0 +1,62 @@
+schemaVersion: 1
+id: l7
+slug: claude-md-teaching-your-agent
+title: CLAUDE.md — teaching your agent
+track: guided
+order: 7
+durationTargetSec: 300
+prereqs:
+  - l6
+locked: false
+snapshot:
+  snapshotId: l7-input-plain
+fixtures:
+  without:
+    path: fixtures/l7/without.json
+    kind: claudeStream
+  with:
+    path: fixtures/l7/with.json
+    kind: claudeStream
+steps:
+  - type: instruction
+    id: intro
+    md: "**Teach your agent.** The same prompt, with and without a CLAUDE.md conventions file in the workspace. Watch how the conventions change what Claude writes."
+  - type: promptBuilder
+    id: compose
+    suggestions:
+      - text: add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property
+        description: run without CLAUDE.md
+        branchId: without
+      - text: add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property
+        description: run with a CLAUDE.md conventions file
+        branchId: with
+  - type: run
+    id: run
+    branches:
+      without:
+        fixture: without
+        expectedPrompt: add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property
+        permissionMode: acceptEdits
+      with:
+        fixture: with
+        expectedPrompt: add a call-to-action button to the page using a new highlight color, define the highlight as a CSS custom property
+        permissionMode: acceptEdits
+        seedSnapshotId: l7-input-claudemd
+  - type: quiz
+    id: quiz
+    question: The 'with CLAUDE.md' run named its new CSS variable --gp-highlight instead of --highlight. What caused that?
+    options:
+      - A convention defined in the workspace's CLAUDE.md file
+      - A different prompt text
+      - A different permission mode
+      - Random variation between runs
+    answerIdx: 0
+  - type: assertion
+    id: grade
+    rule:
+      type: quizCorrect
+      stepId: quiz
+completion:
+  assertionIds:
+    - grade
+  next: l8

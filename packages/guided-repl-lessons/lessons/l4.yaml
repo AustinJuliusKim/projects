@@ -1,0 +1,61 @@
+schemaVersion: 1
+id: l4
+slug: plan-mode-prompt-planning
+title: Plan mode & prompt planning
+track: guided
+order: 4
+durationTargetSec: 300
+prereqs:
+  - l3
+locked: false
+snapshot:
+  snapshotId: l3-output
+fixtures:
+  approve:
+    path: fixtures/l4/approve.json
+    kind: claudeStream
+  revise:
+    path: fixtures/l4/revise.json
+    kind: claudeStream
+steps:
+  - type: instruction
+    id: intro
+    md: "**Plan mode.** Ask for a plan before any file changes. You can approve it as-is, or revise it first and watch execution follow the revised plan."
+  - type: promptBuilder
+    id: compose
+    suggestions:
+      - text: add a skills section to the page listing 3 example skills, keep it one file
+        description: approve the plan as-is
+        branchId: approve
+      - text: add a skills section to the page listing 3 example skills, keep it one file
+        description: revise the plan before approving
+        branchId: revise
+  - type: run
+    id: run
+    branches:
+      approve:
+        fixture: approve
+        expectedPrompt: add a skills section to the page listing 3 example skills, keep it one file
+        permissionMode: plan
+      revise:
+        fixture: revise
+        expectedPrompt: add a skills section to the page listing 3 example skills, keep it one file
+        permissionMode: plan
+  - type: quiz
+    id: quiz
+    question: What's the main benefit of revising a plan before approving it, rather than approving immediately?
+    options:
+      - You catch mismatches between what you asked for and what the agent intends to do, before any files change
+      - It makes the agent respond faster
+      - It skips the permission gate entirely
+      - It automatically switches to a cheaper model
+    answerIdx: 0
+  - type: assertion
+    id: grade
+    rule:
+      type: quizCorrect
+      stepId: quiz
+completion:
+  assertionIds:
+    - grade
+  next: l5

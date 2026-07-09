@@ -242,6 +242,94 @@ test("fixturePlayer with stepMode:false plays annotated events straight through"
 
   assert.equal(player.getState(), "done");
   assert.ok(!states.includes("awaitingStep"));
-  assert.equal(statuses.length, 0);
+  // Annotations are diegetic: they still emit in auto playback (non-blocking).
+  assert.ok(statuses.every((s) => s.kind === "annotation"));
   assert.ok(frames.some((f) => f.type === "text" && f.payload.delta === "Exploring"));
+});
+
+test("fixturePlayer emits config-anchored annotations by event index", async () => {
+  const statuses = [];
+  const states = [];
+
+  const player = createFixturePlayer({
+    fixture: makeFixture(),
+    snapshot,
+    speedMultiplier: 0,
+    stepMode: false,
+    annotationsByIndex: { 1: { body: "anchored copy" } },
+    onFrame: () => {},
+    onStateChange: (s) => {
+      states.push(s);
+      if (s === "awaitingClient") player.resolvePermission("approve");
+    },
+    onStatus: (s) => statuses.push(s),
+  });
+
+  await player.play();
+
+  assert.equal(player.getState(), "done");
+  const annotations = statuses.filter((s) => s.kind === "annotation");
+  assert.equal(annotations.length, 1);
+  assert.equal(annotations[0].annotation.body, "anchored copy");
+  assert.ok(!states.includes("awaitingStep"));
+});
+
+test("fixturePlayer pauses on config-anchored annotations in stepMode", async () => {
+  const states = [];
+  let sawAnnotation = null;
+
+  const player = createFixturePlayer({
+    fixture: makeFixture(),
+    snapshot,
+    speedMultiplier: 0,
+    stepMode: true,
+    annotationsByIndex: { 1: { body: "anchored copy" } },
+    onFrame: () => {},
+    onStateChange: (s) => {
+      states.push(s);
+      if (s === "awaitingStep") {
+        sawAnnotation = true;
+        queueMicrotask(() => player.step());
+      }
+      if (s === "awaitingClient") player.resolvePermission("approve");
+    },
+    onStatus: () => {},
+  });
+
+  await player.play();
+
+  assert.equal(player.getState(), "done");
+  assert.ok(sawAnnotation);
+  assert.ok(states.includes("awaitingStep"));
+});
+
+test("fixturePlayer replays a shellTranscript fixture through the same loop", async () => {
+  const frames = [];
+  const player = createFixturePlayer({
+    fixture: {
+      fixtureVersion: 1,
+      kind: "shellTranscript",
+      claudeCodeVersion: "2.1.198",
+      lessonId: "l6",
+      branchId: "drill",
+      recordedAt: "2026-07-09T00:00:00Z",
+      seedSnapshotId: "seed",
+      events: [
+        { frame: { type: "tty_chunk", payload: { data: "$ git diff\n" } }, delayMs: 0 },
+        { frame: { type: "tty_chunk", payload: { data: "+ <h1>hello</h1>\n" } }, delayMs: 0 },
+        { frame: { type: "done" }, delayMs: 0 },
+      ],
+    },
+    snapshot,
+    speedMultiplier: 0,
+    onFrame: (f) => frames.push(f),
+    onStateChange: () => {},
+  });
+
+  await player.play();
+
+  assert.equal(player.getState(), "done");
+  const tty = frames.filter((f) => f.type === "tty_chunk");
+  assert.equal(tty.length, 2);
+  assert.equal(tty[0].payload.data, "$ git diff\n");
 });

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { gotoLesson, pickChoices, runPrompt, waitForDone, openFile } from "../helpers.js";
+import { gotoLesson, composePrompt, runPrompt, waitForDone, openFile } from "../helpers.js";
 
 // JS component preview ("preview-coming-soon") has no e2e coverage: no
 // fixture in this repo writes a .js file, so there is no real file to drive
@@ -8,11 +8,7 @@ import { gotoLesson, pickChoices, runPrompt, waitForDone, openFile } from "../he
 
 test("l1 run: index.html defaults to diff, toggling to preview renders the page", async ({ page }) => {
   await gotoLesson(page);
-  await pickChoices(page, {
-    task: "make a page",
-    subject: "about me",
-    constraint: "in index.html",
-  });
+  await composePrompt(page, { description: "the vague prompt" });
   await runPrompt(page);
   await waitForDone(page);
 
@@ -29,11 +25,7 @@ test("l1 run: index.html defaults to diff, toggling to preview renders the page"
 
 test("l1 run: README.md preview renders markdown to HTML", async ({ page }) => {
   await gotoLesson(page);
-  await pickChoices(page, {
-    task: "make a page",
-    subject: "about me",
-    constraint: "in index.html",
-  });
+  await composePrompt(page, { description: "the vague prompt" });
   await runPrompt(page);
   await waitForDone(page);
 
