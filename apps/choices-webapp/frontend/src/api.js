@@ -62,6 +62,10 @@ export const getMe = async () => {
   writeStreak(getProfile()?.sub, data.stats);
   return data;
 };
+// Owner-only activity dashboard. Auth header required; the backend gates on
+// ADMIN_SUBS and returns anonymous aggregates only. No retry — the poll is it.
+export const getAdminOverview = async () =>
+  post("getAdminOverview", {}, await authHeaders());
 export const createCheckoutSession = async (plan) =>
   post("createCheckoutSession", { plan }, await authHeaders());
 export const createPortalSession = async () =>

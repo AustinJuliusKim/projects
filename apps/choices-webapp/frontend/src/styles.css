@@ -916,3 +916,128 @@ body.account-corner-active .container {
   white-space: nowrap;
   border: 0;
 }
+
+/* --- Owner-only activity dashboard (#/admin) --- */
+.admin-view {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.admin-head h1 {
+  margin: 4px 0 0;
+  font-size: 1.6rem;
+}
+.admin-back {
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.admin-sub {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+.admin-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.stat-tile {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 18px 16px;
+}
+.stat-num {
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.stat-label {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.admin-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.admin-panel h2 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.admin-turn {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.admin-turn b {
+  font-size: 1.1rem;
+  margin-right: 4px;
+}
+/* Single-series magnitude: one hue (--indigo), rounded data-end, ink labels. */
+.admin-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 34%) 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.bar-label {
+  color: var(--text);
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-track {
+  height: 12px;
+  background: rgba(148, 163, 184, 0.16);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--indigo);
+  border-radius: 6px;
+  min-width: 4px;
+}
+.bar-count {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.admin-hint,
+.admin-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.admin-empty {
+  text-align: center;
+  padding: 40px 16px;
+}
+.admin-empty .btn {
+  max-width: 220px;
+  margin: 16px auto 0;
+}
+.admin-foot {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: right;
+}
