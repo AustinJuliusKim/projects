@@ -46,6 +46,12 @@ jobs:
           cache: npm
           cache-dependency-path: packages/guided-repl-lessons/package-lock.json
       - run: npm ci
+      # The file:-linked protocol package is symlinked; Node resolves its
+      # `zod` import via the symlink's real path, so protocol's own
+      # node_modules must be populated here.
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
       - run: npm test
       - run: npm run build
       # Drift gate: the app's committed lessons.json must match the compiled
@@ -65,6 +71,11 @@ jobs:
           cache: npm
           cache-dependency-path: services/guided-repl-seeder/package-lock.json
       - run: npm ci
+      # Populate the file:-linked protocol package's node_modules so its
+      # `zod` import resolves through the symlink's real path.
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
       - run: npm test
 
   app:
@@ -80,6 +91,16 @@ jobs:
           cache: npm
           cache-dependency-path: apps/guided-repl/package-lock.json
       - run: npm ci
+      # Populate the file:-linked packages' node_modules: the app src and
+      # scripts/checkLessons.js import @guided-repl/protocol (zod) and
+      # @guided-repl/lessons (yaml), which resolve through the symlinks'
+      # real paths, not the app's own node_modules.
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
+      - name: Install linked lessons deps
+        run: npm ci
+        working-directory: packages/guided-repl-lessons
       - run: npm test
       - run: npm run build
       - run: npm run check:lessons
@@ -97,6 +118,11 @@ jobs:
           cache: npm
           cache-dependency-path: apps/guided-repl/package-lock.json
       - run: npm ci
+      # The vite build imports the protocol barrel (zod); populate the
+      # symlinked package's node_modules so it resolves.
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v4
