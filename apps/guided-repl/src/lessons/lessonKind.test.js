@@ -1,24 +1,20 @@
 import { test } from "node:test";
-import assert from "node:assert";
+import assert from "node:assert/strict";
 import { lessonKind } from "./lessonKind.js";
 
-test("lessonKind: quiz assertion → quiz kind with ? glyph", () => {
-  const result = lessonKind({ type: "quiz", question: "Which step?" });
-  assert.equal(result.kind, "quiz");
-  assert.equal(result.glyph, "?");
-  assert.equal(result.label, "Quiz");
+test("lessonKind: quiz step → quiz kind with ? glyph", () => {
+  const steps = [
+    { type: "instruction", id: "intro", md: "x" },
+    { type: "quiz", id: "quiz", question: "?", options: ["a", "b"], answerIdx: 0 },
+  ];
+  assert.deepEqual(lessonKind(steps), { kind: "quiz", label: "Quiz", glyph: "?" });
 });
 
-test("lessonKind: file-contains assertion → check kind with ✓ glyph", () => {
-  const result = lessonKind({ type: "file-contains", path: "index.html", match: "<h1>" });
-  assert.equal(result.kind, "check");
-  assert.equal(result.glyph, "✓");
-  assert.equal(result.label, "Check");
+test("lessonKind: assertion-only steps → check kind with ✓ glyph", () => {
+  const steps = [{ type: "assertion", id: "grade", rule: { type: "file-exists", path: "index.html" } }];
+  assert.deepEqual(lessonKind(steps), { kind: "check", label: "Check", glyph: "✓" });
 });
 
-test("lessonKind: undefined assertion → check kind (default)", () => {
-  const result = lessonKind(undefined);
-  assert.equal(result.kind, "check");
-  assert.equal(result.glyph, "✓");
-  assert.equal(result.label, "Check");
+test("lessonKind: undefined steps → check kind", () => {
+  assert.deepEqual(lessonKind(undefined), { kind: "check", label: "Check", glyph: "✓" });
 });

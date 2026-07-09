@@ -9,13 +9,14 @@
     "preview": "vite preview",
     "test": "node --test src",
     "e2e": "playwright test --config e2e/playwright.config.js",
-    "check:lessons": "node scripts/checkLessons.js && node scripts/checkPromptJoin.js"
+    "check:lessons": "node scripts/checkLessons.js"
   },
   "dependencies": {
     "@guided-repl/protocol": "file:../../packages/guided-repl-protocol",
     "marked": "^18.0.5",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "@guided-repl/lessons": "file:../../packages/guided-repl-lessons"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

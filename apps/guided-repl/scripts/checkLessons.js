@@ -1,21 +1,28 @@
 #!/usr/bin/env node
 /**
- * DAG <-> fixtures consistency check.
+ * Compiled-manifest <-> fixtures consistency check.
  *
- * Verifies that public/fixtures/<version>/lessons.json, its referenced
- * fixture files, and its referenced seed snapshots are mutually consistent
- * and free of leaked local-machine data, before they ship.
+ * Verifies that public/fixtures/<version>/lessons.json (the compiled output
+ * of @guided-repl/lessons), its referenced fixture files, and its referenced
+ * seed snapshots are mutually consistent and free of leaked local-machine
+ * data, before they ship.
  *
  * Checks:
- *   (a) every active lesson's branches[] <-> branchConfig keys match exactly
- *   (b) every branchConfig.fixture file exists and passes validateFixture
- *   (c) each fixture's envelope {lessonId, branchId, expectedPrompt,
- *       permissionMode, seedSnapshotId} matches lessons.json
+ *   (a) the manifest passes the protocol's Zod lesson schema
+ *   (b) every run-branch/annotation/drill fixture file exists, passes
+ *       validateFixture, and matches its declared kind
+ *   (c) each claudeStream fixture's envelope {lessonId, branchId,
+ *       expectedPrompt, permissionMode, seedSnapshotId} matches the lesson's
+ *       run step
  *   (d) seed snapshot files exist and pass validateSnapshot
- *   (e) exactly one assertion per active lesson, and it passes validateAssertion
- *   (f) redaction grep over every fixture/snapshot JSON file: zero matches for
- *       /Users/, /private, /var/folders, the dash-mangled form of those, an
- *       email regex, a UUIDv4 regex, and sk-ant- key-shaped strings
+ *   (e) every annotation step's semantic anchor still resolves against the
+ *       shipped fixture to its compiled resolvedEventIndex (re-seed drift gate)
+ *   (f) promptBuilder suggestion <-> run-branch coverage: every suggestion
+ *       resolves to exactly one branch, every branch is reachable
+ *   (g) snapshot-chain consistency (l1 -> l3 -> ... -> l8, l2 reuse, l7
+ *       plain/claudemd special case)
+ *   (h) redaction grep over the manifest and every fixture/snapshot file
+ *   (i) drift: recompiling the YAML sources reproduces the committed manifest
  *
  * Usage: node scripts/checkLessons.js
  * Exit code is non-zero (with precise error messages on stderr) on any
@@ -25,7 +32,8 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateFixture, validateSnapshot, validateAssertion } from "@guided-repl/protocol";
+import { validateLessonManifest, validateFixture, validateSnapshot, resolveAnchor } from "@guided-repl/protocol";
+import { compileAll } from "@guided-repl/lessons";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, "..");
@@ -55,6 +63,11 @@ function fail(msg) {
   errors.push(msg);
 }
 
+/** Same normalization as matchPrompt — the binding contract. */
+function normalize(text) {
+  return text.trim().replace(/\s+/g, " ");
+}
+
 function readJson(path, label) {
   if (!existsSync(path)) {
     fail(`${label}: file does not exist: ${path}`);
@@ -73,165 +86,181 @@ if (!existsSync(lessonsPath)) {
   process.exit(1);
 }
 
-const lessonsDoc = readJson(lessonsPath, "lessons.json");
-if (!lessonsDoc || !Array.isArray(lessonsDoc.lessons)) {
-  console.error("checkLessons: lessons.json missing top-level 'lessons' array");
+// (a) schema validation of the shipped manifest.
+const rawManifest = readJson(lessonsPath, "lessons.json");
+let manifest = null;
+try {
+  manifest = validateLessonManifest(rawManifest);
+} catch (err) {
+  console.error(`checkLessons: lessons.json failed the lesson schema — ${err.message}`);
   process.exit(1);
 }
 
-const activeLessons = lessonsDoc.lessons.filter((l) => !l.locked);
+const activeLessons = manifest.lessons.filter((l) => !l.locked);
 const checkedFiles = new Set([lessonsPath]);
 
 for (const lesson of activeLessons) {
-  const { lessonId } = lesson;
-  const prefix = `lesson ${lessonId}`;
+  const prefix = `lesson ${lesson.id}`;
 
-  // (a) branches[] <-> branchConfig keys match exactly, both directions.
-  const branches = Array.isArray(lesson.branches) ? lesson.branches : [];
-  const branchConfig = lesson.branchConfig && typeof lesson.branchConfig === "object" ? lesson.branchConfig : {};
-  const branchSet = new Set(branches);
-  const configSet = new Set(Object.keys(branchConfig));
-
-  for (const b of branchSet) {
-    if (!configSet.has(b)) {
-      fail(`${prefix}: branches[] has "${b}" but branchConfig is missing an entry for it`);
-    }
-  }
-  for (const b of configSet) {
-    if (!branchSet.has(b)) {
-      fail(`${prefix}: branchConfig has "${b}" but branches[] does not list it`);
-    }
-  }
-
-  // (e) exactly one assertion per active lesson, and it must validate.
-  if (lesson.assertion === undefined) {
-    fail(`${prefix}: missing assertion`);
-  } else {
-    try {
-      validateAssertion(lesson.assertion);
-    } catch (err) {
-      fail(`${prefix}: assertion invalid — ${err.message}`);
-    }
-  }
-
-  // (b) + (c) per-branch fixture checks.
-  for (const branchId of branches) {
-    const cfg = branchConfig[branchId];
-    if (!cfg) continue; // already reported above
-
-    const branchPrefix = `${prefix} / branch ${branchId}`;
-
-    if (!cfg.fixture || typeof cfg.fixture !== "string") {
-      fail(`${branchPrefix}: branchConfig entry missing a "fixture" path`);
-      continue;
-    }
-
-    const fixturePath = join(fixturesRoot, cfg.fixture);
+  // Load + validate every fixture the lesson references, keyed for reuse.
+  const fixtureData = {};
+  for (const [key, ref] of Object.entries(lesson.fixtures)) {
+    const fixturePath = join(fixturesRoot, ref.path);
     if (!existsSync(fixturePath)) {
-      fail(`${branchPrefix}: fixture file does not exist: ${fixturePath}`);
+      fail(`${prefix} fixtures.${key}: fixture file does not exist: ${fixturePath}`);
       continue;
     }
     checkedFiles.add(fixturePath);
-
-    const fixture = readJson(fixturePath, branchPrefix);
+    const fixture = readJson(fixturePath, `${prefix} fixtures.${key}`);
     if (!fixture) continue;
-
     try {
       validateFixture(fixture);
     } catch (err) {
-      fail(`${branchPrefix}: fixture failed validateFixture — ${err.message}`);
+      fail(`${prefix} fixtures.${key}: fixture failed validateFixture — ${err.message}`);
       continue;
     }
+    // (b) declared kind matches the fixture (absent = claudeStream).
+    const fixtureKind = fixture.kind ?? "claudeStream";
+    if (fixtureKind !== ref.kind) {
+      fail(`${prefix} fixtures.${key}: declared kind "${ref.kind}" but fixture is "${fixtureKind}"`);
+      continue;
+    }
+    fixtureData[key] = fixture;
 
-    if (fixture.lessonId !== lessonId) {
-      fail(`${branchPrefix}: fixture.lessonId "${fixture.lessonId}" does not match lessons.json "${lessonId}"`);
+    const sizeBytes = statSync(fixturePath).size;
+    if (sizeBytes > FIXTURE_SIZE_WARN_BYTES) {
+      warnings.push(`${prefix} fixtures.${key}: fixture is ${(sizeBytes / 1024).toFixed(1)}KB (> 256KB) — ${fixturePath}`);
     }
-    if (fixture.branchId !== branchId) {
-      fail(`${branchPrefix}: fixture.branchId "${fixture.branchId}" does not match branch "${branchId}"`);
+  }
+
+  const snapshotIds = new Set([lesson.snapshot.snapshotId]);
+
+  for (const step of lesson.steps) {
+    // (c) claudeStream envelope cross-checks per run branch.
+    if (step.type === "run") {
+      for (const [branchId, branch] of Object.entries(step.branches)) {
+        const branchPrefix = `${prefix} / branch ${branchId}`;
+        const fixture = fixtureData[branch.fixture];
+        if (!fixture) continue; // already reported above
+        if ((fixture.kind ?? "claudeStream") !== "claudeStream") {
+          fail(`${branchPrefix}: run branches must reference claudeStream fixtures`);
+          continue;
+        }
+        if (fixture.lessonId !== lesson.id) {
+          fail(`${branchPrefix}: fixture.lessonId "${fixture.lessonId}" does not match "${lesson.id}"`);
+        }
+        if (fixture.branchId !== branchId) {
+          fail(`${branchPrefix}: fixture.branchId "${fixture.branchId}" does not match branch "${branchId}"`);
+        }
+        if (normalize(fixture.expectedPrompt) !== normalize(branch.expectedPrompt)) {
+          fail(`${branchPrefix}: fixture.expectedPrompt ${JSON.stringify(fixture.expectedPrompt)} does not match run branch ${JSON.stringify(branch.expectedPrompt)}`);
+        }
+        if (fixture.permissionMode !== branch.permissionMode) {
+          fail(`${branchPrefix}: fixture.permissionMode ${JSON.stringify(fixture.permissionMode)} does not match run branch ${JSON.stringify(branch.permissionMode)}`);
+        }
+        const expectedSeed = branch.seedSnapshotId ?? lesson.snapshot.snapshotId;
+        if (fixture.seedSnapshotId !== expectedSeed) {
+          fail(`${branchPrefix}: fixture.seedSnapshotId ${JSON.stringify(fixture.seedSnapshotId)} does not match ${JSON.stringify(expectedSeed)}`);
+        }
+        snapshotIds.add(expectedSeed);
+      }
     }
-    if (fixture.expectedPrompt !== cfg.expectedPrompt) {
-      fail(
-        `${branchPrefix}: fixture.expectedPrompt ${JSON.stringify(fixture.expectedPrompt)} does not match lessons.json branchConfig.expectedPrompt ${JSON.stringify(cfg.expectedPrompt)}`
-      );
-    }
-    if (fixture.permissionMode !== cfg.permissionMode) {
-      fail(
-        `${branchPrefix}: fixture.permissionMode ${JSON.stringify(fixture.permissionMode)} does not match lessons.json branchConfig.permissionMode ${JSON.stringify(cfg.permissionMode)}`
-      );
-    }
-    // Branches may override the lesson-level seedSnapshotId (e.g. L7's
-    // without/with CLAUDE.md branches carry distinct input snapshots).
-    const expectedSeedSnapshotId = cfg.seedSnapshotId ?? lesson.seedSnapshotId;
-    if (fixture.seedSnapshotId !== expectedSeedSnapshotId) {
-      fail(
-        `${branchPrefix}: fixture.seedSnapshotId ${JSON.stringify(fixture.seedSnapshotId)} does not match lessons.json seedSnapshotId ${JSON.stringify(expectedSeedSnapshotId)}`
-      );
-    }
-    if (cfg.seedSnapshotId) {
-      const overridePath = join(fixturesRoot, "snapshots", `${cfg.seedSnapshotId}.json`);
-      if (!existsSync(overridePath)) {
-        fail(`${branchPrefix}: per-branch seed snapshot file does not exist: ${overridePath}`);
-      } else {
-        checkedFiles.add(overridePath);
-        const overrideSnapshot = readJson(overridePath, `${branchPrefix} seed snapshot`);
-        if (overrideSnapshot) {
-          try {
-            validateSnapshot(overrideSnapshot);
-          } catch (err) {
-            fail(`${branchPrefix}: per-branch seed snapshot failed validateSnapshot — ${err.message}`);
-          }
+
+    // (e) anchor re-resolution against the shipped fixture.
+    if (step.type === "annotation") {
+      const fixture = fixtureData[step.fixtureKey];
+      if (fixture) {
+        const index = resolveAnchor(step.anchor, fixture.events);
+        if (index === null) {
+          fail(`${prefix} step ${step.id}: anchor no longer resolves against ${step.fixtureKey} (re-seed drift?)`);
+        } else if (index !== step.resolvedEventIndex) {
+          fail(`${prefix} step ${step.id}: anchor resolves to event ${index} but the compiled manifest says ${step.resolvedEventIndex} — recompile the lessons package`);
         }
       }
     }
 
-    // (f) fixture-size warning.
-    const sizeBytes = statSync(fixturePath).size;
-    if (sizeBytes > FIXTURE_SIZE_WARN_BYTES) {
-      warnings.push(`${branchPrefix}: fixture is ${(sizeBytes / 1024).toFixed(1)}KB (> 256KB) — ${fixturePath}`);
+    if (step.type === "terminalDrill") {
+      const fixture = fixtureData[step.transcript];
+      if (fixture && fixture.kind !== "shellTranscript") {
+        fail(`${prefix} step ${step.id}: transcript fixture must be kind shellTranscript`);
+      }
+    }
+
+    // (f) suggestion <-> branch coverage.
+    if (step.type === "promptBuilder") {
+      const stepIdx = lesson.steps.indexOf(step);
+      const runStep = lesson.steps.slice(stepIdx + 1).find((s) => s.type === "run");
+      if (!runStep) {
+        fail(`${prefix} step ${step.id}: no run step follows this promptBuilder`);
+        continue;
+      }
+      const covered = new Set();
+      for (const suggestion of step.suggestions) {
+        if (suggestion.branchId !== undefined) {
+          const target = runStep.branches[suggestion.branchId];
+          if (!target) {
+            fail(`${prefix} step ${step.id}: suggestion "${suggestion.text}" names unknown branch "${suggestion.branchId}"`);
+          } else if (normalize(target.expectedPrompt) !== normalize(suggestion.text)) {
+            fail(`${prefix} step ${step.id}: suggestion "${suggestion.text}" does not match branch "${suggestion.branchId}" expectedPrompt`);
+          } else {
+            covered.add(suggestion.branchId);
+          }
+          continue;
+        }
+        const matches = Object.entries(runStep.branches).filter(
+          ([, b]) => normalize(b.expectedPrompt) === normalize(suggestion.text),
+        );
+        if (matches.length !== 1) {
+          fail(`${prefix} step ${step.id}: suggestion "${suggestion.text}" resolves to ${matches.length} branches — set branchId`);
+        } else {
+          covered.add(matches[0][0]);
+        }
+      }
+      for (const branchId of Object.keys(runStep.branches)) {
+        if (!covered.has(branchId)) {
+          fail(`${prefix} step ${step.id}: branch "${branchId}" is not reachable by any suggestion`);
+        }
+      }
     }
   }
 
-  // (d) seed snapshot exists and validates.
-  if (!lesson.seedSnapshotId) {
-    fail(`${prefix}: missing seedSnapshotId`);
-  } else {
-    const snapshotPath = join(fixturesRoot, "snapshots", `${lesson.seedSnapshotId}.json`);
+  // (d) seed snapshots exist and validate.
+  for (const snapshotId of snapshotIds) {
+    const snapshotPath = join(fixturesRoot, "snapshots", `${snapshotId}.json`);
     if (!existsSync(snapshotPath)) {
       fail(`${prefix}: seed snapshot file does not exist: ${snapshotPath}`);
-    } else {
-      checkedFiles.add(snapshotPath);
-      const snapshot = readJson(snapshotPath, `${prefix} seed snapshot`);
-      if (snapshot) {
-        try {
-          validateSnapshot(snapshot);
-        } catch (err) {
-          fail(`${prefix}: seed snapshot failed validateSnapshot — ${err.message}`);
-        }
+      continue;
+    }
+    checkedFiles.add(snapshotPath);
+    const snapshot = readJson(snapshotPath, `${prefix} seed snapshot`);
+    if (snapshot) {
+      try {
+        validateSnapshot(snapshot);
+      } catch (err) {
+        fail(`${prefix}: seed snapshot failed validateSnapshot — ${err.message}`);
       }
     }
   }
 }
 
-// (chain consistency) l1 -> l3 -> l4 -> l5 -> l6 -> l7 -> l8's seedSnapshotId
+// (g) chain consistency: l1 -> l3 -> l4 -> l5 -> l6 -> l7 -> l8's snapshot
 // must equal the prior recorded lesson's <lessonId>-output; l2 reuses l1's
-// own seedSnapshotId (it replays l1's constrained run from l1's start
-// state, not l1's end state); l7 is special-cased since its lesson-level
-// seedSnapshotId is a *variant* of l6-output (the plain/CLAUDE.md branch
-// input snapshots), not l6-output verbatim.
-const byId = new Map(lessonsDoc.lessons.map((l) => [l.lessonId, l]));
+// own snapshot (it replays l1's constrained run from l1's start state);
+// l7 is special-cased since its lesson-level snapshot is a *variant* of
+// l6-output (the plain/CLAUDE.md branch input snapshots).
+const byId = new Map(manifest.lessons.map((l) => [l.id, l]));
 
 const l1 = byId.get("l1");
 const l2 = byId.get("l2");
-if (l1 && l2 && l2.seedSnapshotId !== l1.seedSnapshotId) {
-  fail(`chain: l2.seedSnapshotId ${JSON.stringify(l2.seedSnapshotId)} does not reuse l1.seedSnapshotId ${JSON.stringify(l1.seedSnapshotId)}`);
+if (l1 && l2 && l2.snapshot.snapshotId !== l1.snapshot.snapshotId) {
+  fail(`chain: l2 snapshot ${JSON.stringify(l2.snapshot.snapshotId)} does not reuse l1's ${JSON.stringify(l1.snapshot.snapshotId)}`);
 }
 
 for (let i = 1; i < CHAIN.length; i++) {
   const prevId = CHAIN[i - 1];
   const curId = CHAIN[i];
-  const prev = byId.get(prevId);
   const cur = byId.get(curId);
-  if (!prev || !cur) continue; // missing-lesson already reported elsewhere if active
+  if (!byId.get(prevId) || !cur) continue; // missing-lesson already reported elsewhere if active
   const expectedInput = `${prevId}-output`;
 
   if (curId === "l7") {
@@ -258,8 +287,8 @@ for (let i = 1; i < CHAIN.length; i++) {
     continue;
   }
 
-  if (cur.seedSnapshotId !== expectedInput) {
-    fail(`chain: ${curId}.seedSnapshotId ${JSON.stringify(cur.seedSnapshotId)} does not match ${prevId}'s output snapshot ${JSON.stringify(expectedInput)}`);
+  if (cur.snapshot.snapshotId !== expectedInput) {
+    fail(`chain: ${curId} snapshot ${JSON.stringify(cur.snapshot.snapshotId)} does not match ${prevId}'s output snapshot ${JSON.stringify(expectedInput)}`);
   }
 }
 
@@ -275,7 +304,7 @@ if (existsSync(snapshotsDir)) {
   }
 }
 
-// (f) redaction grep over every fixture/snapshot JSON file.
+// (h) redaction grep over the manifest and every fixture/snapshot file.
 for (const filePath of checkedFiles) {
   if (!existsSync(filePath)) continue;
   const raw = readFileSync(filePath, "utf8");
@@ -285,6 +314,20 @@ for (const filePath of checkedFiles) {
       fail(`redaction: ${filePath} contains a ${name} match: ${JSON.stringify(match[0])}`);
     }
   }
+}
+
+// (i) drift: recompiling the YAML sources must reproduce the committed
+// manifest byte-for-byte (modulo the trailing newline the compiler writes).
+try {
+  const recompiled = `${JSON.stringify(compileAll({ fixturesRoot }), null, 2)}\n`;
+  const committed = readFileSync(lessonsPath, "utf8");
+  if (recompiled !== committed) {
+    fail(
+      "drift: lessons.json does not match the compiled YAML sources — run `npm run build` in packages/guided-repl-lessons and copy dist/lessons.json over public/fixtures/v1/lessons.json",
+    );
+  }
+} catch (err) {
+  fail(`drift: recompiling the lessons package failed — ${err.message}`);
 }
 
 if (warnings.length > 0) {

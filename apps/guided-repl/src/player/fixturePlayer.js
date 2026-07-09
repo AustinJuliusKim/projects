@@ -23,6 +23,9 @@ function sleep(ms) {
  * @param {SnapshotManifest} opts.snapshot
  * @param {number} opts.speedMultiplier
  * @param {boolean} [opts.stepMode]
+ * @param {Record<number, {title?: string, body: string}>} [opts.annotationsByIndex]
+ *   Anchored annotations from the lesson config (compiler-resolved event
+ *   index → copy), merged with any in-fixture event.annotation.
  * @param {(frame: ServerFrame) => void} opts.onFrame
  * @param {(state: PlayerState) => void} opts.onStateChange
  * @param {(status: object) => void} [opts.onStatus]
@@ -32,6 +35,7 @@ export function createFixturePlayer({
   snapshot,
   speedMultiplier,
   stepMode = false,
+  annotationsByIndex,
   onFrame,
   onStateChange,
   onStatus,
@@ -62,7 +66,7 @@ export function createFixturePlayer({
       onFrame({ type: "file_content", payload: { path: f.path, content: f.content } });
     }
 
-    for (const event of fixture.events) {
+    for (const [index, event] of fixture.events.entries()) {
       if (myGeneration !== generation) return;
 
       if ("awaitClient" in event) {
@@ -78,14 +82,20 @@ export function createFixturePlayer({
         continue;
       }
 
-      if (stepMode && event.annotation) {
+      // In-fixture annotations (legacy L2 recordings) and config-anchored
+      // annotations resolve to the same status; anchored ones also show in
+      // auto playback (diegetic, non-blocking) while stepMode pauses both.
+      const annotation = event.annotation ?? annotationsByIndex?.[index];
+      if (annotation) {
+        onStatus?.({ kind: "annotation", annotation });
+      }
+      if (stepMode && annotation) {
         // Promise created before setState, mirroring the awaitClient gate
         // above: interrupt() must be able to wake this coroutine even if it
         // races the setState/await below.
         const stepPromise = new Promise((resolve) => {
           pendingStepResolve = resolve;
         });
-        onStatus?.({ kind: "annotation", annotation: event.annotation });
         setState("awaitingStep");
         await stepPromise;
         if (myGeneration !== generation) return;

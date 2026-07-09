@@ -1,19 +1,25 @@
 /**
- * Top-level wiring: loads lessons.json, drives useSession in guided mode for
- * whichever lesson is selected, and lays out LessonRail | Transcript+PromptBuilder
- * | WorkspacePane, with PermissionModal/AnnotationCard as overlays and
- * GradeBanner once done.
+ * Top-level wiring: loads the compiled lesson manifest, drives the headless
+ * lesson engine and useSession in guided mode, and lays out
+ * Rail | Stage (Transcript + AnnotationCard + PromptComposer) | WorkspacePane
+ * with PermissionModal as an overlay.
+ *
+ * Separation contract (Lesson Engine Spec §3): stage components receive only
+ * the session stream state and the current mode string — never lesson
+ * state. The Rail is the engine's only full subscriber.
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { matchCommand } from "@guided-repl/protocol";
 import { useSession } from "./state/useSession.js";
 import { loadLesson } from "./lessons/lessonLoader.js";
-import LessonRail from "./components/LessonRail.jsx";
+import { useLessonEngine } from "./engine/useLessonEngine.js";
+import { railModel, currentStep, evaluateRule } from "./engine/lessonEngine.js";
+import Rail from "./components/Rail.jsx";
 import Transcript from "./components/Transcript.jsx";
-import PromptBuilder from "./components/PromptBuilder.jsx";
+import PromptComposer from "./components/PromptComposer.jsx";
 import WorkspacePane from "./components/WorkspacePane.jsx";
 import PermissionModal from "./components/PermissionModal.jsx";
-import GradeBanner from "./components/GradeBanner.jsx";
 import AnnotationCard from "./components/AnnotationCard.jsx";
 
 /** @returns {number} */
@@ -62,12 +68,31 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [ready, loaded],
   );
-  const { state, prompt, approve, deny, openFile, next } = useSession({
+
+  const engine = useLessonEngine(lesson ?? null);
+  const { state, prompt, approve, deny, interrupt, openFile, next } = useSession({
     mode: "guided",
     lesson,
     branches: ready ? loaded.branches : undefined,
     speedMultiplier,
+    onDone: () => engine.dispatch({ type: "run_done" }),
   });
+
+  const step = currentStep(engine.state);
+  const rail = railModel(engine.state);
+
+  // Entering an assertion step evaluates its rule against the settled
+  // session state and records the result on the engine.
+  useEffect(() => {
+    if (step?.type !== "assertion" || engine.state.results[step.id]) return;
+    const result = evaluateRule(step.rule, {
+      files: state.files,
+      messages: state.messages,
+      results: engine.state.results,
+    });
+    engine.dispatch({ type: "assertion_evaluated", stepId: step.id, result });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, state.files, state.messages]);
 
   if (error && !lessons) {
     return (
@@ -85,29 +110,61 @@ export default function App() {
     );
   }
 
+  const isDrill = step?.type === "terminalDrill";
+
+  function onComposerSubmit(text, branchId) {
+    if (isDrill) {
+      if (!matchCommand(step.expect, text)) {
+        // Wrong command: submit without a branchId so the transport's
+        // no-match path raises the hint affordance.
+        prompt(text);
+        return;
+      }
+      engine.dispatch({ type: "drill_matched" });
+      prompt(text, `drill:${step.id}`);
+      return;
+    }
+    engine.dispatch({ type: "prompt_matched", branchId });
+    prompt(text, branchId);
+  }
+
+  function onRetry() {
+    // Fresh session for the retry — the transport replays the seed snapshot
+    // on the next matched prompt.
+    interrupt();
+    engine.dispatch({ type: "retry" });
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <h1>Guided REPL</h1>
       </header>
       <main className="split-pane">
-        <section className="pane pane-left">
-          <LessonRail lessons={lessons} activeLessonId={selectedLessonId} onSelect={setSelectedLessonId} />
+        <Rail
+          lessons={lessons}
+          activeLessonId={selectedLessonId}
+          onSelectLesson={setSelectedLessonId}
+          rail={rail}
+          completionNext={ready ? loaded.lesson.completion?.next : null}
+          onContinue={() => engine.dispatch({ type: "advance" })}
+          onQuizAnswer={(stepId, answerIdx) => engine.dispatch({ type: "quiz_answered", stepId, answerIdx })}
+          onRetry={onRetry}
+        />
+        <section className="pane pane-stage">
           {error && <div className="load-error">Failed to load lesson: {error}</div>}
           {!error && !ready && <div className="load-status">Loading lesson…</div>}
           {ready && (
             <>
               <Transcript messages={state.messages} status={state.status} />
               <AnnotationCard annotation={state.annotation} onNext={next} />
-              <PromptBuilder
-                promptChoices={loaded.lesson.promptChoices}
+              <PromptComposer
+                suggestions={loaded.lesson.suggestions}
                 status={state.status}
                 hint={state.hint}
-                onSubmit={prompt}
+                onSubmit={onComposerSubmit}
+                freeText={isDrill}
               />
-              {state.status === "done" && (
-                <GradeBanner assertion={loaded.lesson.assertion} files={state.files} messages={state.messages} />
-              )}
             </>
           )}
         </section>
