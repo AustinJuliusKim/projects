@@ -9,6 +9,7 @@
  * @typedef {{tree: object}} FileTreePayload
  * @typedef {{path: string, content: string}} FileContentPayload
  * @typedef {{message: string, code: string}} ErrorPayload
+ * @typedef {{data: string}} TtyChunkPayload
  *
  * @typedef {{type: "session_ready"}} SessionReadyFrame
  * @typedef {{type: "text", payload: TextPayload}} TextFrame
@@ -20,8 +21,9 @@
  * @typedef {{type: "file_content", payload: FileContentPayload}} FileContentFrame
  * @typedef {{type: "done"}} DoneFrame
  * @typedef {{type: "error", payload: ErrorPayload}} ErrorFrame
+ * @typedef {{type: "tty_chunk", payload: TtyChunkPayload}} TtyChunkFrame
  *
- * @typedef {SessionReadyFrame|TextFrame|ToolUseFrame|ToolResultFrame|PermissionRequestFrame|UsageFrame|FileTreeFrame|FileContentFrame|DoneFrame|ErrorFrame} ServerFrame
+ * @typedef {SessionReadyFrame|TextFrame|ToolUseFrame|ToolResultFrame|PermissionRequestFrame|UsageFrame|FileTreeFrame|FileContentFrame|DoneFrame|ErrorFrame|TtyChunkFrame} ServerFrame
  */
 
 export const SESSION_READY = "session_ready";
@@ -34,6 +36,7 @@ export const FILE_TREE = "file_tree";
 export const FILE_CONTENT = "file_content";
 export const DONE = "done";
 export const ERROR = "error";
+export const TTY_CHUNK = "tty_chunk";
 
 /** Frozen set of all known server frame types. */
 export const SERVER_TYPES = Object.freeze(
@@ -48,6 +51,7 @@ export const SERVER_TYPES = Object.freeze(
     FILE_CONTENT,
     DONE,
     ERROR,
+    TTY_CHUNK,
   ])
 );
 
@@ -76,6 +80,7 @@ const PAYLOAD_CHECKS = {
   [FILE_TREE]: (p) => isPlainObject(p) && isPlainObject(p.tree),
   [FILE_CONTENT]: (p) => isPlainObject(p) && isString(p.path) && isString(p.content),
   [ERROR]: (p) => isPlainObject(p) && isString(p.message) && isString(p.code),
+  [TTY_CHUNK]: (p) => isPlainObject(p) && isString(p.data),
 };
 
 /** Frame types that carry no payload. */
