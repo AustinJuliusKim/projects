@@ -135,6 +135,13 @@ Parameters:
       model access in the Bedrock console first). Blank = feature dormant:
       fillMyFour 400s and the client (via the AiEnabled output) hides the
       button.
+  AdminSubs:
+    Type: String
+    Default: ""
+    Description: >
+      Comma-separated Cognito subs allowed to read the owner-only activity
+      dashboard (getAdminOverview). Blank = no one; the endpoint 403s and the
+      #/admin view stays empty. Anonymous aggregates only — no per-user data.
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
@@ -195,6 +202,7 @@ Resources:
           ANON_SALT: !Ref AnonSalt
           PLACES_API_KEY: !Ref PlacesApiKey
           BEDROCK_MODEL_ID: !Ref BedrockModelId
+          ADMIN_SUBS: !Ref AdminSubs
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GamesTable
@@ -413,6 +421,11 @@ Resources:
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution.Id}"
+
+  # NOTE: the CloudWatch ops dashboard (fed by these EMF metrics) lives in a
+  # separate admin-deployed stack — ops/ops-dashboard.yaml — because the CI
+  # deploy role has no cloudwatch:PutDashboard (same reason as ops/billing-alarms.yaml).
+  # The metrics themselves are emitted by the Lambda regardless of the dashboard.
 
 Outputs:
   ApiUrl:

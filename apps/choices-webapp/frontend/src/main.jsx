@@ -5,6 +5,7 @@ import JoinView from "./JoinView.jsx";
 import PlayView from "./PlayView.jsx";
 import Landing from "./Landing.jsx";
 import AccountView from "./AccountView.jsx";
+import AdminView from "./AdminView.jsx";
 import AccountCorner from "./AccountCorner.jsx";
 import NearMeToggle from "./NearMeToggle.jsx";
 import { registerServiceWorker } from "./push.js";
@@ -37,6 +38,12 @@ function App() {
       return <AccountView />;
     }
 
+    // Owner-only activity dashboard — also above the identity gate so it's
+    // reachable mid-game. The real access boundary is the backend assertAdmin.
+    if (hash.startsWith("#/admin")) {
+      return <AdminView />;
+    }
+
     // If we already have an identity, we're in the game — ignore entry hashes.
     if (identity) {
       return <PlayView identity={identity} onLeave={() => setIdentity(loadIdentity())} />;
@@ -61,7 +68,7 @@ function App() {
   // the 📍 near-me pin (hidden when Places is dormant) + the account pill.
   return (
     <>
-      {!hash.startsWith("#/account") && (
+      {!hash.startsWith("#/account") && !hash.startsWith("#/admin") && (
         <div className="corner-tools">
           <NearMeToggle />
           <AccountCorner />
