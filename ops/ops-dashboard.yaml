@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Choices ops/business dashboard (Growth Plan §10 golden signals + business
+  heartbeat), built from the app Lambda's ChoicesApp EMF metrics. Anonymous
+  aggregate counts/rates only — no per-user data. Lives outside the app stack
+  because the least-privilege CI deploy role has no cloudwatch:PutDashboard.
+  Deploy ONCE, manually, with admin credentials, in the app's region:
+    aws cloudformation deploy --template-file ops/ops-dashboard.yaml \
+      --stack-name ChoicesOpsDashboard --region us-west-2
+  Metrics only appear once the app has served traffic. Dashboards are free
+  (first 3/account); the underlying custom metrics are low-cardinality.
+
+Parameters:
+  DashboardName:
+    Type: String
+    Default: ChoicesWebApp-activity
+  Namespace:
+    Type: String
+    Default: ChoicesApp
+
+Resources:
+  OpsDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Ref DashboardName
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric", "x": 0, "y": 0, "width": 12, "height": 6,
+              "properties": {
+                "title": "Business heartbeat (per hour)",
+                "region": "${AWS::Region}",
+                "stat": "Sum", "period": 3600, "view": "timeSeries",
+                "metrics": [
+                  [ "${Namespace}", "GameCreated" ],
+                  [ "${Namespace}", "GameCompleted" ],
+                  [ "${Namespace}", "SeatClaimed" ],
+                  [ "${Namespace}", "FillMyFour" ]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 12, "y": 0, "width": 12, "height": 6,
+              "properties": {
+                "title": "API errors (5xx) per hour",
+                "region": "${AWS::Region}",
+                "stat": "Sum", "period": 3600, "view": "timeSeries",
+                "metrics": [
+                  [ "${Namespace}", "ApiError", "action", "eliminate" ],
+                  [ "${Namespace}", "ApiError", "action", "createPairing" ],
+                  [ "${Namespace}", "ApiError", "action", "getState" ],
+                  [ "${Namespace}", "ApiError", "action", "fillMyFour" ]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 0, "y": 6, "width": 12, "height": 6,
+              "properties": {
+                "title": "Move latency — eliminate (ms)",
+                "region": "${AWS::Region}",
+                "period": 300, "view": "timeSeries",
+                "metrics": [
+                  [ "${Namespace}", "Latency", "action", "eliminate", { "stat": "p50" } ],
+                  [ "...", { "stat": "p95" } ],
+                  [ "...", { "stat": "p99" } ]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 12, "y": 6, "width": 12, "height": 6,
+              "properties": {
+                "title": "Latency p99 by action (ms)",
+                "region": "${AWS::Region}",
+                "stat": "p99", "period": 300, "view": "timeSeries",
+                "metrics": [
+                  [ "${Namespace}", "Latency", "action", "createPairing" ],
+                  [ "${Namespace}", "Latency", "action", "claimSeat" ],
+                  [ "${Namespace}", "Latency", "action", "getState" ],
+                  [ "${Namespace}", "Latency", "action", "fillMyFour" ]
+                ]
+              }
+            }
+          ]
+        }
+
+Outputs:
+  DashboardUrl:
+    Description: Console URL for the ops dashboard
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${DashboardName}"

@@ -18,6 +18,7 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  ScanCommand,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import {
@@ -42,6 +43,8 @@ import { sendPush } from "./push.mjs";
 import { autocomplete, details, placesEnabled } from "./places.mjs";
 import { aiEnabled, fillFour } from "./suggestai.mjs";
 import { isClean } from "./moderation.mjs";
+import { emitCount, emitLatency } from "./metrics.mjs";
+import { aggregateActive, isAdmin } from "./admin.mjs";
 
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
@@ -128,6 +131,7 @@ export async function handler(event) {
     }
   }
 
+  const startedAt = Date.now();
   try {
     // Optional account identity: guests send no header; a bad token is a hard
     // 401 (never downgraded to guest — broken clients must not corrupt links).
@@ -162,6 +166,8 @@ export async function handler(event) {
         return reply(200, await doCreateCheckoutSession(user, body));
       case "createPortalSession":
         return reply(200, await doCreatePortalSession(user));
+      case "getAdminOverview":
+        return reply(200, await doGetAdminOverview(user));
       default:
         return reply(400, { error: "Unknown action" });
     }
@@ -179,7 +185,11 @@ export async function handler(event) {
       return reply(err.status, { error: err.message, code: err.code });
     }
     console.error("unhandled error", err);
+    emitCount("ApiError", { action: String(body.action ?? "unknown") });
     return reply(500, { error: "Internal error" });
+  } finally {
+    // Per-action latency → EMF (Growth Plan §10 golden signals).
+    emitLatency(String(body.action ?? "unknown"), Date.now() - startedAt);
   }
 }
 
@@ -276,6 +286,7 @@ async function doCreatePairing(body) {
   };
   await ddb.send(new PutCommand({ TableName: TABLE, Item: item }));
 
+  emitCount("GameCreated");
   return { pairingId, code, state: publicState(item) };
 }
 
@@ -327,6 +338,7 @@ async function doClaimSeat(body, user) {
       });
     }
 
+    emitCount("SeatClaimed");
     return {
       pairingId: pairing.pk.slice("PAIR#".length),
       code: pairing.code,
@@ -361,7 +373,10 @@ async function doEliminate(body) {
 
   if (!replay) {
     await notifyAfterMove(pairing);
-    if (pairing.game.status === "complete") await putAnonRecord(pairing);
+    if (pairing.game.status === "complete") {
+      emitCount("GameCompleted");
+      await putAnonRecord(pairing);
+    }
   }
   return { state: publicState(pairing) };
 }
@@ -569,8 +584,11 @@ async function doFillMyFour(body, user) {
   }
   const occasion =
     typeof body.occasion === "string" ? body.occasion.trim().slice(0, 40) : "";
-  if (body.pairingId) return fillForPairing(body, occasion);
-  return fillForUser(user, occasion);
+  const res = body.pairingId
+    ? await fillForPairing(body, occasion)
+    : await fillForUser(user, occasion);
+  emitCount("FillMyFour");
+  return res;
 }
 
 async function fillForPairing(body, occasion) {
@@ -708,6 +726,45 @@ async function ensureUser(user) {
     item = await loadUser(user.sub);
   }
   return item;
+}
+
+// --- Admin activity dashboard (owner-only, anonymous aggregates) ---
+
+// Gate to the owner(s) in ADMIN_SUBS (comma-separated Cognito subs). Mirrors
+// the SIGN_IN_REQUIRED guards; sub (stable) not email (mutable).
+function assertAdmin(user) {
+  if (!user) throw new HttpError(401, "Sign in required.", "SIGN_IN_REQUIRED");
+  if (!isAdmin(user.sub, process.env.ADMIN_SUBS)) {
+    throw new HttpError(403, "Forbidden.", "NOT_ADMIN");
+  }
+}
+
+// The table has no GSI/stream, so the live set is read by a projected Scan
+// (fine at current scale — PAY_PER_REQUEST + 30-day TTL bounds PAIR# items).
+// Projection is limited to what the aggregate needs; tokens/code never leave.
+async function scanActivePairings() {
+  const items = [];
+  let ExclusiveStartKey;
+  do {
+    const res = await ddb.send(
+      new ScanCommand({
+        TableName: TABLE,
+        ProjectionExpression: "pk, game, userA, userB",
+        FilterExpression: "begins_with(pk, :p)",
+        ExpressionAttributeValues: { ":p": "PAIR#" },
+        ExclusiveStartKey,
+      })
+    );
+    if (res.Items) items.push(...res.Items);
+    ExclusiveStartKey = res.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  return items;
+}
+
+async function doGetAdminOverview(user) {
+  assertAdmin(user);
+  const pairings = await scanActivePairings();
+  return { ...aggregateActive(pairings), generatedAt: Date.now() };
 }
 
 // --- Billing (premium subscription) ---
