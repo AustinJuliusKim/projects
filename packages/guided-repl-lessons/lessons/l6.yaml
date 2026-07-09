@@ -1,0 +1,53 @@
+schemaVersion: 1
+id: l6
+slug: reading-diffs-verifying
+title: Reading diffs & verifying
+track: guided
+order: 6
+durationTargetSec: 300
+prereqs:
+  - l5
+locked: false
+snapshot:
+  snapshotId: l5-output
+fixtures:
+  clean:
+    path: fixtures/l6/clean.json
+    kind: claudeStream
+  planted-bug:
+    path: fixtures/l6/planted-bug.json
+    kind: claudeStream
+steps:
+  - type: instruction
+    id: intro
+    md: "**Review before you accept.** Two runs add a testimonials section; one plants a bug. Read the diffs in the workspace pane and catch it before it ships."
+  - type: promptBuilder
+    id: compose
+    suggestions:
+      - text: add a testimonials section to the page with two example quotes, style it with a CSS class named .testimonial-card defined in the stylesheet
+        description: the clean change
+        branchId: clean
+      - text: add a testimonials section to the page with two example quotes, reference a CSS class named .testimonial-card in the HTML but do not add a .testimonial-card rule anywhere in the stylesheet
+        description: the change with a planted bug
+        branchId: planted-bug
+  - type: run
+    id: run
+    branches:
+      clean:
+        fixture: clean
+        expectedPrompt: add a testimonials section to the page with two example quotes, style it with a CSS class named .testimonial-card defined in the stylesheet
+        permissionMode: acceptEdits
+      planted-bug:
+        fixture: planted-bug
+        expectedPrompt: add a testimonials section to the page with two example quotes, reference a CSS class named .testimonial-card in the HTML but do not add a .testimonial-card rule anywhere in the stylesheet
+        permissionMode: acceptEdits
+  - type: assertion
+    id: grade
+    rule:
+      type: file-contains
+      path: index.html
+      match: .testimonial-card {
+completion:
+  assertionIds:
+    - grade
+  next: l7

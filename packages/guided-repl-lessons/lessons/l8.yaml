@@ -1,0 +1,62 @@
+schemaVersion: 1
+id: l8
+slug: cost-models-going-live
+title: Cost, models & going live
+track: guided
+order: 8
+durationTargetSec: 300
+prereqs:
+  - l7
+locked: false
+snapshot:
+  snapshotId: l7-output
+fixtures:
+  haiku:
+    path: fixtures/l8/haiku.json
+    kind: claudeStream
+  sonnet:
+    path: fixtures/l8/sonnet.json
+    kind: claudeStream
+steps:
+  - type: instruction
+    id: intro
+    md: "**Cost & models.** Run the same small tweak on Haiku and on Sonnet with the token meter on, and decide which model this task actually needs."
+  - type: promptBuilder
+    id: compose
+    suggestions:
+      - text: update the call-to-action button label to say Get in touch, keep everything else the same
+        description: run on Haiku
+        branchId: haiku
+      - text: update the call-to-action button label to say Get in touch, keep everything else the same
+        description: run on Sonnet
+        branchId: sonnet
+  - type: run
+    id: run
+    branches:
+      haiku:
+        fixture: haiku
+        expectedPrompt: update the call-to-action button label to say Get in touch, keep everything else the same
+        permissionMode: acceptEdits
+        model: claude-haiku-4-5-20251001
+      sonnet:
+        fixture: sonnet
+        expectedPrompt: update the call-to-action button label to say Get in touch, keep everything else the same
+        permissionMode: acceptEdits
+  - type: quiz
+    id: quiz
+    question: For a small, well-specified text tweak like this one, which model is the better cost/quality tradeoff?
+    options:
+      - Haiku — the task is simple and well-scoped
+      - Sonnet — always default to the most capable model
+      - Neither — this needs a human to do it by hand
+      - Cost doesn't matter, model choice is irrelevant
+    answerIdx: 0
+  - type: assertion
+    id: grade
+    rule:
+      type: quizCorrect
+      stepId: quiz
+completion:
+  assertionIds:
+    - grade
+  next: null

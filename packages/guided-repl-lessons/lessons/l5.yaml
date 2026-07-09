@@ -1,0 +1,70 @@
+schemaVersion: 1
+id: l5
+slug: permission-modes-the-leash
+title: Permission modes & the leash
+track: guided
+order: 5
+durationTargetSec: 300
+prereqs:
+  - l4
+locked: false
+snapshot:
+  snapshotId: l4-output
+fixtures:
+  plan:
+    path: fixtures/l5/plan.json
+    kind: claudeStream
+  acceptEdits:
+    path: fixtures/l5/acceptEdits.json
+    kind: claudeStream
+  bypass:
+    path: fixtures/l5/bypass.json
+    kind: claudeStream
+steps:
+  - type: instruction
+    id: intro
+    md: "**Permission modes are the leash.** Run the same change in plan, acceptEdits, and bypassPermissions modes. Notice where each mode pauses for your review — and where it doesn't."
+  - type: promptBuilder
+    id: compose
+    suggestions:
+      - text: rewrite the projects section removing the placeholder cards, keep it one file
+        description: run in plan mode
+        branchId: plan
+      - text: rewrite the projects section removing the placeholder cards, keep it one file
+        description: run in acceptEdits mode
+        branchId: acceptEdits
+      - text: rewrite the projects section removing the placeholder cards, keep it one file
+        description: run with bypassPermissions
+        branchId: bypass
+  - type: run
+    id: run
+    branches:
+      plan:
+        fixture: plan
+        expectedPrompt: rewrite the projects section removing the placeholder cards, keep it one file
+        permissionMode: plan
+      acceptEdits:
+        fixture: acceptEdits
+        expectedPrompt: rewrite the projects section removing the placeholder cards, keep it one file
+        permissionMode: acceptEdits
+      bypass:
+        fixture: bypass
+        expectedPrompt: rewrite the projects section removing the placeholder cards, keep it one file
+        permissionMode: bypassPermissions
+  - type: quiz
+    id: quiz
+    question: Which permission mode pauses for your review before a risky edit is applied?
+    options:
+      - plan mode
+      - acceptEdits
+      - bypassPermissions
+    answerIdx: 0
+  - type: assertion
+    id: grade
+    rule:
+      type: quizCorrect
+      stepId: quiz
+completion:
+  assertionIds:
+    - grade
+  next: l6

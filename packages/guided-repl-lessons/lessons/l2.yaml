@@ -1,0 +1,52 @@
+schemaVersion: 1
+id: l2
+slug: why-did-it-do-that
+title: Why did it do that?
+track: guided
+order: 2
+durationTargetSec: 300
+prereqs:
+  - l1
+locked: false
+snapshot:
+  snapshotId: l1-input
+fixtures:
+  walkthrough:
+    path: fixtures/l2/walkthrough.json
+    kind: claudeStream
+steps:
+  - type: instruction
+    id: intro
+    md: "**Why did it do that?** This replays Lesson 1's run one beat at a time. At each pause, read the annotation: which tool ran, why, and what entered the context window."
+  - type: promptBuilder
+    id: compose
+    suggestions:
+      - text: make a personal landing page about me, single index.html file, inline CSS
+        description: replay Lesson 1's run step by step
+        branchId: walkthrough
+  - type: run
+    id: run
+    branches:
+      walkthrough:
+        fixture: walkthrough
+        expectedPrompt: make a personal landing page about me, single index.html file, inline CSS
+        permissionMode: acceptEdits
+    pacing: step
+  - type: quiz
+    id: quiz
+    question: Which step in this replay is the agent's explore/plan step, done before any file is written?
+    options:
+      - The streamed reasoning text before any tool call
+      - The Write tool call that creates index.html
+      - The tool_result confirming the file was created
+      - The final summary message after the write
+    answerIdx: 0
+  - type: assertion
+    id: grade
+    rule:
+      type: quizCorrect
+      stepId: quiz
+completion:
+  assertionIds:
+    - grade
+  next: l3
