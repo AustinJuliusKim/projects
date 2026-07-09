@@ -1,0 +1,70 @@
+schemaVersion: 1
+id: l3
+slug: the-prompt-ladder
+title: The prompt ladder
+track: guided
+order: 3
+durationTargetSec: 300
+prereqs:
+  - l2
+locked: false
+snapshot:
+  snapshotId: l1-output
+fixtures:
+  vague:
+    path: fixtures/l3/vague.json
+    kind: claudeStream
+  constrained:
+    path: fixtures/l3/constrained.json
+    kind: claudeStream
+  plan-mode:
+    path: fixtures/l3/plan-mode.json
+    kind: claudeStream
+steps:
+  - type: instruction
+    id: intro
+    md: "**The prompt ladder.** Restyle the page three ways — vague, constrained, and planned. Run each branch and compare the diffs: more specific prompts produce more controlled outcomes."
+  - type: promptBuilder
+    id: compose
+    suggestions:
+      - text: restyle the page with a dark theme
+        description: the vague restyle
+        branchId: vague
+      - text: restyle the page with a dark theme, keep it one file, no frameworks
+        description: the constrained restyle
+        branchId: constrained
+      - text: restyle the page with a dark theme and a new accent color, keep it one file, no frameworks
+        description: constrained, with a reviewed plan
+        branchId: plan-mode
+  - type: run
+    id: run
+    branches:
+      vague:
+        fixture: vague
+        expectedPrompt: restyle the page with a dark theme
+        permissionMode: acceptEdits
+      constrained:
+        fixture: constrained
+        expectedPrompt: restyle the page with a dark theme, keep it one file, no frameworks
+        permissionMode: acceptEdits
+      plan-mode:
+        fixture: plan-mode
+        expectedPrompt: restyle the page with a dark theme and a new accent color, keep it one file, no frameworks
+        permissionMode: plan
+  - type: quiz
+    id: quiz
+    question: Comparing the three restyle diffs, which prompt produced the most tightly controlled outcome?
+    options:
+      - The vague prompt
+      - The constrained prompt
+      - The plan-mode prompt (constrained, plus a reviewed plan)
+    answerIdx: 2
+  - type: assertion
+    id: grade
+    rule:
+      type: quizCorrect
+      stepId: quiz
+completion:
+  assertionIds:
+    - grade
+  next: l4

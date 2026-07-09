@@ -1,0 +1,16 @@
+{
+  "name": "@guided-repl/lessons",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/compile.js",
+  "scripts": {
+    "build": "node src/compile.js",
+    "check": "node src/compile.js --check",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@guided-repl/protocol": "file:../guided-repl-protocol",
+    "yaml": "^2.5.0"
+  }
+}

@@ -1,0 +1,80 @@
+# Lesson 1 — the hand-authored template for the spine (schema reference for l2–l8).
+# Compiled + validated by src/compile.js; annotation anchors are resolved
+# against the fixture stream at build time and re-checked in CI.
+schemaVersion: 1
+id: l1
+slug: ship-a-page-in-90-seconds
+title: Ship a page in 90 seconds
+track: guided
+order: 1
+durationTargetSec: 300
+prereqs: []
+snapshot:
+  snapshotId: l1-input
+fixtures:
+  vague:
+    path: fixtures/l1/vague.json
+    kind: claudeStream
+  constrained:
+    path: fixtures/l1/constrained.json
+    kind: claudeStream
+  plan-mode:
+    path: fixtures/l1/plan-mode.json
+    kind: claudeStream
+steps:
+  - type: instruction
+    id: intro
+    md: >-
+      **Ship a page in 90 seconds.** Pick a prompt below and run it — you'll
+      watch Claude Code explore the workspace, plan, edit files, and verify,
+      ending with a live personal page in the preview pane.
+  - type: promptBuilder
+    id: compose
+    suggestions:
+      - text: make a page about me, in index.html
+        description: the vague prompt
+        branchId: vague
+      - text: make a personal landing page about me, single index.html file, inline CSS
+        description: a constrained prompt
+        branchId: constrained
+      - text: make a personal landing page for my photography, single index.html file, inline CSS
+        description: constrained, in plan mode
+        branchId: plan-mode
+  - type: run
+    id: run
+    branches:
+      vague:
+        fixture: vague
+        expectedPrompt: make a page about me, in index.html
+        permissionMode: acceptEdits
+      constrained:
+        fixture: constrained
+        expectedPrompt: make a personal landing page about me, single index.html file, inline CSS
+        permissionMode: acceptEdits
+      plan-mode:
+        fixture: plan-mode
+        expectedPrompt: make a personal landing page for my photography, single index.html file, inline CSS
+        permissionMode: plan
+  - type: annotation
+    id: first-write
+    fixtureKey: constrained
+    anchor:
+      ordinal: 1
+      frameType: tool_use
+      where:
+        tool: Write
+        pathIncludes: index.html
+    md: >-
+      This is the moment Claude Code goes from talking to acting: the Write
+      tool creates `index.html` in one shot because the prompt already pinned
+      down the file name and styling constraints.
+  - type: assertion
+    id: grade
+    rule:
+      type: file-contains
+      path: index.html
+      match: <h1>
+completion:
+  assertionIds:
+    - grade
+  next: l2
