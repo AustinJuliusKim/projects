@@ -6,7 +6,7 @@ resolve_s3 = true
 s3_prefix = "ChoicesWebApp"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "VapidPublicKey=\"BL0BvvWzSES2LgK4Tq074U1rmeDVVZLWk-1sCCcoRACaxbcvtlxK_fu7lA6QWvKMOEOSRcshQcEP2bcaZkaplnY\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"https://choices.austinjuliuskim.com\" CustomDomain=\"choices.austinjuliuskim.com\" CertificateArn=\"arn:aws:acm:us-east-1:549883968767:certificate/2ec1bd4f-b12f-4284-aad4-5997c6be9a70\" WebAclArn=\"arn:aws:wafv2:us-east-1:549883968767:global/webacl/CreatedByCloudFront-8bb2952d/76c07143-4d9e-4fd0-bc59-e7e1d641fe87\" GoogleClientId=\"240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com\" CognitoDomainPrefix=\"choices-auth\" CognitoCallbackUrl=\"https://choices.austinjuliuskim.com/\" StripePriceMonthly=\"price_1Tpz7cIVveMhKb5YtT1ml6Qr\" StripePriceAnnual=\"price_1Tpz6nIVveMhKb5Y019Vv6v7\""
+parameter_overrides = "VapidPublicKey=\"BL0BvvWzSES2LgK4Tq074U1rmeDVVZLWk-1sCCcoRACaxbcvtlxK_fu7lA6QWvKMOEOSRcshQcEP2bcaZkaplnY\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"https://choices.austinjuliuskim.com\" CustomDomain=\"choices.austinjuliuskim.com\" CertificateArn=\"arn:aws:acm:us-east-1:549883968767:certificate/2ec1bd4f-b12f-4284-aad4-5997c6be9a70\" WebAclArn=\"arn:aws:wafv2:us-east-1:549883968767:global/webacl/CreatedByCloudFront-8bb2952d/76c07143-4d9e-4fd0-bc59-e7e1d641fe87\" GoogleClientId=\"240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com\" CognitoDomainPrefix=\"choices-auth\" CognitoCallbackUrl=\"https://choices.austinjuliuskim.com/\" StripePriceMonthly=\"price_1Tpz7cIVveMhKb5YtT1ml6Qr\" StripePriceAnnual=\"price_1Tpz6nIVveMhKb5Y019Vv6v7\" BedrockModelId=\"us.anthropic.claude-haiku-4-5-20251001-v1:0\""
 image_repositories = []
 
 [default.global.parameters]
@@ -24,7 +24,7 @@ resolve_s3 = true
 s3_prefix = "ChoicesWebApp-preview"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "TableName=\"choices-games-preview\" VapidPublicKey=\"BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"*\" GoogleClientId=\"240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com\" CognitoDomainPrefix=\"choices-auth-preview\" CognitoCallbackUrl=\"https://d3r33durbg7s1k.cloudfront.net/\" StripePriceMonthly=\"price_1TpzGYIVveMhKb5YH2DIAGcr\" StripePriceAnnual=\"price_1TpzGjIVveMhKb5YRATUAc1o\""
+parameter_overrides = "TableName=\"choices-games-preview\" VapidPublicKey=\"BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"*\" GoogleClientId=\"240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com\" CognitoDomainPrefix=\"choices-auth-preview\" CognitoCallbackUrl=\"https://d3r33durbg7s1k.cloudfront.net/\" StripePriceMonthly=\"price_1TpzGYIVveMhKb5YH2DIAGcr\" StripePriceAnnual=\"price_1TpzGjIVveMhKb5YRATUAc1o\" BedrockModelId=\"us.anthropic.claude-haiku-4-5-20251001-v1:0\""
 
 [preview.global.parameters]
 region = "us-west-2"
