@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths:
       - "packages/guided-repl-protocol/**"
+      - "packages/guided-repl-lessons/**"
       - "services/guided-repl-seeder/**"
       - "apps/guided-repl/**"
       - ".github/workflows/guided-repl.yml"
   pull_request:
     paths:
       - "packages/guided-repl-protocol/**"
+      - "packages/guided-repl-lessons/**"
       - "services/guided-repl-seeder/**"
       - "apps/guided-repl/**"
       - ".github/workflows/guided-repl.yml"
@@ -30,6 +32,25 @@ jobs:
           cache-dependency-path: packages/guided-repl-protocol/package-lock.json
       - run: npm ci
       - run: npm test
+
+  lessons:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/guided-repl-lessons
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: packages/guided-repl-lessons/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      # Drift gate: the app's committed lessons.json must match the compiled
+      # YAML sources byte-for-byte.
+      - run: npm run check
 
   seeder:
     runs-on: ubuntu-latest
@@ -98,7 +119,7 @@ jobs:
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [protocol, seeder, app, e2e]
+    needs: [protocol, lessons, seeder, app, e2e]
     runs-on: ubuntu-latest
     permissions:
       id-token: write # for OIDC role assumption
