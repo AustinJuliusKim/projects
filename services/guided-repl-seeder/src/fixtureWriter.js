@@ -14,12 +14,16 @@ import { validateFixture } from "@guided-repl/protocol";
  * @property {string} seedSnapshotId
  * @property {string} permissionMode
  * @property {string} expectedPrompt
+ * @property {import("@guided-repl/protocol").FixtureKind} [kind] defaults to "claudeStream"
  * @property {import("@guided-repl/protocol").FixtureEvent[]} events
  * @property {import("@guided-repl/protocol").Assertion} assertion
  */
 
 /**
- * Builds and validates a FixtureEnvelope.
+ * Builds and validates a FixtureEnvelope. `kind` is stamped explicitly on
+ * new recordings ("claudeStream" unless overridden, e.g. future drill
+ * transcript recordings); pre-kind committed fixtures stay valid via the
+ * absent-means-claudeStream default.
  *
  * @param {FixtureInput} input
  * @returns {import("@guided-repl/protocol").FixtureEnvelope}
@@ -27,6 +31,7 @@ import { validateFixture } from "@guided-repl/protocol";
 export function buildFixture(input) {
   const fixture = {
     fixtureVersion: 1,
+    kind: input.kind ?? "claudeStream",
     claudeCodeVersion: input.claudeCodeVersion,
     lessonId: input.lessonId,
     branchId: input.branchId,
