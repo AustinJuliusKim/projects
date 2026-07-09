@@ -81,6 +81,14 @@ export default function Transcript({ messages, status }) {
             </div>
           );
         }
+        if (message.role === "tty") {
+          // Raw terminal output from shellTranscript playback (drills).
+          return (
+            <pre className="msg msg-tty" data-testid="transcript-tty" key={i}>
+              {message.text}
+            </pre>
+          );
+        }
         return null;
       })}
       {status === "running" && (

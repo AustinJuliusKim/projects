@@ -108,3 +108,17 @@ test("reset returns the initial state", () => {
   state = reducer(state, { type: "reset" });
   assert.deepEqual(state, createInitialState());
 });
+
+test("tty_chunk appends and merges consecutive terminal output", () => {
+  let state = createInitialState();
+  state = reducer(state, { type: "tty_chunk", payload: { data: "$ git diff\n" } });
+  state = reducer(state, { type: "tty_chunk", payload: { data: "+ <h1>hi</h1>\n" } });
+  assert.equal(state.messages.length, 1);
+  assert.deepEqual(state.messages[0], { role: "tty", text: "$ git diff\n+ <h1>hi</h1>\n" });
+
+  // A non-tty message breaks the merge run.
+  state = reducer(state, { type: "text", payload: { delta: "done" } });
+  state = reducer(state, { type: "tty_chunk", payload: { data: "$ ls\n" } });
+  assert.equal(state.messages.length, 3);
+  assert.deepEqual(state.messages[2], { role: "tty", text: "$ ls\n" });
+});

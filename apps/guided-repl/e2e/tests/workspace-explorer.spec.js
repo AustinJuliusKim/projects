@@ -1,13 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { gotoLesson, pickChoices, runPrompt, waitForDone, fileBadge, openFile } from "../helpers.js";
+import { gotoLesson, composePrompt, runPrompt, waitForDone, fileBadge, openFile } from "../helpers.js";
 
 test("l1 run: new-file badge on index.html, diff view on open", async ({ page }) => {
   await gotoLesson(page);
-  await pickChoices(page, {
-    task: "make a personal landing page",
-    subject: "about me",
-    constraint: "single index.html file, inline CSS",
-  });
+  await composePrompt(page, { description: "a constrained prompt" });
   await runPrompt(page);
   await waitForDone(page);
 

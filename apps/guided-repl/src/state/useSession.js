@@ -11,7 +11,7 @@
  *
  * @typedef {object} UseSessionResult
  * @property {import("./reducer.js").SessionState} state
- * @property {(text: string) => void} prompt
+ * @property {(text: string, branchId?: string) => void} prompt
  * @property {() => void} approve
  * @property {() => void} deny
  * @property {() => void} interrupt
@@ -39,6 +39,7 @@ export function useSession({ mode, lesson, branches, speedMultiplier, onDone }) 
       snapshot: lesson?.snapshot,
       speedMultiplier,
       stepMode: lesson?.playback === "step",
+      annotations: lesson?.annotationsByBranch,
     });
     transportRef.current = transport;
 
@@ -63,9 +64,9 @@ export function useSession({ mode, lesson, branches, speedMultiplier, onDone }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, lesson, branches, speedMultiplier]);
 
-  const prompt = useCallback((text) => {
+  const prompt = useCallback((text, branchId) => {
     dispatch({ type: "prompt_sent", text });
-    transportRef.current?.send({ type: "prompt", text });
+    transportRef.current?.send({ type: "prompt", text, branchId });
   }, []);
 
   const approve = useCallback(() => {

@@ -10,42 +10,48 @@ import { expect } from "@playwright/test";
 
 /**
  * Open the lesson at instant-replay speed and wait for fixtures to load
- * (prompt-builder only renders once lessons.json + the L1 fixture resolve).
+ * (prompt-composer only renders once lessons.json + the L1 fixture resolve).
  *
  * @param {import("@playwright/test").Page} page
  */
 export async function gotoLesson(page) {
   await page.goto("/?speed=0");
-  await expect(page.getByTestId("prompt-builder")).toBeVisible();
+  await expect(page.getByTestId("prompt-composer")).toBeVisible();
 }
 
 /**
- * Select segmented prompt-builder choices by their visible text. Any omitted
- * dimension keeps its default selection.
- *
- * @param {import("@playwright/test").Page} page
- * @param {{task?: string, subject?: string, constraint?: string}} choices
- */
-export async function pickChoices(page, { task, subject, constraint } = {}) {
-  const builder = page.getByTestId("prompt-builder");
-  for (const value of [task, subject, constraint]) {
-    if (value === undefined) continue;
-    await builder.getByRole("button", { name: value, exact: true }).click();
-  }
-}
-
-/**
- * The live assembled-prompt preview text.
+ * The composer's text input.
  *
  * @param {import("@playwright/test").Page} page
  * @returns {import("@playwright/test").Locator}
  */
-export function promptPreview(page) {
-  return page.getByTestId("prompt-preview");
+export function composerInput(page) {
+  return page.getByTestId("composer-input");
 }
 
 /**
- * Submit the assembled prompt (clicks Run).
+ * Composes a prompt via the autocompletion menu: focuses the input and picks
+ * the suggestion whose description (or text) matches. Picking by description
+ * disambiguates branches that share identical prompt text.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {{text?: string, description?: string}} target
+ */
+export async function composePrompt(page, { text, description } = {}) {
+  // Clear any stale text first — the menu filters on the current input.
+  await composerInput(page).fill("");
+  await composerInput(page).click();
+  const menu = page.getByTestId("composer-menu");
+  await expect(menu).toBeVisible();
+  const option = description
+    ? menu.getByTestId("composer-option").filter({ hasText: description })
+    : menu.getByTestId("composer-option").filter({ hasText: text }).first();
+  await option.click();
+  await expect(composerInput(page)).toHaveValue(text ?? /.+/);
+}
+
+/**
+ * Submit the composed prompt (clicks Run).
  *
  * @param {import("@playwright/test").Page} page
  */
@@ -99,7 +105,7 @@ export async function selectLesson(page, lessonId) {
   const item = page.locator(`[data-testid="lesson-item"][data-lesson-id="${lessonId}"]`);
   await item.click();
   await expect(item).toHaveClass(/lesson-item-active/);
-  await expect(page.getByTestId("prompt-builder")).toBeVisible();
+  await expect(page.getByTestId("prompt-composer")).toBeVisible();
 }
 
 /**

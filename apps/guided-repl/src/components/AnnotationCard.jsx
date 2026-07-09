@@ -6,14 +6,14 @@
  */
 
 /**
- * @param {{annotation: {title: string, body: string}|null, onNext: () => void}} props
+ * @param {{annotation: {title?: string, body: string}|null, onNext: () => void}} props
  */
 export default function AnnotationCard({ annotation, onNext }) {
   if (!annotation) return null;
 
   return (
     <div className="annotation-card" data-testid="annotation-card">
-      <h3 className="annotation-title">{annotation.title}</h3>
+      {annotation.title && <h3 className="annotation-title">{annotation.title}</h3>}
       <p className="annotation-body">{annotation.body}</p>
       <button type="button" className="step-next" data-testid="step-next" onClick={onNext}>
         Next

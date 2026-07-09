@@ -1,90 +1,106 @@
 /**
- * Loads lessons.json plus a selected lesson's branch fixtures and seed
- * snapshot(s). `indexLessons` is the pure validate/reshape step (returns
- * every lesson — unlocked ones fully resolved, locked ones as stubs) and is
- * unit-tested directly against plain objects; `loadLesson` layers the
- * fetches (all branches of the SELECTED lesson, fetched eagerly) on top of
- * it. `loadLessons` is a back-compat wrapper that loads the first unlocked
- * lesson.
+ * Loads the compiled lesson manifest (built by @guided-repl/lessons from the
+ * YAML sources) plus a selected lesson's branch fixtures and seed
+ * snapshot(s). `indexLessons` is the pure validate/reshape step — the
+ * manifest is validated against the protocol's Zod lesson schema, then each
+ * lesson is reshaped into the flat structures downstream code consumes.
  *
- * @typedef {{branchId: string, expectedPrompt: string, permissionMode: string, fixturePath: string, seedSnapshotId: string}} IndexedBranch
+ * @typedef {{branchId: string, expectedPrompt: string|null, permissionMode: string|null, fixturePath: string, seedSnapshotId: string}} IndexedBranch
  * @typedef {object} IndexedLesson
  * @property {string} lessonId
  * @property {string} title
  * @property {boolean} locked
  * @property {string} [seedSnapshotId]
- * @property {"step"|"auto"|undefined} [playback]
- * @property {object} [promptChoices]
- * @property {object} [assertion]
+ * @property {"step"|undefined} [playback]
+ * @property {Array<object>} [steps] authored steps (the engine's input)
+ * @property {Array<object>} [suggestions] promptBuilder suggestions
+ * @property {{assertionIds: string[], next: string|null}} [completion]
+ * @property {Record<string, Record<number, {title?: string, body: string}>>} [annotationsByBranch]
  * @property {IndexedBranch[]} [branches]
  * @typedef {{lessonId: string, title: string, locked: true}} IndexedStub
  */
 
+import { validateLessonManifest } from "@guided-repl/protocol";
+
 /**
- * Validates and reshapes one raw lessons.json entry. Locked entries pass
- * through as stubs (lessonId/title/locked only); unlocked entries are
- * validated and reshaped in full (branchConfig required, playback checked).
+ * Reshapes one compiled lesson into the flat shape downstream code consumes.
+ * Locked entries pass through as stubs (lessonId/title/locked only).
  *
- * @param {object} raw
+ * @param {object} lesson a schema-validated compiled lesson
  * @returns {IndexedLesson|IndexedStub}
  */
-function indexOneLesson(raw) {
-  if (!raw || !raw.lessonId) {
-    throw new Error("Invalid lessons.json: each lesson needs a lessonId");
-  }
-  if (raw.locked) {
-    return { lessonId: raw.lessonId, title: raw.title, locked: true };
-  }
-  if (!raw.branchConfig) {
-    throw new Error(`Invalid lessons.json: lesson ${raw.lessonId} is missing branchConfig`);
-  }
-  if (raw.playback !== undefined && raw.playback !== "step" && raw.playback !== "auto") {
-    throw new Error(`Invalid lessons.json: lesson ${raw.lessonId} has invalid playback "${raw.playback}"`);
+function indexOneLesson(lesson) {
+  if (lesson.locked) {
+    return { lessonId: lesson.id, title: lesson.title, locked: true };
   }
 
-  const branchIds = raw.branches ?? [];
-  const branches = branchIds.map((branchId) => {
-    const config = raw.branchConfig[branchId];
-    if (!config) {
-      throw new Error(`Invalid lessons.json: missing branchConfig for branch "${branchId}"`);
+  const runStep = lesson.steps.find((s) => s.type === "run");
+  const builderStep = lesson.steps.find((s) => s.type === "promptBuilder");
+  if (!runStep) {
+    throw new Error(`Invalid lesson ${lesson.id}: no run step`);
+  }
+
+  const branches = Object.entries(runStep.branches).map(([branchId, branch]) => ({
+    branchId,
+    expectedPrompt: branch.expectedPrompt,
+    permissionMode: branch.permissionMode,
+    fixturePath: lesson.fixtures[branch.fixture].path,
+    // Per-branch seed snapshot override (e.g. L7's without/with CLAUDE.md
+    // branches), falling back to the lesson-level snapshot.
+    seedSnapshotId: branch.seedSnapshotId ?? lesson.snapshot.snapshotId,
+  }));
+
+  // Drill transcripts play through the same transport as run branches, keyed
+  // by a step-scoped pseudo branch id (no prompt matching — the composer
+  // submits the drill's branchId explicitly after matchCommand passes).
+  const drillBranches = lesson.steps
+    .filter((s) => s.type === "terminalDrill")
+    .map((step) => ({
+      branchId: `drill:${step.id}`,
+      expectedPrompt: null,
+      permissionMode: null,
+      fixturePath: lesson.fixtures[step.transcript].path,
+      seedSnapshotId: lesson.snapshot.snapshotId,
+    }));
+
+  // Anchored annotations, resolved by the compiler to event indices, grouped
+  // per branch whose fixture the annotation targets.
+  const annotationsByBranch = {};
+  for (const step of lesson.steps) {
+    if (step.type !== "annotation") continue;
+    const targetPath = lesson.fixtures[step.fixtureKey].path;
+    for (const branch of branches) {
+      if (branch.fixturePath !== targetPath) continue;
+      annotationsByBranch[branch.branchId] ??= {};
+      annotationsByBranch[branch.branchId][step.resolvedEventIndex] = { body: step.md };
     }
-    return {
-      branchId,
-      expectedPrompt: config.expectedPrompt,
-      permissionMode: config.permissionMode,
-      fixturePath: config.fixture,
-      // Per-branch seed snapshot override (e.g. L7's without/with CLAUDE.md
-      // branches), falling back to the lesson-level snapshot.
-      seedSnapshotId: config.seedSnapshotId ?? raw.seedSnapshotId,
-    };
-  });
+  }
 
   return {
-    lessonId: raw.lessonId,
-    title: raw.title,
+    lessonId: lesson.id,
+    title: lesson.title,
     locked: false,
-    seedSnapshotId: raw.seedSnapshotId,
-    playback: raw.playback,
-    promptChoices: raw.promptChoices,
-    assertion: raw.assertion,
-    branches,
+    seedSnapshotId: lesson.snapshot.snapshotId,
+    playback: runStep.pacing === "step" ? "step" : undefined,
+    steps: lesson.steps,
+    suggestions: builderStep?.suggestions ?? [],
+    completion: lesson.completion,
+    annotationsByBranch,
+    branches: [...branches, ...drillBranches],
   };
 }
 
 /**
- * Validates and reshapes a raw lessons.json document into a flat list of
+ * Validates a compiled lesson manifest and reshapes it into a flat list of
  * every lesson (unlocked entries fully resolved, locked entries as stubs).
  * Pure — no I/O.
  *
- * @param {object} lessonsJson
+ * @param {object} manifest the compiled {schemaVersion, lessons} document
  * @returns {Array<IndexedLesson|IndexedStub>}
  */
-export function indexLessons(lessonsJson) {
-  const lessons = lessonsJson?.lessons;
-  if (!Array.isArray(lessons) || lessons.length === 0) {
-    throw new Error("Invalid lessons.json: lessons must be a non-empty array");
-  }
-  return lessons.map(indexOneLesson);
+export function indexLessons(manifest) {
+  const validated = validateLessonManifest(manifest);
+  return validated.lessons.map(indexOneLesson);
 }
 
 /**
@@ -111,16 +127,15 @@ function normalizeBase(baseUrl) {
 }
 
 /**
- * Fetches every branch fixture and the seed snapshot(s) for one already-
- * indexed, unlocked lesson. Branches may override the lesson-level
- * seedSnapshotId; each distinct snapshot id is fetched once and attached
- * both per-branch and at the lesson level (back-compat with single-snapshot
- * lessons).
+ * Fetches every branch fixture (incl. drill transcripts) and the seed
+ * snapshot(s) for one already-indexed, unlocked lesson. Branches may
+ * override the lesson-level seedSnapshotId; each distinct snapshot id is
+ * fetched once and attached both per-branch and at the lesson level.
  *
  * @param {string} base normalized base ("/" trailing slash)
  * @param {string} version
  * @param {IndexedLesson} lesson
- * @returns {Promise<{branches: Array<{branchId: string, expectedPrompt: string, permissionMode: string, fixture: object, snapshot: object}>, snapshot: object}>}
+ * @returns {Promise<{branches: Array<object>, snapshot: object}>}
  */
 async function fetchLessonAssets(base, version, lesson) {
   const snapshotIds = Array.from(
@@ -156,8 +171,8 @@ async function fetchLessonAssets(base, version, lesson) {
  */
 export async function loadLesson(baseUrl, version, lessonId) {
   const base = normalizeBase(baseUrl);
-  const lessonsJson = await fetchJson(`${base}fixtures/${version}/lessons.json`);
-  const lessons = indexLessons(lessonsJson);
+  const manifest = await fetchJson(`${base}fixtures/${version}/lessons.json`);
+  const lessons = indexLessons(manifest);
 
   const lesson = lessons.find((l) => l.lessonId === lessonId);
   if (!lesson) {
@@ -169,28 +184,4 @@ export async function loadLesson(baseUrl, version, lessonId) {
 
   const { branches, snapshot } = await fetchLessonAssets(base, version, lesson);
   return { lesson, lessons, branches, snapshot };
-}
-
-/**
- * Back-compat wrapper: loads lessons.json and the first unlocked lesson's
- * branch fixtures + snapshot(s), reshaping the result into the pre-refactor
- * {active, stubs, branches, snapshot} shape.
- *
- * @param {string} baseUrl
- * @param {string} version
- * @returns {Promise<{active: IndexedLesson, stubs: Array<IndexedLesson|IndexedStub>, branches: Array<object>, snapshot: object}>}
- */
-export async function loadLessons(baseUrl, version) {
-  const base = normalizeBase(baseUrl);
-  const lessonsJson = await fetchJson(`${base}fixtures/${version}/lessons.json`);
-  const lessons = indexLessons(lessonsJson);
-
-  const active = lessons.find((l) => !l.locked);
-  if (!active) {
-    throw new Error("Invalid lessons.json: no unlocked lesson found");
-  }
-  const stubs = lessons.filter((l) => l.lessonId !== active.lessonId);
-
-  const { branches, snapshot } = await fetchLessonAssets(base, version, active);
-  return { active, stubs, branches, snapshot };
 }

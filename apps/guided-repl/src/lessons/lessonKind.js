@@ -1,13 +1,13 @@
 /**
- * Derives lesson-kind chip (quiz vs check) from the lesson's assertion object.
- * Reads the assertion.type field: "quiz" → quiz chip with ? glyph;
- * "file-contains" or undefined → check chip with ✓ glyph.
+ * Derives the lesson-kind chip (quiz vs check) from the lesson's authored
+ * steps: a quiz step → quiz chip with ? glyph; otherwise → check chip with
+ * ✓ glyph.
  *
- * @param {object|undefined} assertion - Raw assertion object from lessons.json
+ * @param {Array<object>|undefined} steps - Authored steps from the compiled lesson
  * @returns {{kind: "quiz"|"check", label: string, glyph: string}}
  */
-export function lessonKind(assertion) {
-  if (assertion && assertion.type === "quiz") {
+export function lessonKind(steps) {
+  if (Array.isArray(steps) && steps.some((s) => s.type === "quiz")) {
     return { kind: "quiz", label: "Quiz", glyph: "?" };
   }
   return { kind: "check", label: "Check", glyph: "✓" };

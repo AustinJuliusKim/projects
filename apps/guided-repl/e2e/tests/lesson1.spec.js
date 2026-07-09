@@ -1,16 +1,15 @@
 import { test, expect } from "@playwright/test";
 import {
   gotoLesson,
-  pickChoices,
-  promptPreview,
+  composePrompt,
   runPrompt,
   waitForDone,
   fileTreeEntry,
   openFile,
 } from "../helpers.js";
 
-// Branch prompts are the lessons.json contract — fixtures may be re-recorded,
-// but these strings (and index.html / <h1> grading) are stable.
+// Branch prompts are the lesson-config contract — fixtures may be
+// re-recorded, but these strings (and index.html / <h1> grading) are stable.
 const PROMPTS = {
   vague: "make a page about me, in index.html",
   "plan-mode":
@@ -22,13 +21,8 @@ test("vague branch: replay completes, grades pass, workspace shows index.html", 
 }) => {
   await gotoLesson(page);
 
-  await pickChoices(page, {
-    task: "make a page",
-    subject: "about me",
-    constraint: "in index.html",
-  });
-  // CLI-styled preview prepends a "> " prompt marker.
-  await expect(promptPreview(page)).toHaveText(`> ${PROMPTS.vague}`);
+  await composePrompt(page, { description: "the vague prompt" });
+  await expect(page.getByTestId("composer-input")).toHaveValue(PROMPTS.vague);
 
   await runPrompt(page);
 
@@ -50,12 +44,8 @@ test("plan-mode branch: parks on the permission gate, approve resumes to done", 
 }) => {
   await gotoLesson(page);
 
-  await pickChoices(page, {
-    task: "make a personal landing page",
-    subject: "for my photography",
-    constraint: "single index.html file, inline CSS",
-  });
-  await expect(promptPreview(page)).toHaveText(`> ${PROMPTS["plan-mode"]}`);
+  await composePrompt(page, { description: "constrained, in plan mode" });
+  await expect(page.getByTestId("composer-input")).toHaveValue(PROMPTS["plan-mode"]);
 
   await runPrompt(page);
 
@@ -71,6 +61,22 @@ test("plan-mode branch: parks on the permission gate, approve resumes to done", 
   const banner = await waitForDone(page);
   await expect(banner).toHaveClass(/grade-banner-pass/);
   await expect(fileTreeEntry(page, "index.html")).toBeVisible();
+});
+
+test("anchored annotation surfaces diegetically during the constrained run", async ({
+  page,
+}) => {
+  await gotoLesson(page);
+
+  await composePrompt(page, { description: "a constrained prompt" });
+  await runPrompt(page);
+  await waitForDone(page);
+
+  // l1.yaml anchors an annotation on the constrained branch's first Write —
+  // it renders in the stage (non-blocking) and persists after the run.
+  const card = page.getByTestId("annotation-card");
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("Write");
 });
 
 test("lesson rail shows one active lesson and no locked stubs", async ({ page }) => {
