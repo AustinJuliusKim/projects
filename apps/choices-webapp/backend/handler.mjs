@@ -46,7 +46,7 @@ import { aiEnabled, fillFour } from "./suggestai.mjs";
 import { isClean } from "./moderation.mjs";
 import { emitCount, emitLatency } from "./metrics.mjs";
 import { aggregateActive, isAdmin } from "./admin.mjs";
-import { buildEvent, eventItem } from "./events.mjs";
+import { buildEvent, eventItem, EVENT_TYPES, CLIENT_EVENT_TYPES } from "./events.mjs";
 
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
@@ -154,6 +154,8 @@ export async function handler(event) {
         return reply(200, await doSubscribe(body));
       case "linkClick":
         return reply(200, await doLinkClick(body));
+      case "track":
+        return reply(200, await doTrack(body));
       case "getPairHistory":
         return reply(200, await doGetPairHistory(body));
       case "placesSuggest":
@@ -624,6 +626,43 @@ function linkClickEventItems(pairing, role, platform, body) {
     items.push(ev("paywall_viewed", { surface: "created-tease" }));
   }
   return items;
+}
+
+// Client-originated catalog events (the `track` action). The privacy gate:
+// only types listed in CLIENT_EVENT_TYPES, only payloads their validators
+// accept — enumerated strings and bounded ints, so typed text can never
+// enter the lake from a client. Anything invalid is silently dropped with
+// a 200 (analytics must never break a client). Pairing-scoped types
+// require the seat token; join-flow types send the short code, which is
+// resolved to a pairing_ref and DROPPED — the code never enters an event.
+async function doTrack(body) {
+  const scope = CLIENT_EVENT_TYPES[body.type];
+  if (!scope) return { ok: true };
+  const payload = body.payload ?? {};
+  if (!EVENT_TYPES[body.type].validate(payload)) return { ok: true };
+
+  let pairingRef = null;
+  let actorRole = null;
+  try {
+    if (scope === "pairing" || (scope === "optional" && body.pairingId != null)) {
+      const pairing = await loadPairing(body.pairingId);
+      assertToken(pairing, body.role, body.token);
+      pairingRef = pairing.pk.slice("PAIR#".length);
+      actorRole = body.role;
+    } else if (scope === "code") {
+      const code = normalizeCode(body.code);
+      if (!code) return { ok: true };
+      const codeRes = await ddb.send(
+        new GetCommand({ TableName: TABLE, Key: { pk: codePk(code) } })
+      );
+      if (!codeRes.Item) return { ok: true };
+      pairingRef = codeRes.Item.pairingId;
+    }
+  } catch {
+    return { ok: true }; // unknown pairing / bad token: drop, never 4xx a beacon
+  }
+  await putEvent(body.type, { pairingRef, actorRole, payload });
+  return { ok: true };
 }
 
 // --- Suggestions (typeahead, suggestion engine Phase 1) ---
