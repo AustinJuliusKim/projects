@@ -32,6 +32,11 @@ function readSpeedParam() {
 
 export default function App() {
   const [selectedLessonId, setSelectedLessonId] = useState("l1");
+  // Display-only personalization (never lesson state): fixtures carry the
+  // raw {{userName}} token; stage components substitute at render time.
+  // Wired to the captured identity in the capture UI change; null renders
+  // the "Demo User" default.
+  const userName = null;
   const [lessons, setLessons] = useState(null);
   const [loaded, setLoaded] = useState(null);
   const [error, setError] = useState(null);
@@ -156,7 +161,7 @@ export default function App() {
           {!error && !ready && <div className="load-status">Loading lesson…</div>}
           {ready && (
             <>
-              <Transcript messages={state.messages} status={state.status} />
+              <Transcript messages={state.messages} status={state.status} userName={userName} />
               <AnnotationCard annotation={state.annotation} onNext={next} />
               <PromptComposer
                 suggestions={loaded.lesson.suggestions}
@@ -164,12 +169,13 @@ export default function App() {
                 hint={state.hint}
                 onSubmit={onComposerSubmit}
                 freeText={isDrill}
+                userName={userName}
               />
             </>
           )}
         </section>
         <section className="pane pane-right">
-          {ready && <WorkspacePane files={state.files} openFile={state.openFile} onOpenFile={openFile} />}
+          {ready && <WorkspacePane files={state.files} openFile={state.openFile} onOpenFile={openFile} userName={userName} />}
         </section>
       </main>
       {ready && state.status === "awaiting_permission" && state.permission && (

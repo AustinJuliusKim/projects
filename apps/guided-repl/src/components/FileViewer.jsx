@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { interpolateUserName } from "@guided-repl/protocol";
 import { diff } from "../lib/diff.js";
 import { fileKind, rewriteRefs } from "../lib/previewRefs.js";
 import { renderMarkdownDoc } from "../lib/markdownPreview.js";
@@ -37,11 +38,15 @@ function DiffViewer({ lines }) {
 }
 
 /**
- * @param {{path: string|null, file: import("../lib/virtualFs.js").VFile|undefined, files: import("../lib/virtualFs.js").VFiles}} props
+ * @param {{path: string|null, file: import("../lib/virtualFs.js").VFile|undefined, files: import("../lib/virtualFs.js").VFiles, userName?: string|null}} props
  */
-export default function FileViewer({ path, file, files }) {
+export default function FileViewer({ path, file, files, userName = null }) {
   const changed = !!file && file.prevContent !== undefined && file.prevContent !== file.content;
   const kind = path ? fileKind(path) : null;
+  // Render-time {{userName}} substitution (never mutates the virtual FS):
+  // text mode for React-escaped sinks, html mode for iframe srcDoc markup.
+  const interpText = (text) => interpolateUserName(text, userName);
+  const interpHtml = (text) => interpolateUserName(text, userName, { html: true });
 
   // Reset to source|diff on every path change — preview is never the
   // default, so the three existing diff-viewer e2e assertions keep passing.
@@ -94,13 +99,13 @@ export default function FileViewer({ path, file, files }) {
           )}
         </div>
       )}
-      {mode === "diff" && changed && <DiffViewer lines={diff(file.prevContent, file.content)} />}
+      {mode === "diff" && changed && <DiffViewer lines={diff(interpText(file.prevContent), interpText(file.content))} />}
       {mode === "preview" && kind === "html" && (
         <iframe
           className="preview-frame"
           data-testid="preview-frame"
           sandbox="allow-scripts"
-          srcDoc={rewriteRefs(file.content, files, path)}
+          srcDoc={rewriteRefs(interpHtml(file.content), files, path, interpHtml)}
         />
       )}
       {mode === "preview" && kind === "markdown" && (
@@ -108,7 +113,7 @@ export default function FileViewer({ path, file, files }) {
           className="preview-frame"
           data-testid="preview-frame"
           sandbox="allow-scripts"
-          srcDoc={renderMarkdownDoc(file.content)}
+          srcDoc={renderMarkdownDoc(interpHtml(file.content))}
         />
       )}
       {mode === "preview" && kind === "js" && (
@@ -117,13 +122,13 @@ export default function FileViewer({ path, file, files }) {
             Component preview coming soon
           </div>
           <pre className="file-content">
-            <code>{file.content}</code>
+            <code>{interpText(file.content)}</code>
           </pre>
         </div>
       )}
       {mode === "source" && (
         <pre className="file-content">
-          <code>{file.content}</code>
+          <code>{interpText(file.content)}</code>
         </pre>
       )}
     </div>
