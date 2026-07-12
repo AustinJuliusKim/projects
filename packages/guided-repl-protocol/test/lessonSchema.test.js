@@ -86,11 +86,48 @@ test("validateLessonDoc accepts every step type", () => {
       { type: "quiz", id: "quiz", question: "Why?", options: ["a", "b"], answerIdx: 0, explainMd: "Because." },
       { type: "assertion", id: "grade", rule: { type: "quizCorrect", stepId: "quiz" } },
       { type: "terminalDrill", id: "drill", expect: { kind: "exact", value: "git diff" }, transcript: "drill" },
+      {
+        type: "capture",
+        id: "capture-email",
+        fields: ["email"],
+        purposeMd: "Keep your progress.",
+        optional: true,
+        consent: { label: "Also send me the newsletter" },
+      },
     ],
     completion: { assertionIds: ["grade", "quiz"], next: null },
   });
   const parsed = validateLessonDoc(lesson);
-  assert.equal(parsed.steps.length, 8);
+  assert.equal(parsed.steps.length, 9);
+});
+
+test("validateLessonDoc capture step defaults optional to true", () => {
+  const lesson = makeLesson();
+  lesson.steps.push({ type: "capture", id: "capture-name", fields: ["name"], purposeMd: "What should your page call you?" });
+  const parsed = validateLessonDoc(lesson);
+  const capture = parsed.steps.find((s) => s.id === "capture-name");
+  assert.equal(capture.optional, true);
+  assert.equal(capture.consent, undefined);
+});
+
+test("validateLessonDoc rejects capture with empty or unknown fields", () => {
+  const empty = makeLesson();
+  empty.steps.push({ type: "capture", id: "c", fields: [], purposeMd: "x" });
+  assert.throws(() => validateLessonDoc(empty), /Invalid lesson/);
+
+  const unknown = makeLesson();
+  unknown.steps.push({ type: "capture", id: "c", fields: ["phone"], purposeMd: "x" });
+  assert.throws(() => validateLessonDoc(unknown), /Invalid lesson/);
+});
+
+test("validateLessonDoc rejects capture with empty purposeMd or consent label", () => {
+  const noPurpose = makeLesson();
+  noPurpose.steps.push({ type: "capture", id: "c", fields: ["name"], purposeMd: "" });
+  assert.throws(() => validateLessonDoc(noPurpose), /Invalid lesson/);
+
+  const emptyLabel = makeLesson();
+  emptyLabel.steps.push({ type: "capture", id: "c", fields: ["email"], purposeMd: "x", consent: { label: "" } });
+  assert.throws(() => validateLessonDoc(emptyLabel), /Invalid lesson/);
 });
 
 test("validateLessonDoc accepts the new assertion rules", () => {

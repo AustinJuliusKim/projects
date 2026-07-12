@@ -136,6 +136,14 @@ export const StepSchema = z.discriminatedUnion("type", [
     expect: CmdMatcherSchema,
     transcript: z.string().min(1), // key into the lesson's fixtures{} map
   }),
+  z.object({
+    type: z.literal("capture"),
+    id: stepId,
+    fields: z.array(z.enum(["name", "email"])).min(1),
+    purposeMd: z.string().min(1),
+    optional: z.boolean().default(true),
+    consent: z.object({ label: z.string().min(1) }).optional(),
+  }),
 ]);
 
 export const LessonSchema = z
