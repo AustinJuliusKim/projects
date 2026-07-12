@@ -391,6 +391,10 @@ Resources:
         Weekly:
           Type: ScheduleV2
           Properties:
+            # Explicit stack-scoped name: the SAM default ("CompactionFunctionWeekly")
+            # is identical for prod and preview in the same account/region, so the
+            # second deploy would fail on a schedule-name conflict.
+            Name: !Sub "${AWS::StackName}-compaction-weekly"
             ScheduleExpression: rate(7 days)
 
   # Glue catalog + partition projection (no crawler, no MSCK): adding a

@@ -4,7 +4,9 @@ Description: >
   built-in Lambda/SQS metrics — the stream itself needs no custom metrics:
   IteratorAge IS the spec's ">5 min stream lag" signal, and the DLQ depth
   is "lake write failures". Admin-deployed like ops/billing-alarms.yaml
-  (the CI deploy role has no cloudwatch:PutMetricAlarm), once per stack:
+  (the CI deploy role has no cloudwatch:PutMetricAlarm). PROD ONLY as
+  written: TopicName/AlarmNames are fixed strings (billing-alarms
+  precedent) — a second deployment for preview would collide. Deploy once:
 
     aws cloudformation deploy --template-file ops/event-lake-alarms.yaml \
       --stack-name ChoicesEventLakeAlarms --region us-west-2 \
