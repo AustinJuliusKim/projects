@@ -28,6 +28,7 @@ import {
   gameSummary,
   otherRole,
   GameError,
+  LINK_PLATFORMS,
 } from "./game.mjs";
 import { applyCompletedGame, emptyStats, RECENT_GAMES_CAP } from "./stats.mjs";
 import { applyGameToHistory, anonRecord } from "./history.mjs";
@@ -45,6 +46,7 @@ import { aiEnabled, fillFour } from "./suggestai.mjs";
 import { isClean } from "./moderation.mjs";
 import { emitCount, emitLatency } from "./metrics.mjs";
 import { aggregateActive, isAdmin } from "./admin.mjs";
+import { buildEvent, eventItem, EVENT_TYPES, CLIENT_EVENT_TYPES } from "./events.mjs";
 
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
@@ -152,6 +154,8 @@ export async function handler(event) {
         return reply(200, await doSubscribe(body));
       case "linkClick":
         return reply(200, await doLinkClick(body));
+      case "track":
+        return reply(200, await doTrack(body));
       case "getPairHistory":
         return reply(200, await doGetPairHistory(body));
       case "placesSuggest":
@@ -264,6 +268,24 @@ function escapeHtml(s) {
 
 // --- Actions ---
 
+// How the 4 choices were produced, for event payloads. Clients report
+// "fill4" when the AI filled the form; anything else counts as manual.
+function choiceSource(body) {
+  return body.source === "fill4" ? "fill4" : "manual";
+}
+
+// Best-effort standalone event write for emitters with no pairing
+// transaction to ride (push sends, Stripe webhooks, create-screen fills).
+// Failures are logged, never surfaced — the lake is analytics, not the
+// source of truth for any of these.
+async function putEvent(type, fields) {
+  try {
+    await ddb.send(new PutCommand(eventItem(buildEvent(type, fields)).Put));
+  } catch (err) {
+    console.error("event write failed", type, err);
+  }
+}
+
 async function doCreatePairing(body) {
   const game = createGame(body.choices, { startedBy: "A", number: 1 });
   const pairingId = shortId(12);
@@ -284,7 +306,18 @@ async function doCreatePairing(body) {
     updatedAt: Date.now(),
     ttl: ttlEpoch(),
   };
-  await ddb.send(new PutCommand({ TableName: TABLE, Item: item }));
+  // Transactional outbox: the game_created event commits atomically with
+  // the pairing (event-iff-write; the stream consumer forwards it to S3).
+  const created = buildEvent("game_created", {
+    pairingRef: pairingId,
+    actorRole: "A",
+    payload: { game_number: 1, choice_count: game.choices.length, source: choiceSource(body) },
+  });
+  await ddb.send(
+    new TransactWriteCommand({
+      TransactItems: [{ Put: { TableName: TABLE, Item: item } }, eventItem(created)],
+    })
+  );
 
   emitCount("GameCreated");
   return { pairingId, code, state: publicState(item) };
@@ -308,7 +341,8 @@ async function doClaimSeat(body, user) {
   // and will get a 403 on its next call.
   for (let attempt = 0; ; attempt++) {
     const pairing = await loadPairing(codeRes.Item.pairingId);
-    const wasFirstBClaim = seat === "B" && pairing.tokenB == null;
+    const firstClaim = (seat === "A" ? pairing.tokenA : pairing.tokenB) == null;
+    const wasFirstBClaim = seat === "B" && firstClaim;
     const token = randomUUID();
     // Claiming defines the seat's identity: a signed-in claim links the seat
     // to the account; an anonymous claim (incl. takeover) unlinks it so a
@@ -322,10 +356,15 @@ async function doClaimSeat(body, user) {
     }
     pairing.updatedAt = Date.now();
     pairing.ttl = ttlEpoch();
+    const claimed = buildEvent("seat_claimed", {
+      pairingRef: pairing.pk.slice("PAIR#".length),
+      actorRole: seat,
+      payload: { seat, first_claim: firstClaim, signed_in: Boolean(user) },
+    });
     try {
-      await savePairing(pairing);
+      await savePairing(pairing, [eventItem(claimed)]);
     } catch (err) {
-      if (err?.name === "ConditionalCheckFailedException" && attempt < 1) continue;
+      if (lostWriteRace(err) && attempt < 1) continue;
       throw err;
     }
 
@@ -335,7 +374,7 @@ async function doClaimSeat(body, user) {
         title: "They took the bait 😏",
         body: "Your opponent is in — they cut first.",
         url: "/",
-      });
+      }, "joined");
     }
 
     emitCount("SeatClaimed");
@@ -367,8 +406,22 @@ async function doEliminate(body) {
     },
     // The winning move archives the game and folds it into each signed-in
     // player's stats, all in the same transaction — rematch overwrites
-    // pairing.game, so this is the only moment the record exists.
-    completionItems
+    // pairing.game, so this is the only moment the record exists. Every cut
+    // also rides its cut_made outbox event (event-iff-write).
+    async (pairing) => [
+      ...(await completionItems(pairing)),
+      eventItem(
+        buildEvent("cut_made", {
+          pairingRef: pairing.pk.slice("PAIR#".length),
+          actorRole: role,
+          payload: {
+            game_number: pairing.game.number,
+            cut_number: pairing.game.eliminated.length,
+            index,
+          },
+        })
+      ),
+    ]
   );
 
   if (!replay) {
@@ -439,6 +492,23 @@ async function completionItems(pairing) {
   // (privacy: pair history dies with the pair).
   const hist = (await loadHist(pairingId)) ?? emptyHist(pairingId);
   items.push(versionedPut({ ...applyGameToHistory(hist, summary), ttl: ttlEpoch() }));
+
+  // game_finished outbox event: attributed to whoever made the final cut.
+  items.push(
+    eventItem(
+      buildEvent("game_finished", {
+        pairingRef: pairingId,
+        actorRole: summary.eliminated.at(-1).by,
+        payload: {
+          game_number: summary.number,
+          winner_index: summary.winnerIndex,
+          winner_label: summary.winnerLabel,
+          choices: summary.choices,
+          duration_ms: Math.max(0, summary.completedAt - summary.createdAt),
+        },
+      })
+    )
+  );
   return items;
 }
 
@@ -471,7 +541,20 @@ async function doRematch(body) {
     pairing.game = createGame(choices, { startedBy: role, number });
     pairing.gameNumber = number;
     pairing.nextStarter = otherRole(role);
-  });
+  },
+  (pairing) => [
+    eventItem(
+      buildEvent("rematch", {
+        pairingRef: pairing.pk.slice("PAIR#".length),
+        actorRole: role,
+        payload: {
+          game_number: pairing.gameNumber,
+          choice_count: pairing.game.choices.length,
+          source: choiceSource(body),
+        },
+      })
+    ),
+  ]);
 
   // Notify the OTHER player (who eliminates first) that a new game started.
   if (!replay) {
@@ -479,7 +562,7 @@ async function doRematch(body) {
       title: "You've got new Choices 🎲",
       body: `Player ${role} picked 4 fresh ones. You cut first.`,
       url: "/",
-    });
+    }, "rematch");
   }
 
   return { state: publicState(pairing) };
@@ -504,12 +587,81 @@ async function doSubscribe(body) {
 // data: games completed -> winner screens -> order clicks).
 async function doLinkClick(body) {
   const { role, gameNumber, platform } = body;
-  await mutatePairing(body, (pairing) => {
-    if (gameNumber !== pairing.gameNumber) {
-      throw new HttpError(409, "This game has moved on.", "STALE_GAME");
+  await mutatePairing(
+    body,
+    (pairing) => {
+      if (gameNumber !== pairing.gameNumber) {
+        throw new HttpError(409, "This game has moved on.", "STALE_GAME");
+      }
+      pairing.game = applyLinkClick(pairing.game, role, platform);
+    },
+    (pairing) => linkClickEventItems(pairing, role, platform, body)
+  );
+  return { ok: true };
+}
+
+// Frozen-catalog mapping for outbound clicks: every click emits
+// link_clicked; order platforms additionally emit order_click (funnel
+// queries stay direct — catalog carries both), tips emit tip_given,
+// reveal-card shares emit reveal_card_shared, and the created-screen
+// premium tease is a paywall_viewed.
+function linkClickEventItems(pairing, role, platform, body) {
+  const pairingRef = pairing.pk.slice("PAIR#".length);
+  const ev = (type, payload) =>
+    eventItem(buildEvent(type, { pairingRef, actorRole: role, payload }));
+
+  const items = [ev("link_clicked", { platform })];
+  if (LINK_PLATFORMS.includes(platform)) {
+    const placeId =
+      typeof body.placeId === "string" && body.placeId.length > 0 && body.placeId.length <= 300
+        ? body.placeId
+        : undefined;
+    items.push(ev("order_click", placeId ? { platform, place_id: placeId } : { platform }));
+  }
+  if (platform === "tip-venmo" || platform === "tip-stripe") {
+    items.push(ev("tip_given", { platform }));
+  }
+  if (platform === "share-reveal") items.push(ev("reveal_card_shared", {}));
+  if (platform === "premium-interest") {
+    items.push(ev("paywall_viewed", { surface: "created-tease" }));
+  }
+  return items;
+}
+
+// Client-originated catalog events (the `track` action). The privacy gate:
+// only types listed in CLIENT_EVENT_TYPES, only payloads their validators
+// accept — enumerated strings and bounded ints, so typed text can never
+// enter the lake from a client. Anything invalid is silently dropped with
+// a 200 (analytics must never break a client). Pairing-scoped types
+// require the seat token; join-flow types send the short code, which is
+// resolved to a pairing_ref and DROPPED — the code never enters an event.
+async function doTrack(body) {
+  const scope = CLIENT_EVENT_TYPES[body.type];
+  if (!scope) return { ok: true };
+  const payload = body.payload ?? {};
+  if (!EVENT_TYPES[body.type].validate(payload)) return { ok: true };
+
+  let pairingRef = null;
+  let actorRole = null;
+  try {
+    if (scope === "pairing" || (scope === "optional" && body.pairingId != null)) {
+      const pairing = await loadPairing(body.pairingId);
+      assertToken(pairing, body.role, body.token);
+      pairingRef = pairing.pk.slice("PAIR#".length);
+      actorRole = body.role;
+    } else if (scope === "code") {
+      const code = normalizeCode(body.code);
+      if (!code) return { ok: true };
+      const codeRes = await ddb.send(
+        new GetCommand({ TableName: TABLE, Key: { pk: codePk(code) } })
+      );
+      if (!codeRes.Item) return { ok: true };
+      pairingRef = codeRes.Item.pairingId;
     }
-    pairing.game = applyLinkClick(pairing.game, role, platform);
-  });
+  } catch {
+    return { ok: true }; // unknown pairing / bad token: drop, never 4xx a beacon
+  }
+  await putEvent(body.type, { pairingRef, actorRole, payload });
   return { ok: true };
 }
 
@@ -618,13 +770,25 @@ async function fillForPairing(body, occasion) {
   }
 
   const usesLeft = premium ? null : AI_FREE_USES - uses - 1;
-  await mutatePairing(body, (p) => {
-    const u = p.ai?.month === month ? p.ai.uses : 0;
-    if (!premium && u >= AI_FREE_USES) {
-      throw new HttpError(409, AI_LIMIT_MSG, "AI_LIMIT");
-    }
-    p.ai = { month, uses: u + 1, lastResult: choices, usesLeft };
-  });
+  await mutatePairing(
+    body,
+    (p) => {
+      const u = p.ai?.month === month ? p.ai.uses : 0;
+      if (!premium && u >= AI_FREE_USES) {
+        throw new HttpError(409, AI_LIMIT_MSG, "AI_LIMIT");
+      }
+      p.ai = { month, uses: u + 1, lastResult: choices, usesLeft };
+    },
+    () => [
+      eventItem(
+        buildEvent("fill4_used", {
+          pairingRef: pairingId,
+          actorRole: role,
+          payload: { context: "pairing", premium, uses_left: usesLeft },
+        })
+      ),
+    ]
+  );
   return { choices, usesLeft };
 }
 
@@ -645,7 +809,14 @@ async function fillForUser(user, occasion) {
     throw new HttpError(502, "Couldn't fill your 4 — try again.", "AI_FAILED");
   }
   await bumpUserAiUses(user.sub, month);
-  return { choices, usesLeft: premium ? null : AI_FREE_USES - uses - 1 };
+  const usesLeft = premium ? null : AI_FREE_USES - uses - 1;
+  // Create screen: no pairing exists yet, so the event stands alone
+  // (actor "system" — there is no seat to attribute it to).
+  await putEvent("fill4_used", {
+    actorRole: "system",
+    payload: { context: "create", premium, uses_left: usesLeft },
+  });
+  return { choices, usesLeft };
 }
 
 async function pairingHasPremium(pairing) {
@@ -809,6 +980,15 @@ async function doStripeWebhook(event) {
   // Stripe stops retrying — there's nothing to apply.
   if (!update?.userId) return { ok: true };
   await updateUserPremium(update.userId, update.premium);
+  // Frozen-catalog mapping: sub_started only for checkout completions
+  // (update.plan rides checkout-session metadata; recovery transitions to
+  // "active" carry no plan and emit nothing), sub_cancelled for any
+  // canceled status (subscription.deleted included). Never a user id.
+  if (update.premium.status === "active" && ["monthly", "annual"].includes(update.plan)) {
+    await putEvent("sub_started", { actorRole: "system", payload: { plan: update.plan } });
+  } else if (update.premium.status === "canceled") {
+    await putEvent("sub_cancelled", { actorRole: "system", payload: {} });
+  }
   return { ok: true };
 }
 
@@ -841,22 +1021,31 @@ async function notifyAfterMove(pairing) {
         title: "Dinner's decided 🏆",
         body: `${winnerLabel} survived.`,
         url: "/",
-      });
+      }, "winner");
     }
   } else {
     await pushTo(pairing, game.turn, {
       title: "Your move. Cut one. 😏",
       body: "A choice just got cut. You're up.",
       url: "/",
-    });
+    }, "your_turn");
   }
 }
 
-async function pushTo(pairing, role, payload) {
+async function pushTo(pairing, role, payload, trigger) {
   const pairingId = pairing.pk.slice("PAIR#".length);
   const sub = await loadSub(pairingId, role);
   if (!sub) return;
-  await sendPush(sub.subscription, payload);
+  const sent = await sendPush(sub.subscription, payload);
+  // push_sent only records deliveries the push service accepted; the
+  // best-effort put can never break the game action that triggered it.
+  if (sent && trigger) {
+    await putEvent("push_sent", {
+      pairingRef: pairingId,
+      actorRole: "system",
+      payload: { trigger },
+    });
+  }
 }
 
 // --- Helpers ---

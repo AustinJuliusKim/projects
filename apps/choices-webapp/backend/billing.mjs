@@ -44,6 +44,9 @@ export async function createCheckoutSession(userItem, plan, siteUrl) {
     customer: customerId,
     client_reference_id: userItem.userId,
     line_items: [{ price, quantity: 1 }],
+    // metadata.plan lets the completion webhook emit sub_started with the
+    // plan name (the session object itself never names the price plan).
+    metadata: { plan },
     subscription_data: { metadata: { userId: userItem.userId } },
     allow_promotion_codes: true,
     // siteUrl carries a trailing slash (it's the Cognito callback URL).
@@ -84,6 +87,8 @@ export function parseWebhook(rawBody, signature) {
     case "checkout.session.completed":
       return {
         userId: obj.client_reference_id,
+        // Sessions created before metadata.plan existed simply omit it.
+        plan: obj.metadata?.plan,
         premium: {
           status: "active",
           stripeCustomerId: obj.customer,

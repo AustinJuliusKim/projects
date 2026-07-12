@@ -55,3 +55,21 @@ export function rankSuggestions(query, pairEntries, placesResults, now = Date.no
 
   return out.slice(0, MAX_SHOWN);
 }
+
+// suggestion_shown volume bound: report each layer at most once per app
+// session (event catalog bundle B: {layer, count} — never the query text).
+// Returns the [{layer, count}] entries that still need reporting.
+const reportedLayers = new Set();
+export function suggestionLayersToReport(suggestions) {
+  const counts = {};
+  for (const s of suggestions ?? []) {
+    counts[s.source] = (counts[s.source] || 0) + 1;
+  }
+  const out = [];
+  for (const [layer, count] of Object.entries(counts)) {
+    if (reportedLayers.has(layer)) continue;
+    reportedLayers.add(layer);
+    out.push({ layer, count });
+  }
+  return out;
+}
