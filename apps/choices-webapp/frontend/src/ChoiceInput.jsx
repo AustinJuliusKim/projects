@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { placesSuggest, placeDetails } from "./api.js";
-import { rankSuggestions } from "./suggest.js";
+import { placesSuggest, placeDetails, track } from "./api.js";
+import { rankSuggestions, suggestionLayersToReport } from "./suggest.js";
 import { useNearMe } from "./nearMeStore.js";
 
 // Places layer (L3) is stack-config-gated: blank means the client never
@@ -14,7 +14,9 @@ const MIN_QUERY = 2;
 // Autocomplete via our Lambda proxy — debounced, one session token per input
 // focus, terminated by placeDetails on selection (that's what closes the
 // billing session).
-export default function ChoiceInput({ value, onChange, placeholder, pairEntries = [] }) {
+// trackOpts ({ pairingId, role, token }) scopes suggestion beacons to the
+// pairing when one exists (rematch form); absent on the create screen.
+export default function ChoiceInput({ value, onChange, placeholder, pairEntries = [], trackOpts = null }) {
   const [placesResults, setPlacesResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
@@ -27,6 +29,14 @@ export default function ChoiceInput({ value, onChange, placeholder, pairEntries 
   const suggestions = open
     ? rankSuggestions(value, pairEntries, placesResults)
     : [];
+
+  // suggestion_shown: {layer, count} only — never the typed query. The
+  // helper self-dedupes to once per layer per session, so re-renders no-op.
+  useEffect(() => {
+    for (const { layer, count } of suggestionLayersToReport(suggestions)) {
+      track("suggestion_shown", { layer, count }, trackOpts ?? {});
+    }
+  }, [suggestions, trackOpts]);
 
   useEffect(() => {
     if (!PLACES_ENABLED || !open) return;
@@ -53,6 +63,11 @@ export default function ChoiceInput({ value, onChange, placeholder, pairEntries 
   }
 
   function select(s) {
+    // suggestion_accepted carries the layer only (pairing-scoped in the
+    // catalog, so it's sent only when a pairing context exists).
+    if (trackOpts?.pairingId) {
+      track("suggestion_accepted", { layer: s.source }, trackOpts);
+    }
     onChange(s.label);
     setOpen(false);
     setHighlight(-1);

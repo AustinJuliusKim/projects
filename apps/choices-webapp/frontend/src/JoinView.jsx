@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { claimSeat } from "./api.js";
+import React, { useEffect, useRef, useState } from "react";
+import { claimSeat, track, trackBeacon } from "./api.js";
 import { saveIdentity } from "./storage.js";
 import { enablePush, pushSupported } from "./push.js";
 import IosInstallHint from "./IosInstallHint.jsx";
@@ -11,9 +11,29 @@ export default function JoinView({ prefillCode = "", onReady }) {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  // Funnel beacons (bundle A). The code is sent only to `track`, where the
+  // server resolves it to a pairing_ref and drops it. join_abandoned is
+  // necessarily heuristic: a pagehide before any claim, sent via
+  // sendBeacon so page teardown can't cancel it.
+  const codeRef = useRef(code);
+  codeRef.current = code;
+  const claimedRef = useRef(false);
+  useEffect(() => {
+    if (prefillCode.trim()) {
+      track("invite_link_opened", { via: "link" }, { code: prefillCode.trim() });
+    }
+    const onPageHide = () => {
+      const c = codeRef.current.trim();
+      if (!claimedRef.current && c) trackBeacon("join_abandoned", {}, { code: c });
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, []); // mount-once: fires per join-screen visit, not per keystroke
+
   function onCodeSubmit(e) {
     e.preventDefault();
     if (!code.trim()) return;
+    track("invite_link_opened", { via: "manual" }, { code: code.trim() });
     setError(null);
     setStep("seat");
   }
@@ -23,6 +43,7 @@ export default function JoinView({ prefillCode = "", onReady }) {
     setBusy(true);
     try {
       const res = await claimSeat(code.trim(), seat);
+      claimedRef.current = true;
       saveIdentity({ pairingId: res.pairingId, role: seat, token: res.token, code: res.code });
       if (pushSupported()) {
         enablePush(res.pairingId, seat, res.token).catch(() => {});
