@@ -62,7 +62,7 @@
         "type": "tool_result",
         "payload": {
           "id": "toolu_01L1wXtnwiF24QkPJNDvEnxi",
-          "content": "248\t        Hi, I'm Demo User. I build software and enjoy turning ideas into simple,\n249\t        well-crafted tools. This is my corner of the internet — a place for\n250\t        what I'm working on and how to reach me.\n251\t      </p>\n252\t      <a class=\"cta-button\" href=\"#contact\">Get in Touch</a>\n253\t    </header>\n254\t\n255\t    <section>",
+          "content": "248\t        Hi, I'm {{userName}}. I build software and enjoy turning ideas into simple,\n249\t        well-crafted tools. This is my corner of the internet — a place for\n250\t        what I'm working on and how to reach me.\n251\t      </p>\n252\t      <a class=\"cta-button\" href=\"#contact\">Get in Touch</a>\n253\t    </header>\n254\t\n255\t    <section>",
           "isError": false
         }
       },
