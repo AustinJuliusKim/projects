@@ -7,6 +7,7 @@ on:
       - "packages/guided-repl-protocol/**"
       - "packages/guided-repl-lessons/**"
       - "services/guided-repl-seeder/**"
+      - "services/guided-repl-api/**"
       - "apps/guided-repl/**"
       - ".github/workflows/guided-repl.yml"
   pull_request:
@@ -14,6 +15,7 @@ on:
       - "packages/guided-repl-protocol/**"
       - "packages/guided-repl-lessons/**"
       - "services/guided-repl-seeder/**"
+      - "services/guided-repl-api/**"
       - "apps/guided-repl/**"
       - ".github/workflows/guided-repl.yml"
 
@@ -77,6 +79,27 @@ jobs:
         run: npm ci
         working-directory: packages/guided-repl-protocol
       - run: npm test
+
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/guided-repl-api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: services/guided-repl-api/package-lock.json
+      - run: npm ci
+      # Populate the file:-linked protocol package's node_modules so its
+      # `zod` import resolves through the symlink's real path.
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
+      - run: npm test
+      - run: node scripts/migrate.js --dry-run
 
   app:
     runs-on: ubuntu-latest
@@ -145,7 +168,7 @@ jobs:
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [protocol, lessons, seeder, app, e2e]
+    needs: [protocol, lessons, seeder, api, app, e2e]
     runs-on: ubuntu-latest
     permissions:
       id-token: write # for OIDC role assumption
@@ -180,10 +203,11 @@ jobs:
           REGION=$(node -pe "require('./deploy-params.json').Region")
           CUSTOM_DOMAIN=$(node -pe "require('./deploy-params.json').CustomDomain")
           CERT_ARN=$(node -pe "require('./deploy-params.json').CertificateArn")
+          API_ORIGIN=$(node -pe "require('./deploy-params.json').ApiOriginDomain ?? ''")
           aws cloudformation deploy \
             --template-file template.yaml \
             --stack-name "$STACK_NAME" \
             --region "$REGION" \
-            --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" \
+            --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" "ApiOriginDomain=$API_ORIGIN" \
             --no-fail-on-empty-changeset
       - run: ./deploy-frontend.sh

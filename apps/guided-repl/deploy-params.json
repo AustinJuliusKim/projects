@@ -3,5 +3,6 @@
   "Region": "us-west-2",
   "CustomDomain": "learn.austinjuliuskim.com",
   "CertificateArn": "arn:aws:acm:us-east-1:549883968767:certificate/d553b13d-d21f-4e7e-b122-968e1791627f",
+  "ApiOriginDomain": "",
   "RoleArn": "arn:aws:iam::549883968767:role/guided-repl-github-deploy"
 }
