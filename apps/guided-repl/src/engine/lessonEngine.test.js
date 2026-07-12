@@ -163,6 +163,90 @@ test("railModel exposes dots, instruction copy, and mode", () => {
   assert.equal(rail.instructionMd, "Read.");
 });
 
+/** The l1 capture shape: name capture after intro, email capture after grade. */
+function captureLesson() {
+  return {
+    lessonId: "l1",
+    steps: [
+      { type: "instruction", id: "intro", md: "Read." },
+      { type: "capture", id: "capture-name", fields: ["name"], purposeMd: "Name?", optional: true },
+      { type: "promptBuilder", id: "compose", suggestions: [{ text: "p", branchId: "constrained" }] },
+      { type: "run", id: "run", branches: { constrained: { fixture: "c", expectedPrompt: "p", permissionMode: "acceptEdits" } } },
+      { type: "assertion", id: "grade", rule: { type: "file-contains", path: "index.html", match: "<h1>" } },
+      { type: "capture", id: "capture-email", fields: ["email"], purposeMd: "Email?", optional: true, consent: { label: "newsletter" } },
+    ],
+    completion: { assertionIds: ["grade"], next: "l2" },
+  };
+}
+
+test("capture step reads as instructing and submits/skips advance the flow", () => {
+  let s = createEngineState(captureLesson());
+  s = engineReducer(s, { type: "advance" });
+  assert.equal(currentStep(s).id, "capture-name");
+  assert.equal(stageMode(s), "instructing");
+
+  s = engineReducer(s, { type: "capture_submitted", stepId: "capture-name", values: { name: "Ada" } });
+  assert.deepEqual(s.results["capture-name"], { pass: true, values: { name: "Ada" } });
+  assert.equal(currentStep(s).id, "compose");
+});
+
+test("capture_skipped records a skipped pass and advances (optional only)", () => {
+  let s = createEngineState(captureLesson());
+  s = engineReducer(s, { type: "advance" });
+  s = engineReducer(s, { type: "capture_skipped", stepId: "capture-name" });
+  assert.deepEqual(s.results["capture-name"], { pass: true, skipped: true });
+  assert.equal(currentStep(s).id, "compose");
+
+  // Required capture cannot be skipped.
+  const lesson = captureLesson();
+  lesson.steps[1].optional = false;
+  let r = createEngineState(lesson);
+  r = engineReducer(r, { type: "advance" });
+  r = engineReducer(r, { type: "capture_skipped", stepId: "capture-name" });
+  assert.equal(currentStep(r).id, "capture-name");
+  assert.equal(r.results["capture-name"], undefined);
+});
+
+test("capture actions ignore a non-current step", () => {
+  let s = createEngineState(captureLesson());
+  s = engineReducer(s, { type: "capture_submitted", stepId: "capture-name", values: { name: "Ada" } });
+  assert.equal(currentStep(s).id, "intro");
+  assert.deepEqual(s.results, {});
+});
+
+test("mid-lesson assertion pass advances to the post-grade capture; final capture graduates", () => {
+  let s = createEngineState(captureLesson());
+  s = engineReducer(s, { type: "advance" });
+  s = engineReducer(s, { type: "capture_skipped", stepId: "capture-name" });
+  s = engineReducer(s, { type: "prompt_matched", branchId: "constrained" });
+  s = engineReducer(s, { type: "run_done" });
+  assert.equal(currentStep(s).id, "grade");
+
+  s = engineReducer(s, { type: "assertion_evaluated", stepId: "grade", result: { pass: true, detail: "ok" } });
+  assert.equal(currentStep(s).id, "capture-email");
+  assert.ok(!s.graduated);
+
+  // GradeBanner stays visible via latestAssertionResult on the capture step.
+  const rail = railModel(s);
+  assert.equal(rail.latestAssertionResult.pass, true);
+
+  s = engineReducer(s, { type: "capture_submitted", stepId: "capture-email", values: { email: "a@b.c" } });
+  assert.ok(s.graduated);
+  assert.equal(stageMode(s), "graduated");
+});
+
+test("failed mid-lesson assertion does not advance past the grade step", () => {
+  let s = createEngineState(captureLesson());
+  s = engineReducer(s, { type: "advance" });
+  s = engineReducer(s, { type: "capture_skipped", stepId: "capture-name" });
+  s = engineReducer(s, { type: "prompt_matched", branchId: "constrained" });
+  s = engineReducer(s, { type: "run_done" });
+  s = engineReducer(s, { type: "assertion_evaluated", stepId: "grade", result: { pass: false, detail: "nope" } });
+  assert.equal(currentStep(s).id, "grade");
+  assert.ok(!s.graduated);
+  assert.equal(railModel(s).latestAssertionResult.pass, false);
+});
+
 test("lesson_loaded and reset rebuild initial state", () => {
   let s = createEngineState(quizLesson());
   s = engineReducer(s, { type: "advance" });
