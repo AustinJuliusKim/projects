@@ -1498,6 +1498,174 @@ test("subscription cancellation emits sub_cancelled; legacy checkout emits nothi
   assert.equal(events.length, 0);
 });
 
+// --- track action (client-originated catalog events) ---
+
+const eventPuts = () =>
+  ddbMock
+    .commandCalls(PutCommand)
+    .map((c) => c.args[0].input.Item)
+    .filter((i) => i.pk.startsWith("EVENT#"));
+
+test("track writes a pairing-scoped event with a valid seat token", async () => {
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({ Item: pairingItem() });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(
+    postEvent({
+      action: "track",
+      type: "suggestion_accepted",
+      pairingId: "abc123",
+      role: "A",
+      token: "tok-a",
+      payload: { layer: "pair" },
+    })
+  );
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(JSON.parse(res.body), { ok: true });
+  const events = eventPuts();
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "suggestion_accepted");
+  assert.equal(events[0].pairing_ref, "abc123");
+  assert.equal(events[0].actor_role, "A");
+  assert.deepEqual(events[0].payload, { layer: "pair" });
+  assert.ok(events[0].ttl > 0);
+});
+
+test("track silently drops unknown and server-only types", async () => {
+  ddbMock.on(PutCommand).resolves({});
+  for (const type of ["made_up", "game_created", "cut_made", "pairing_deleted", undefined]) {
+    const res = await handler(postEvent({ action: "track", type, payload: {} }));
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(JSON.parse(res.body), { ok: true });
+  }
+  assert.equal(eventPuts().length, 0);
+});
+
+test("track drops free-text payloads and never writes them", async () => {
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({ Item: pairingItem() });
+  ddbMock.on(PutCommand).resolves({});
+
+  const bads = [
+    { type: "suggestion_shown", payload: { layer: "pair", count: "typed text" } },
+    { type: "suggestion_shown", payload: { layer: "pair", count: 3, q: "sushi pl" } },
+    { type: "client_error", payload: { error_type: "TypeError: x is undefined" } },
+    { type: "pwa_installed", payload: "free text" },
+    { type: "suggestion_accepted", payload: { layer: "the text I typed" } },
+  ];
+  for (const { type, payload } of bads) {
+    const res = await handler(
+      postEvent({ action: "track", type, pairingId: "abc123", role: "A", token: "tok-a", payload })
+    );
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(JSON.parse(res.body), { ok: true });
+  }
+  assert.equal(eventPuts().length, 0);
+});
+
+test("track drops pairing-scoped events without a valid token", async () => {
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({ Item: pairingItem() });
+  ddbMock.on(PutCommand).resolves({});
+
+  // Missing token, wrong token, unknown pairing, missing pairingId.
+  const cases = [
+    { pairingId: "abc123", role: "A" },
+    { pairingId: "abc123", role: "A", token: "wrong" },
+    { pairingId: "nosuch", role: "A", token: "tok-a" },
+    {},
+  ];
+  for (const extra of cases) {
+    const res = await handler(
+      postEvent({
+        action: "track",
+        type: "reveal_viewed",
+        payload: { game_number: 1 },
+        ...extra,
+      })
+    );
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(JSON.parse(res.body), { ok: true });
+  }
+  // An optional-scope event WITH a pairingId also requires the token.
+  await handler(
+    postEvent({
+      action: "track",
+      type: "fill4_shown",
+      pairingId: "abc123",
+      role: "B",
+      token: "wrong",
+      payload: { context: "pairing" },
+    })
+  );
+  assert.equal(eventPuts().length, 0);
+});
+
+test("track resolves join codes to a pairing_ref and drops the code", async () => {
+  ddbMock
+    .on(GetCommand, { Key: { pk: "CODE#PLUM-42" } })
+    .resolves({ Item: { pk: "CODE#PLUM-42", pairingId: "abc123" } });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(
+    postEvent({
+      action: "track",
+      type: "invite_link_opened",
+      code: "plum-42",
+      payload: { via: "link" },
+    })
+  );
+  assert.equal(res.statusCode, 200);
+  const events = eventPuts();
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "invite_link_opened");
+  assert.equal(events[0].pairing_ref, "abc123");
+  assert.equal(events[0].actor_role, null);
+  assert.deepEqual(events[0].payload, { via: "link" });
+  assert.ok(!JSON.stringify(events[0]).includes("PLUM-42")); // code never persisted
+
+  // join_abandoned rides the same resolution; unknown codes drop.
+  ddbMock.resetHistory();
+  await handler(
+    postEvent({ action: "track", type: "join_abandoned", code: "PLUM-42", payload: {} })
+  );
+  assert.equal(eventPuts()[0].type, "join_abandoned");
+  ddbMock.resetHistory();
+  ddbMock.on(GetCommand, { Key: { pk: "CODE#NOPE-11" } }).resolves({});
+  await handler(
+    postEvent({ action: "track", type: "invite_link_opened", code: "NOPE-11", payload: { via: "link" } })
+  );
+  assert.equal(eventPuts().length, 0);
+});
+
+test("track accepts pairing-less optional and none-scope events", async () => {
+  ddbMock.on(PutCommand).resolves({});
+
+  await handler(
+    postEvent({
+      action: "track",
+      type: "paywall_viewed",
+      payload: { surface: "account" },
+    })
+  );
+  await handler(
+    postEvent({ action: "track", type: "pwa_installed", payload: { platform: "web" } })
+  );
+  await handler(
+    postEvent({
+      action: "track",
+      type: "client_error",
+      payload: { error_type: "unhandled_rejection" },
+    })
+  );
+
+  const events = eventPuts();
+  assert.deepEqual(events.map((e) => e.type), [
+    "paywall_viewed",
+    "pwa_installed",
+    "client_error",
+  ]);
+  assert.ok(events.every((e) => e.pairing_ref === null && e.actor_role === null));
+});
+
 test("origin header enforced only when flag is on", async () => {
   ddbMock.on(GetCommand).resolves({ Item: pairingItem() });
   const query = { action: "getState", pairingId: "abc123", role: "A", token: "tok-a" };
