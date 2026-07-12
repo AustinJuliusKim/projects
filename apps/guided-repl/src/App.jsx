@@ -11,6 +11,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { matchCommand } from "@guided-repl/protocol";
+import { getUserName, setUserName as persistUserName } from "./identity/identity.js";
 import { useSession } from "./state/useSession.js";
 import { loadLesson } from "./lessons/lessonLoader.js";
 import { useLessonEngine } from "./engine/useLessonEngine.js";
@@ -34,9 +35,8 @@ export default function App() {
   const [selectedLessonId, setSelectedLessonId] = useState("l1");
   // Display-only personalization (never lesson state): fixtures carry the
   // raw {{userName}} token; stage components substitute at render time.
-  // Wired to the captured identity in the capture UI change; null renders
-  // the "Demo User" default.
-  const userName = null;
+  // null renders the "Demo User" default.
+  const [userName, setUserNameState] = useState(() => getUserName());
   const [lessons, setLessons] = useState(null);
   const [loaded, setLoaded] = useState(null);
   const [error, setError] = useState(null);
@@ -133,6 +133,24 @@ export default function App() {
     prompt(text, branchId);
   }
 
+  /**
+   * Capture card Save: the name is already sanitized by the card (and
+   * re-sanitized by persistUserName before storage); the values land on the
+   * engine result so the step completes. Lead/event POSTs are wired in the
+   * accounts change — capture itself never blocks on the network.
+   */
+  function onCapture(stepId, values, consent) {
+    if (values.name) {
+      const sanitized = persistUserName(values.name);
+      if (sanitized) setUserNameState(sanitized);
+    }
+    engine.dispatch({ type: "capture_submitted", stepId, values: { ...values, consent } });
+  }
+
+  function onCaptureSkip(stepId) {
+    engine.dispatch({ type: "capture_skipped", stepId });
+  }
+
   function onRetry() {
     // Fresh session for the retry — the transport replays the seed snapshot
     // on the next matched prompt.
@@ -155,6 +173,8 @@ export default function App() {
           onContinue={() => engine.dispatch({ type: "advance" })}
           onQuizAnswer={(stepId, answerIdx) => engine.dispatch({ type: "quiz_answered", stepId, answerIdx })}
           onRetry={onRetry}
+          onCapture={onCapture}
+          onCaptureSkip={onCaptureSkip}
         />
         <section className="pane pane-stage">
           {error && <div className="load-error">Failed to load lesson: {error}</div>}
