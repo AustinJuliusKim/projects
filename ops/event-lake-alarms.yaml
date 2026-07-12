@@ -1,30 +1,31 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  Event-lake pipeline alarms (Data Architecture Plan, Stage A). Rides the
-  built-in Lambda/SQS metrics — the stream itself needs no custom metrics:
-  IteratorAge IS the spec's ">5 min stream lag" signal, and the DLQ depth
-  is "lake write failures". Admin-deployed like ops/billing-alarms.yaml
-  (the CI deploy role has no cloudwatch:PutMetricAlarm). PROD ONLY as
-  written: TopicName/AlarmNames are fixed strings (billing-alarms
-  precedent) — a second deployment for preview would collide. Deploy once:
+  Event-lake pipeline alarms (Data Arch Stage A): consumer IteratorAge (the
+  spec's ">5 min stream lag"), DLQ depth (lake write failures), consumer and
+  compaction Errors. Admin-deployed, PROD ONLY (fixed topic/alarm names).
+  See the header comment for the deploy runbook.
 
-    aws cloudformation deploy --template-file ops/event-lake-alarms.yaml \
-      --stack-name ChoicesEventLakeAlarms --region us-west-2 \
-      --parameter-overrides \
-        ConsumerFunctionName=<physical id of EventStreamConsumerFunction> \
-        CompactionFunctionName=<physical id of CompactionFunction> \
-        DlqName=<QueueName of EventConsumerDLQ>
-
-  Physical ids:
-    aws cloudformation describe-stack-resources --stack-name ChoicesWebApp \
-      --query 'StackResources[?LogicalResourceId==`EventStreamConsumerFunction`
-        || LogicalResourceId==`CompactionFunction`
-        || LogicalResourceId==`EventConsumerDLQ`].[LogicalResourceId,PhysicalResourceId]'
-  (The DLQ physical id is a queue URL; DlqName is its last path segment.)
-  Then confirm the SNS subscription email.
-
-  Intrinsics are written long-form (Ref:/Fn::*) on purpose: the repo's
-  template sanity check is a plain yaml.safe_load, which rejects !Ref tags.
+# Deploy runbook (admin creds; CI role has no cloudwatch:PutMetricAlarm —
+# same pattern as ops/billing-alarms.yaml). PROD ONLY as written:
+# TopicName/AlarmNames are fixed strings; a preview deployment would collide.
+#
+#   aws cloudformation deploy --template-file ops/event-lake-alarms.yaml \
+#     --stack-name ChoicesEventLakeAlarms --region us-west-2 \
+#     --parameter-overrides \
+#       ConsumerFunctionName=<physical id of EventStreamConsumerFunction> \
+#       CompactionFunctionName=<physical id of CompactionFunction> \
+#       DlqName=<QueueName of EventConsumerDLQ>
+#
+# Physical ids:
+#   aws cloudformation describe-stack-resources --stack-name ChoicesWebApp \
+#     --query 'StackResources[?LogicalResourceId==`EventStreamConsumerFunction`
+#       || LogicalResourceId==`CompactionFunction`
+#       || LogicalResourceId==`EventConsumerDLQ`].[LogicalResourceId,PhysicalResourceId]'
+# (The DLQ physical id is a queue URL; DlqName is its last path segment.)
+# Then confirm the SNS subscription email.
+#
+# Intrinsics are written long-form (Ref:/Fn::*) on purpose: the repo's
+# template sanity check is a plain yaml.safe_load, which rejects !Ref tags.
 
 Parameters:
   AlertEmail:
