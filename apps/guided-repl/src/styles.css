@@ -878,3 +878,72 @@ button.lesson-item:hover {
   color: var(--cli-muted);
   font-size: 0.85rem;
 }
+
+/* CaptureCard */
+
+.capture-card {
+  border: 1px solid var(--cli-border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--cli-bg-panel);
+  font-size: 0.85rem;
+}
+
+.capture-purpose p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.capture-input {
+  background: var(--cli-bg-panel-raised);
+  border: 1px solid var(--cli-border);
+  border-radius: 6px;
+  color: var(--cli-fg);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.capture-consent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.capture-error {
+  color: var(--cli-warn);
+  font-size: 0.8rem;
+}
+
+.capture-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.capture-submit {
+  background: var(--cli-accent);
+  color: var(--cli-accent-fg);
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.capture-skip {
+  background: var(--cli-bg-panel-raised);
+  color: var(--cli-fg);
+  border: 1px solid var(--cli-border);
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
