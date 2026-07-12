@@ -67,6 +67,15 @@ function conditionalCheckError() {
   return err;
 }
 
+// Version-condition failure surfaced through a TransactWrite (the outbox
+// events make every pairing mutation transactional).
+function txConditionError() {
+  const err = new Error("Transaction cancelled");
+  err.name = "TransactionCanceledException";
+  err.CancellationReasons = [{ Code: "ConditionalCheckFailed" }, { Code: "None" }];
+  return err;
+}
+
 beforeEach(() => {
   ddbMock.reset();
   s3Mock.reset();
@@ -84,6 +93,69 @@ beforeEach(() => {
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
   _setVerifierForTests(fakeVerifier());
   _setStripeForTests(null);
+});
+
+test("createPairing commits the pairing and game_created event atomically", async () => {
+  ddbMock.on(PutCommand).resolves({}); // CODE# reservation
+  ddbMock.on(TransactWriteCommand).resolves({});
+
+  const res = await handler(
+    postEvent({ action: "createPairing", choices: CHOICES, source: "fill4" })
+  );
+  assert.equal(res.statusCode, 200);
+
+  const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
+  assert.equal(tx.TransactItems.length, 2);
+  assert.match(tx.TransactItems[0].Put.Item.pk, /^PAIR#/);
+  const ev = tx.TransactItems[1].Put.Item;
+  assert.match(ev.pk, /^EVENT#/);
+  assert.equal(ev.type, "game_created");
+  assert.equal(ev.actor_role, "A");
+  assert.equal(ev.pairing_ref, tx.TransactItems[0].Put.Item.pk.slice("PAIR#".length));
+  assert.deepEqual(ev.payload, { game_number: 1, choice_count: 4, source: "fill4" });
+  assert.ok(ev.ttl > 0);
+  // No code, no tokens in the event item.
+  const flat = JSON.stringify(ev);
+  assert.ok(!flat.includes(JSON.parse(res.body).code));
+
+  // A junk source downgrades to "manual" (never free text).
+  const manual = await handler(
+    postEvent({ action: "createPairing", choices: CHOICES, source: "typed stuff" })
+  );
+  assert.equal(manual.statusCode, 200);
+  const ev2 = ddbMock.commandCalls(TransactWriteCommand).at(-1).args[0].input
+    .TransactItems[1].Put.Item;
+  assert.equal(ev2.payload.source, "manual");
+});
+
+test("rematch commits its outbox event with the new game", async () => {
+  const done = pairingItem({ version: 7 });
+  done.game = ["B", "A", "B"].reduce(
+    (g, role, i) => applyElimination(g, role, i),
+    done.game
+  );
+  ddbMock.on(GetCommand).resolves({});
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({ Item: done });
+  ddbMock.on(TransactWriteCommand).resolves({});
+
+  const res = await handler(
+    postEvent({
+      action: "rematch",
+      pairingId: "abc123",
+      role: "B",
+      token: "tok-b",
+      choices: ["Thai", "Pho", "BBQ", "Deli"],
+    })
+  );
+  assert.equal(res.statusCode, 200);
+
+  const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
+  assert.equal(tx.TransactItems.length, 2);
+  const ev = tx.TransactItems[1].Put.Item;
+  assert.equal(ev.type, "rematch");
+  assert.equal(ev.pairing_ref, "abc123");
+  assert.equal(ev.actor_role, "B");
+  assert.deepEqual(ev.payload, { game_number: 2, choice_count: 4, source: "manual" });
 });
 
 test("GET getState works and never exposes the code", async () => {
@@ -119,7 +191,7 @@ test("POST getState still works (transition path)", async () => {
 
 test("eliminate writes conditionally, bumps version, records actionId", async () => {
   ddbMock.on(GetCommand).resolves({ Item: pairingItem() });
-  ddbMock.on(PutCommand).resolves({});
+  ddbMock.on(TransactWriteCommand).resolves({});
 
   const res = await handler(
     postEvent({
@@ -133,12 +205,23 @@ test("eliminate writes conditionally, bumps version, records actionId", async ()
     })
   );
   assert.equal(res.statusCode, 200);
-  const put = ddbMock.commandCalls(PutCommand)[0].args[0].input;
+  // Outbox pattern: pairing save + cut_made EVENT# in one transaction.
+  const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
+  assert.equal(tx.TransactItems.length, 2);
+  const put = tx.TransactItems[0].Put;
   assert.equal(put.Item.version, 4);
   assert.equal(put.Item.lastActionId, "aid-1");
   assert.equal(put.ConditionExpression, "version = :v");
   assert.deepEqual(put.ExpressionAttributeValues, { ":v": 3 });
   assert.deepEqual(put.Item.game.eliminated.map((e) => e.index), [0]);
+
+  const ev = tx.TransactItems[1].Put.Item;
+  assert.match(ev.pk, /^EVENT#/);
+  assert.equal(ev.type, "cut_made");
+  assert.equal(ev.pairing_ref, "abc123");
+  assert.equal(ev.actor_role, "B");
+  assert.deepEqual(ev.payload, { game_number: 1, cut_number: 1, index: 0 });
+  assert.ok(ev.ttl > 0);
 });
 
 test("duplicate eliminate (same actionId) replays stored state, no write", async () => {
@@ -169,7 +252,7 @@ test("eliminate retries once after losing a write race", async () => {
   // Fresh item per load: the handler mutates in place, and a shared mock
   // object would make the retry look like a replay.
   ddbMock.on(GetCommand).callsFake(() => ({ Item: pairingItem() }));
-  ddbMock.on(PutCommand).rejectsOnce(conditionalCheckError()).resolves({});
+  ddbMock.on(TransactWriteCommand).rejectsOnce(txConditionError()).resolves({});
 
   const res = await handler(
     postEvent({
@@ -183,12 +266,12 @@ test("eliminate retries once after losing a write race", async () => {
     })
   );
   assert.equal(res.statusCode, 200);
-  assert.equal(ddbMock.commandCalls(PutCommand).length, 2);
+  assert.equal(ddbMock.commandCalls(TransactWriteCommand).length, 2);
 });
 
 test("eliminate gives up with 409 WRITE_CONFLICT after two lost races", async () => {
   ddbMock.on(GetCommand).callsFake(() => ({ Item: pairingItem() }));
-  ddbMock.on(PutCommand).rejects(conditionalCheckError());
+  ddbMock.on(TransactWriteCommand).rejects(txConditionError());
 
   const res = await handler(
     postEvent({
@@ -234,7 +317,8 @@ test("winning eliminate archives the game atomically with the pairing save", asy
   assert.equal(ddbMock.commandCalls(PutCommand).length, 0);
 
   const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
-  assert.equal(tx.TransactItems.length, 3);
+  // pairing + archive + hist + game_finished EVENT# + cut_made EVENT#.
+  assert.equal(tx.TransactItems.length, 5);
 
   const pairingPut = tx.TransactItems[0].Put;
   assert.equal(pairingPut.Item.pk, "PAIR#abc123");
@@ -250,6 +334,21 @@ test("winning eliminate archives the game atomically with the pairing save", asy
   assert.equal(archive.eliminated.length, 3);
   assert.deepEqual(archive.players, { A: null, B: null });
   assert.ok(archive.ttl > 0);
+
+  // Outbox events ride the same transaction: game_finished then cut_made.
+  const finished = tx.TransactItems[3].Put.Item;
+  assert.match(finished.pk, /^EVENT#/);
+  assert.equal(finished.type, "game_finished");
+  assert.equal(finished.pairing_ref, "abc123");
+  assert.equal(finished.actor_role, "B"); // whoever made the final cut
+  assert.equal(finished.payload.winner_label, "Ramen");
+  assert.deepEqual(finished.payload.choices, CHOICES);
+  assert.equal(finished.payload.winner_index, 3);
+  assert.ok(finished.payload.duration_ms >= 0);
+
+  const cut = tx.TransactItems[4].Put.Item;
+  assert.equal(cut.type, "cut_made");
+  assert.deepEqual(cut.payload, { game_number: 1, cut_number: 3, index: 2 });
 
   // Pair-memory fold (suggestion engine Phase 0) rides the same transaction.
   const histPut = tx.TransactItems[2].Put;
@@ -323,9 +422,9 @@ test("anonymized record failure never breaks the winning move", async () => {
   assert.equal(JSON.parse(res.body).state.game.status, "complete");
 });
 
-test("mid-game eliminate stays on the plain conditional put", async () => {
+test("mid-game eliminate transacts only the pairing and its cut event", async () => {
   ddbMock.on(GetCommand).resolves({ Item: pairingItem() });
-  ddbMock.on(PutCommand).resolves({});
+  ddbMock.on(TransactWriteCommand).resolves({});
 
   const res = await handler(
     postEvent({
@@ -338,8 +437,9 @@ test("mid-game eliminate stays on the plain conditional put", async () => {
     })
   );
   assert.equal(res.statusCode, 200);
-  assert.equal(ddbMock.commandCalls(TransactWriteCommand).length, 0);
-  assert.equal(ddbMock.commandCalls(PutCommand).length, 1);
+  const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
+  assert.equal(tx.TransactItems.length, 2); // no archive/user/hist mid-game
+  assert.equal(tx.TransactItems[1].Put.Item.type, "cut_made");
   // No history work on the hot path: HIST# is only touched on completion.
   const gets = ddbMock.commandCalls(GetCommand).map((c) => c.args[0].input.Key.pk);
   assert.ok(!gets.some((pk) => pk.startsWith("HIST#")));
@@ -417,7 +517,7 @@ test("signed-in claimSeat links the seat; anonymous claim unlinks it", async () 
     .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
     .callsFake(() => ({ Item: pairingItem({ tokenB: null, userB: "old-user" }) }));
   ddbMock.on(GetCommand, { Key: { pk: "SUB#abc123#A" } }).resolves({});
-  ddbMock.on(PutCommand).resolves({});
+  ddbMock.on(TransactWriteCommand).resolves({});
 
   const signedIn = await handler(
     postEvent(
@@ -426,13 +526,22 @@ test("signed-in claimSeat links the seat; anonymous claim unlinks it", async () 
     )
   );
   assert.equal(signedIn.statusCode, 200);
-  let saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input.Item;
-  assert.equal(saved.userB, "u-1");
+  let tx = ddbMock.commandCalls(TransactWriteCommand).at(-1).args[0].input;
+  assert.equal(tx.TransactItems[0].Put.Item.userB, "u-1");
+  // seat_claimed rides the same transaction; the code never enters events.
+  let ev = tx.TransactItems[1].Put.Item;
+  assert.equal(ev.type, "seat_claimed");
+  assert.equal(ev.pairing_ref, "abc123");
+  assert.equal(ev.actor_role, "B");
+  assert.deepEqual(ev.payload, { seat: "B", first_claim: true, signed_in: true });
+  assert.ok(!JSON.stringify(ev).includes("PLUM-42"));
 
   const anon = await handler(postEvent({ action: "claimSeat", code: "PLUM-42", seat: "B" }));
   assert.equal(anon.statusCode, 200);
-  saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input.Item;
-  assert.equal(saved.userB, null); // takeover unlinks the previous account
+  tx = ddbMock.commandCalls(TransactWriteCommand).at(-1).args[0].input;
+  assert.equal(tx.TransactItems[0].Put.Item.userB, null); // takeover unlinks the previous account
+  ev = tx.TransactItems[1].Put.Item;
+  assert.deepEqual(ev.payload, { seat: "B", first_claim: true, signed_in: false });
 });
 
 test("an invalid token is a hard 401, never a silent guest downgrade", async () => {
@@ -470,7 +579,8 @@ test("winning eliminate folds stats into linked users, once per distinct user", 
   assert.equal(res.statusCode, 200);
 
   const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
-  assert.equal(tx.TransactItems.length, 4); // pairing + archive + ONE user + hist
+  // pairing + archive + ONE user + hist + game_finished + cut_made.
+  assert.equal(tx.TransactItems.length, 6);
 
   const archive = tx.TransactItems[1].Put.Item;
   assert.deepEqual(archive.players, { A: "u-1", B: "u-1" });

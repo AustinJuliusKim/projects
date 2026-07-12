@@ -45,6 +45,7 @@ import { aiEnabled, fillFour } from "./suggestai.mjs";
 import { isClean } from "./moderation.mjs";
 import { emitCount, emitLatency } from "./metrics.mjs";
 import { aggregateActive, isAdmin } from "./admin.mjs";
+import { buildEvent, eventItem } from "./events.mjs";
 
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
@@ -264,6 +265,12 @@ function escapeHtml(s) {
 
 // --- Actions ---
 
+// How the 4 choices were produced, for event payloads. Clients report
+// "fill4" when the AI filled the form; anything else counts as manual.
+function choiceSource(body) {
+  return body.source === "fill4" ? "fill4" : "manual";
+}
+
 async function doCreatePairing(body) {
   const game = createGame(body.choices, { startedBy: "A", number: 1 });
   const pairingId = shortId(12);
@@ -284,7 +291,18 @@ async function doCreatePairing(body) {
     updatedAt: Date.now(),
     ttl: ttlEpoch(),
   };
-  await ddb.send(new PutCommand({ TableName: TABLE, Item: item }));
+  // Transactional outbox: the game_created event commits atomically with
+  // the pairing (event-iff-write; the stream consumer forwards it to S3).
+  const created = buildEvent("game_created", {
+    pairingRef: pairingId,
+    actorRole: "A",
+    payload: { game_number: 1, choice_count: game.choices.length, source: choiceSource(body) },
+  });
+  await ddb.send(
+    new TransactWriteCommand({
+      TransactItems: [{ Put: { TableName: TABLE, Item: item } }, eventItem(created)],
+    })
+  );
 
   emitCount("GameCreated");
   return { pairingId, code, state: publicState(item) };
@@ -308,7 +326,8 @@ async function doClaimSeat(body, user) {
   // and will get a 403 on its next call.
   for (let attempt = 0; ; attempt++) {
     const pairing = await loadPairing(codeRes.Item.pairingId);
-    const wasFirstBClaim = seat === "B" && pairing.tokenB == null;
+    const firstClaim = (seat === "A" ? pairing.tokenA : pairing.tokenB) == null;
+    const wasFirstBClaim = seat === "B" && firstClaim;
     const token = randomUUID();
     // Claiming defines the seat's identity: a signed-in claim links the seat
     // to the account; an anonymous claim (incl. takeover) unlinks it so a
@@ -322,10 +341,15 @@ async function doClaimSeat(body, user) {
     }
     pairing.updatedAt = Date.now();
     pairing.ttl = ttlEpoch();
+    const claimed = buildEvent("seat_claimed", {
+      pairingRef: pairing.pk.slice("PAIR#".length),
+      actorRole: seat,
+      payload: { seat, first_claim: firstClaim, signed_in: Boolean(user) },
+    });
     try {
-      await savePairing(pairing);
+      await savePairing(pairing, [eventItem(claimed)]);
     } catch (err) {
-      if (err?.name === "ConditionalCheckFailedException" && attempt < 1) continue;
+      if (lostWriteRace(err) && attempt < 1) continue;
       throw err;
     }
 
@@ -367,8 +391,22 @@ async function doEliminate(body) {
     },
     // The winning move archives the game and folds it into each signed-in
     // player's stats, all in the same transaction — rematch overwrites
-    // pairing.game, so this is the only moment the record exists.
-    completionItems
+    // pairing.game, so this is the only moment the record exists. Every cut
+    // also rides its cut_made outbox event (event-iff-write).
+    async (pairing) => [
+      ...(await completionItems(pairing)),
+      eventItem(
+        buildEvent("cut_made", {
+          pairingRef: pairing.pk.slice("PAIR#".length),
+          actorRole: role,
+          payload: {
+            game_number: pairing.game.number,
+            cut_number: pairing.game.eliminated.length,
+            index,
+          },
+        })
+      ),
+    ]
   );
 
   if (!replay) {
@@ -439,6 +477,23 @@ async function completionItems(pairing) {
   // (privacy: pair history dies with the pair).
   const hist = (await loadHist(pairingId)) ?? emptyHist(pairingId);
   items.push(versionedPut({ ...applyGameToHistory(hist, summary), ttl: ttlEpoch() }));
+
+  // game_finished outbox event: attributed to whoever made the final cut.
+  items.push(
+    eventItem(
+      buildEvent("game_finished", {
+        pairingRef: pairingId,
+        actorRole: summary.eliminated.at(-1).by,
+        payload: {
+          game_number: summary.number,
+          winner_index: summary.winnerIndex,
+          winner_label: summary.winnerLabel,
+          choices: summary.choices,
+          duration_ms: Math.max(0, summary.completedAt - summary.createdAt),
+        },
+      })
+    )
+  );
   return items;
 }
 
@@ -471,7 +526,20 @@ async function doRematch(body) {
     pairing.game = createGame(choices, { startedBy: role, number });
     pairing.gameNumber = number;
     pairing.nextStarter = otherRole(role);
-  });
+  },
+  (pairing) => [
+    eventItem(
+      buildEvent("rematch", {
+        pairingRef: pairing.pk.slice("PAIR#".length),
+        actorRole: role,
+        payload: {
+          game_number: pairing.gameNumber,
+          choice_count: pairing.game.choices.length,
+          source: choiceSource(body),
+        },
+      })
+    ),
+  ]);
 
   // Notify the OTHER player (who eliminates first) that a new game started.
   if (!replay) {
