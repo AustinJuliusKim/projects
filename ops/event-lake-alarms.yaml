@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Event-lake pipeline alarms (Data Architecture Plan, Stage A). Rides the
+  built-in Lambda/SQS metrics — the stream itself needs no custom metrics:
+  IteratorAge IS the spec's ">5 min stream lag" signal, and the DLQ depth
+  is "lake write failures". Admin-deployed like ops/billing-alarms.yaml
+  (the CI deploy role has no cloudwatch:PutMetricAlarm). PROD ONLY as
+  written: TopicName/AlarmNames are fixed strings (billing-alarms
+  precedent) — a second deployment for preview would collide. Deploy once:
+
+    aws cloudformation deploy --template-file ops/event-lake-alarms.yaml \
+      --stack-name ChoicesEventLakeAlarms --region us-west-2 \
+      --parameter-overrides \
+        ConsumerFunctionName=<physical id of EventStreamConsumerFunction> \
+        CompactionFunctionName=<physical id of CompactionFunction> \
+        DlqName=<QueueName of EventConsumerDLQ>
+
+  Physical ids:
+    aws cloudformation describe-stack-resources --stack-name ChoicesWebApp \
+      --query 'StackResources[?LogicalResourceId==`EventStreamConsumerFunction`
+        || LogicalResourceId==`CompactionFunction`
+        || LogicalResourceId==`EventConsumerDLQ`].[LogicalResourceId,PhysicalResourceId]'
+  (The DLQ physical id is a queue URL; DlqName is its last path segment.)
+  Then confirm the SNS subscription email.
+
+  Intrinsics are written long-form (Ref:/Fn::*) on purpose: the repo's
+  template sanity check is a plain yaml.safe_load, which rejects !Ref tags.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Default: austinjuliuskim@gmail.com
+  ConsumerFunctionName:
+    Type: String
+    Description: Physical name of the EventStreamConsumerFunction Lambda.
+  CompactionFunctionName:
+    Type: String
+    Description: Physical name of the CompactionFunction Lambda.
+  DlqName:
+    Type: String
+    Description: Queue NAME (not URL/ARN) of EventConsumerDLQ.
+  MaxIteratorAgeMs:
+    Type: Number
+    Default: 300000
+    Description: Alarm when stream records wait longer than this (ms). 5 min per the data plan.
+
+Resources:
+  EventLakeAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: event-lake-alerts
+
+  EventLakeAlertsEmail:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn:
+        Ref: EventLakeAlertsTopic
+      Protocol: email
+      Endpoint:
+        Ref: AlertEmail
+
+  # Spec metric #1: stream lag. IteratorAge is the age of the last record
+  # the consumer processed — sustained growth means the lake is falling
+  # behind (throttles, repeated batch failures, or a down consumer).
+  ConsumerIteratorAgeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: choices-event-lake-stream-lag
+      AlarmDescription: Event lake stream consumer is >5 min behind the DynamoDB stream.
+      Namespace: AWS/Lambda
+      MetricName: IteratorAge
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Ref: ConsumerFunctionName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold:
+        Ref: MaxIteratorAgeMs
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: EventLakeAlertsTopic
+
+  # Spec metric #2: lake write failures. Batches land here only after 8
+  # bisected retries — anything visible is data waiting for manual redrive.
+  DlqDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: choices-event-lake-dlq-depth
+      AlarmDescription: Event-lake consumer DLQ has messages (lake writes failed past retries).
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value:
+            Ref: DlqName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: EventLakeAlertsTopic
+
+  ConsumerErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: choices-event-lake-consumer-errors
+      AlarmDescription: Event-lake stream consumer function is erroring.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Ref: ConsumerFunctionName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: EventLakeAlertsTopic
+
+  # Spec metric #3: compaction job success. It runs weekly; any error is a
+  # missed deletion pass (GDPR-readiness), so alarm on the first one.
+  CompactionErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: choices-event-lake-compaction-errors
+      AlarmDescription: Weekly event-lake compaction run failed.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Ref: CompactionFunctionName
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: EventLakeAlertsTopic

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
-import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour } from "./api.js";
+import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour, track } from "./api.js";
 import ChoiceInput from "./ChoiceInput.jsx";
 import FillMyFour from "./FillMyFour.jsx";
 import { drawRevealCard } from "./revealCard.js";
@@ -157,6 +157,17 @@ export default function PlayView({ identity, onLeave }) {
     };
   }, [pairingId, role, token, pollMode]);
 
+  // reveal_viewed: once per completed game (per mount) when the winner face
+  // renders. Approximate by design — a reload re-reports, dedupe is a
+  // query-side concern.
+  const revealTrackedRef = useRef(null);
+  useEffect(() => {
+    if (!complete || !state) return;
+    if (revealTrackedRef.current === state.game.number) return;
+    revealTrackedRef.current = state.game.number;
+    track("reveal_viewed", { game_number: state.game.number }, { pairingId, role, token });
+  }, [complete, state, pairingId, role, token]);
+
   // Pair memory (suggestion engine L1) for the rematch typeahead: fetched
   // once, only when the rematch form first becomes visible — never on the
   // poll path.
@@ -198,6 +209,9 @@ export default function PlayView({ identity, onLeave }) {
     }
   }
 
+  // Whether the current rematch 4 came from "Fill my 4" (event provenance).
+  const rematchFilledRef = useRef(false);
+
   async function onRematch(e) {
     e.preventDefault();
     setBusy(true);
@@ -207,10 +221,12 @@ export default function PlayView({ identity, onLeave }) {
         pairingId,
         role,
         token,
-        rematchChoices.map((c) => c.trim())
+        rematchChoices.map((c) => c.trim()),
+        rematchFilledRef.current ? "fill4" : undefined
       );
       setState(res.state);
       setRematchChoices(["", "", "", ""]);
+      rematchFilledRef.current = false;
     } catch (err) {
       if (isBumped(err)) setBumped(true);
       else setError(err.message);
@@ -456,8 +472,13 @@ export default function PlayView({ identity, onLeave }) {
             Pick 4 new choices. Player {other} cuts first.
           </p>
           <FillMyFour
+            context="pairing"
+            trackOpts={{ pairingId, role, token }}
             request={(occasion) => fillMyFour({ pairingId, role, token, occasion })}
-            onFill={(cs) => setRematchChoices(cs)}
+            onFill={(cs) => {
+              rematchFilledRef.current = true;
+              setRematchChoices(cs);
+            }}
           />
           {rematchChoices.map((c, i) => (
             <ChoiceInput
@@ -465,6 +486,7 @@ export default function PlayView({ identity, onLeave }) {
               placeholder={`Choice ${i + 1}`}
               value={c}
               pairEntries={pairEntries}
+              trackOpts={{ pairingId, role, token }}
                 onChange={(v) =>
                 setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
               }

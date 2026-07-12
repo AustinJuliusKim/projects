@@ -142,6 +142,13 @@ Parameters:
       Comma-separated Cognito subs allowed to read the owner-only activity
       dashboard (getAdminOverview). Blank = no one; the endpoint 403s and the
       #/admin view stays empty. Anonymous aggregates only — no per-user data.
+  GlueDatabaseName:
+    Type: String
+    Default: choices_events
+    Description: >
+      Glue database for the event-lake tables. Glue names must be lowercase,
+      so the stack name is unusable — preview overrides this to
+      choices_events_preview (samconfig.toml).
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
@@ -172,6 +179,10 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
+      # Event-lake transport (Data Architecture Plan, Stage A). In-place
+      # update: enabling a stream never replaces the table.
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
 
   ApiFunction:
     Type: AWS::Serverless::Function
@@ -291,6 +302,218 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+
+  # --- Event lake (Data Architecture Plan, Stage A) ---
+  # Append-only JSONL under raw/ (real pairing ids, deletable via weekly
+  # compaction) and anon/ (daily-rotating salted refs). Never reuse
+  # SiteBucket (synced with --delete) or SuggestDataBucket (Phase 0 feed).
+  # Versioning + 30-day noncurrent expiry is the compaction-bug safety net.
+  EventLakeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-noncurrent-versions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+
+  # Batches the stream consumer exhausts retries on (8 attempts, bisected).
+  EventConsumerDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600 # 14 days (SQS max)
+
+  EventStreamConsumerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      # Same CodeUri as ApiFunction: streamConsumer.mjs shares events.mjs
+      # and deps with the single existing backend dir.
+      CodeUri: backend/
+      Handler: streamConsumer.handler
+      Timeout: 60
+      Environment:
+        Variables:
+          EVENT_LAKE_BUCKET: !Ref EventLakeBucket
+          # Same master salt as ApiFunction; blank disables the anon zone
+          # (fail closed) while raw keeps flowing.
+          ANON_SALT: !Ref AnonSalt
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref EventLakeBucket
+        # OnFailure destination sends via the function's execution role.
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt EventConsumerDLQ.QueueName
+      Events:
+        Stream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt GamesTable.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 100
+            MaximumBatchingWindowInSeconds: 10
+            BisectBatchOnFunctionError: true
+            MaximumRetryAttempts: 8
+            FunctionResponseTypes: [ReportBatchItemFailures]
+            DestinationConfig:
+              OnFailure:
+                Destination: !GetAtt EventConsumerDLQ.Arn
+            # Only outbox inserts and pairing deletions reach the Lambda —
+            # EVENT# TTL REMOVEs and PAIR#/USER#/HIST# churn never invoke it.
+            FilterCriteria:
+              Filters:
+                - Pattern: '{"eventName":["INSERT"],"dynamodb":{"Keys":{"pk":{"S":[{"prefix":"EVENT#"}]}}}}'
+                - Pattern: '{"eventName":["REMOVE"],"dynamodb":{"Keys":{"pk":{"S":[{"prefix":"PAIR#"}]}}}}'
+
+  # Weekly tombstone-driven raw-zone rewrite (deletion story / GDPR
+  # readiness). Full-lake pass is fine at current volume (see docs).
+  CompactionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: compaction.handler
+      Timeout: 900
+      MemorySize: 512
+      Environment:
+        Variables:
+          EVENT_LAKE_BUCKET: !Ref EventLakeBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref EventLakeBucket
+      Events:
+        Weekly:
+          Type: ScheduleV2
+          Properties:
+            # Explicit stack-scoped name: the SAM default ("CompactionFunctionWeekly")
+            # is identical for prod and preview in the same account/region, so the
+            # second deploy would fail on a schedule-name conflict.
+            Name: !Sub "${AWS::StackName}-compaction-weekly"
+            ScheduleExpression: rate(7 days)
+
+  # Glue catalog + partition projection (no crawler, no MSCK): adding a
+  # catalog type = one line in projection.type.values (additive-only).
+  GlueEventsDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Ref GlueDatabaseName
+
+  GlueRawEventsTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref GlueEventsDatabase
+      TableInput:
+        Name: raw_events
+        TableType: EXTERNAL_TABLE
+        Parameters:
+          classification: json
+          projection.enabled: "true"
+          projection.type.type: enum
+          projection.type.values: game_created,seat_claimed,cut_made,game_finished,rematch,push_sent,link_clicked,suggestion_accepted,fill4_used,invite_link_opened,join_abandoned,reveal_viewed,reveal_card_shared,pwa_installed,push_permission_result,suggestion_shown,fill4_shown,fill4_swapped,order_click,paywall_viewed,sub_started,sub_cancelled,tip_given,client_error,realtime_fallback,pairing_deleted
+          projection.dt.type: date
+          projection.dt.format: yyyy-MM-dd
+          projection.dt.range: 2026-07-01,NOW
+          storage.location.template: !Sub "s3://${EventLakeBucket}/raw/type=${!type}/dt=${!dt}/"
+        PartitionKeys:
+          - Name: type
+            Type: string
+          - Name: dt
+            Type: string
+        StorageDescriptor:
+          Location: !Sub "s3://${EventLakeBucket}/raw/"
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
+          # payload as map<string,string> (OpenX coerces scalars); per-type
+          # typed views are Stage B.
+          Columns:
+            - Name: event_id
+              Type: string
+            - Name: ts
+              Type: string
+            - Name: schema_v
+              Type: int
+            - Name: pairing_ref
+              Type: string
+            - Name: actor_role
+              Type: string
+            - Name: payload
+              Type: map<string,string>
+
+  GlueAnonEventsTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref GlueEventsDatabase
+      TableInput:
+        Name: anon_events
+        TableType: EXTERNAL_TABLE
+        Parameters:
+          classification: json
+          projection.enabled: "true"
+          projection.type.type: enum
+          projection.type.values: game_created,seat_claimed,cut_made,game_finished,rematch,push_sent,link_clicked,suggestion_accepted,fill4_used,invite_link_opened,join_abandoned,reveal_viewed,reveal_card_shared,pwa_installed,push_permission_result,suggestion_shown,fill4_shown,fill4_swapped,order_click,paywall_viewed,sub_started,sub_cancelled,tip_given,client_error,realtime_fallback,pairing_deleted
+          projection.dt.type: date
+          projection.dt.format: yyyy-MM-dd
+          projection.dt.range: 2026-07-01,NOW
+          storage.location.template: !Sub "s3://${EventLakeBucket}/anon/type=${!type}/dt=${!dt}/"
+        PartitionKeys:
+          - Name: type
+            Type: string
+          - Name: dt
+            Type: string
+        StorageDescriptor:
+          Location: !Sub "s3://${EventLakeBucket}/anon/"
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
+          Columns:
+            - Name: event_id
+              Type: string
+            - Name: ts
+              Type: string
+            - Name: schema_v
+              Type: int
+            - Name: pairing_ref
+              Type: string
+            - Name: actor_role
+              Type: string
+            - Name: payload
+              Type: map<string,string>
+
+  AthenaResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-query-results
+            Status: Enabled
+            ExpirationInDays: 30
+
+  EventsWorkGroup:
+    Type: AWS::Athena::WorkGroup
+    Properties:
+      Name: !Sub "${AWS::StackName}-events"
+      WorkGroupConfiguration:
+        EnforceWorkGroupConfiguration: true
+        ResultConfiguration:
+          OutputLocation: !Sub "s3://${AthenaResultsBucket}/results/"
 
   # --- Frontend hosting: private S3 bucket served via CloudFront (HTTPS) ---
   SiteBucket:
@@ -472,3 +695,12 @@ Outputs:
   AiEnabled:
     Description: Whether "Fill my 4" is live (VITE_AI_ENABLED)
     Value: !If [HasBedrock, "true", "false"]
+  EventLakeBucketName:
+    Description: S3 event lake bucket (raw/ + anon/ zones)
+    Value: !Ref EventLakeBucket
+  GlueDatabaseName:
+    Description: Glue database with raw_events / anon_events (Athena)
+    Value: !Ref GlueEventsDatabase
+  AthenaWorkGroup:
+    Description: Athena workgroup for event-lake queries
+    Value: !Ref EventsWorkGroup

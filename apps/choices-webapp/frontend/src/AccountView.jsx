@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getMe, createCheckoutSession, createPortalSession } from "./api.js";
+import { getMe, createCheckoutSession, createPortalSession, track } from "./api.js";
 import { authEnabled, hasSession, getProfile, signIn, signOut } from "./auth.js";
 import AccountSkeleton from "./AccountSkeleton.jsx";
 
@@ -123,6 +123,16 @@ export default function AccountView() {
       .then(setMe)
       .catch((err) => setError(err.message));
   }, [signedIn]);
+
+  // paywall_viewed (bundle C): one beacon per upsell surface actually
+  // rendered this visit — enum surfaces only, nothing about the account.
+  useEffect(() => {
+    if (!me) return;
+    if (["active", "past_due"].includes(me.premium?.status)) return;
+    if (me.billingAvailable) track("paywall_viewed", { surface: "account" });
+    if (me.stats?.streakLocked) track("paywall_viewed", { surface: "streak-lock" });
+    if (me.historyLocked) track("paywall_viewed", { surface: "history-lock" });
+  }, [me]);
 
   if (!authEnabled) {
     return (

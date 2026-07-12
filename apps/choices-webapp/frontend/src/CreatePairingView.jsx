@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { createPairing, claimSeat, linkClick, fillMyFour } from "./api.js";
 import { hasSession } from "./auth.js";
 import { saveIdentity } from "./storage.js";
@@ -19,12 +19,18 @@ export default function CreatePairingView({ onReady }) {
   const setChoice = (i, v) =>
     setChoices((cs) => cs.map((c, j) => (j === i ? v : c)));
 
+  // Whether the 4 came from "Fill my 4" (game_created event provenance).
+  const filledRef = useRef(false);
+
   async function onCreate(e) {
     e.preventDefault();
     setError(null);
     setBusy(true);
     try {
-      const res = await createPairing(choices.map((c) => c.trim()));
+      const res = await createPairing(
+        choices.map((c) => c.trim()),
+        filledRef.current ? "fill4" : undefined
+      );
       // No identity yet — the creator claims the Host seat below.
       setCreated({ pairingId: res.pairingId, code: res.code });
     } catch (err) {
@@ -135,7 +141,10 @@ export default function CreatePairingView({ onReady }) {
         <FillMyFour
           signedIn={hasSession()}
           request={(occasion) => fillMyFour({ occasion })}
-          onFill={(cs) => setChoices(cs)}
+          onFill={(cs) => {
+            filledRef.current = true;
+            setChoices(cs);
+          }}
         />
         {choices.map((c, i) => (
           <ChoiceInput
