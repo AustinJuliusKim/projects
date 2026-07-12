@@ -131,7 +131,123 @@
         "dynamodb:TagResource",
         "dynamodb:ListTagsOfResource"
       ],
-      "Resource": "arn:aws:dynamodb:*:*:table/choices-games"
+      "Resource": "arn:aws:dynamodb:*:*:table/choices-games*"
+    },
+    {
+      "Sid": "DynamoDBStreamsForEventLake",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:DescribeStream",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:ListStreams"
+      ],
+      "Resource": "arn:aws:dynamodb:*:*:table/choices-games*/stream/*"
+    },
+    {
+      "Sid": "EventSourceMappings",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateEventSourceMapping",
+        "lambda:GetEventSourceMapping",
+        "lambda:UpdateEventSourceMapping",
+        "lambda:DeleteEventSourceMapping",
+        "lambda:ListEventSourceMappings"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EventConsumerDlq",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:CreateQueue",
+        "sqs:DeleteQueue",
+        "sqs:GetQueueAttributes",
+        "sqs:SetQueueAttributes",
+        "sqs:TagQueue",
+        "sqs:UntagQueue",
+        "sqs:ListQueueTags"
+      ],
+      "Resource": [
+        "arn:aws:sqs:*:*:choices-webapp*",
+        "arn:aws:sqs:*:*:ChoicesWebApp*"
+      ]
+    },
+    {
+      "Sid": "GlueEventCatalog",
+      "Effect": "Allow",
+      "Action": [
+        "glue:CreateDatabase",
+        "glue:DeleteDatabase",
+        "glue:GetDatabase",
+        "glue:CreateTable",
+        "glue:UpdateTable",
+        "glue:DeleteTable",
+        "glue:GetTable"
+      ],
+      "Resource": [
+        "arn:aws:glue:*:*:catalog",
+        "arn:aws:glue:*:*:database/choices_events*",
+        "arn:aws:glue:*:*:table/choices_events*/*",
+        "arn:aws:glue:*:*:userDefinedFunction/choices_events*/*"
+      ]
+    },
+    {
+      "Sid": "CompactionSchedule",
+      "Effect": "Allow",
+      "Action": [
+        "scheduler:CreateSchedule",
+        "scheduler:GetSchedule",
+        "scheduler:UpdateSchedule",
+        "scheduler:DeleteSchedule"
+      ],
+      "Resource": "arn:aws:scheduler:*:*:schedule/*/ChoicesWebApp*"
+    },
+    {
+      "Sid": "SchedulerPassRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::*:role/choices-webapp*",
+        "arn:aws:iam::*:role/ChoicesWebApp*"
+      ],
+      "Condition": {
+        "StringEquals": { "iam:PassedToService": "scheduler.amazonaws.com" }
+      }
+    },
+    {
+      "Sid": "AthenaWorkGroup",
+      "Effect": "Allow",
+      "Action": [
+        "athena:CreateWorkGroup",
+        "athena:GetWorkGroup",
+        "athena:UpdateWorkGroup",
+        "athena:DeleteWorkGroup",
+        "athena:TagResource",
+        "athena:UntagResource",
+        "athena:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:athena:*:*:workgroup/ChoicesWebApp*"
+    },
+    {
+      "Sid": "EventLakeBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketVersioning",
+        "s3:PutLifecycleConfiguration",
+        "s3:PutBucketTagging",
+        "s3:TagResource",
+        "s3:UntagResource",
+        "s3:ListBucket",
+        "s3:Get*"
+      ],
+      "Resource": [
+        "arn:aws:s3:::choiceswebapp*eventlake*",
+        "arn:aws:s3:::choiceswebapp*athenaresults*"
+      ]
     },
     {
       "Sid": "IamForLambdaRole",
