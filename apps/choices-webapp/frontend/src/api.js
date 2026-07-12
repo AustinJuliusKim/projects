@@ -23,14 +23,53 @@ function toError(status, data) {
 }
 
 async function post(action, payload, headers = {}) {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json", ...headers },
-    body: JSON.stringify({ action, ...payload }),
-  });
+  let res;
+  try {
+    res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify({ action, ...payload }),
+    });
+  } catch (err) {
+    // Enum-only ops beacon (never the message). Guarded so a failing track
+    // can never track itself.
+    if (action !== "track") track("client_error", { error_type: "api_network" });
+    throw err;
+  }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw toError(res.status, data);
+  if (!res.ok) {
+    if (res.status >= 500 && action !== "track") {
+      track("client_error", { error_type: "api_5xx" });
+    }
+    throw toError(res.status, data);
+  }
   return data;
+}
+
+// --- Analytics beacons (event lake `track` action) ---
+//
+// Fire-and-forget and enum-only by contract: payloads may carry nothing but
+// enumerated strings and bounded ints (the server drops anything else with
+// a silent 200) — never typed text, never the join code outside `opts.code`
+// for the two join-flow events (the server resolves it to a pairing_ref and
+// drops it). opts: { pairingId, role, token } for pairing-scoped types,
+// { code } for invite_link_opened / join_abandoned.
+export function track(type, payload = {}, opts = {}) {
+  if (!API_URL) return;
+  post("track", { type, payload, ...opts }).catch(() => {});
+}
+
+// pagehide-safe variant: sendBeacon survives page teardown where fetch gets
+// cancelled. Sent as text/plain (a CORS-simple type, so no preflight that
+// sendBeacon can't perform); the server parses the body regardless.
+export function trackBeacon(type, payload = {}, opts = {}) {
+  if (!API_URL) return;
+  const body = JSON.stringify({ action: "track", type, payload, ...opts });
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon(API_URL, new Blob([body], { type: "text/plain" }));
+  } else {
+    track(type, payload, opts);
+  }
 }
 
 // Mutations carry an actionId and are idempotent server-side (duplicate
@@ -51,7 +90,10 @@ async function mutate(action, payload, headers = {}) {
   }
 }
 
-export const createPairing = (choices) => post("createPairing", { choices });
+// source ("manual" | "fill4") feeds the game_created event's provenance;
+// omitted = manual.
+export const createPairing = (choices, source) =>
+  post("createPairing", { choices, ...(source ? { source } : {}) });
 // Signed-in claims link the seat to the account (history/streaks accrue).
 export const claimSeat = async (code, seat) =>
   post("claimSeat", { code, seat }, await authHeaders());
@@ -82,8 +124,8 @@ export async function getState(pairingId, role, token) {
 }
 export const eliminate = (pairingId, role, token, gameNumber, index) =>
   mutate("eliminate", { pairingId, role, token, gameNumber, index });
-export const rematch = (pairingId, role, token, choices) =>
-  mutate("rematch", { pairingId, role, token, choices });
+export const rematch = (pairingId, role, token, choices, source) =>
+  mutate("rematch", { pairingId, role, token, choices, ...(source ? { source } : {}) });
 export const subscribe = (pairingId, role, token, subscription) =>
   post("subscribe", { pairingId, role, token, subscription });
 export const linkClick = (pairingId, role, token, gameNumber, platform) =>

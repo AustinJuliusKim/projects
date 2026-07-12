@@ -1,5 +1,5 @@
 // Service worker registration + Web Push subscription helpers.
-import { subscribe as apiSubscribe } from "./api.js";
+import { subscribe as apiSubscribe, track } from "./api.js";
 import { isNative } from "./platform.js";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
@@ -41,7 +41,13 @@ export async function registerServiceWorker() {
 export async function enablePush(pairingId, role, token) {
   if (!pushSupported() || !VAPID_PUBLIC_KEY) return false;
 
+  const hadPrompt = Notification.permission === "default";
   const permission = await Notification.requestPermission();
+  // Beacon only actual prompt outcomes — already-granted/denied sessions
+  // would otherwise re-report on every enablePush call.
+  if (hadPrompt) {
+    track("push_permission_result", { result: permission }, { pairingId, role, token });
+  }
   if (permission !== "granted") return false;
 
   const reg = await navigator.serviceWorker.ready;
