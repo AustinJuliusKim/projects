@@ -11,6 +11,7 @@ import LessonRail from "./LessonRail.jsx";
 import QuizCard from "./QuizCard.jsx";
 import GradeBanner from "./GradeBanner.jsx";
 import CaptureCard from "./CaptureCard.jsx";
+import GraduationPanel from "./GraduationPanel.jsx";
 
 /**
  * @param {{
@@ -24,6 +25,8 @@ import CaptureCard from "./CaptureCard.jsx";
  *   onRetry: () => void,
  *   onCapture: (stepId: string, values: {name?: string, email?: string}, consent: boolean) => void,
  *   onCaptureSkip: (stepId: string) => void,
+ *   userName?: string|null,
+ *   capturedEmail?: string|null,
  * }} props
  */
 export default function Rail({
@@ -37,6 +40,8 @@ export default function Rail({
   onRetry,
   onCapture,
   onCaptureSkip,
+  userName = null,
+  capturedEmail = null,
 }) {
   const { mode, dots, instructionMd, currentStep, results, graduated, latestAssertionResult } = rail;
   const collapsed = mode === "running";
@@ -91,6 +96,10 @@ export default function Rail({
                 </button>
               )}
             </>
+          )}
+
+          {graduated && completionNext === null && (
+            <GraduationPanel userName={userName} capturedEmail={capturedEmail} />
           )}
 
           {graduated && completionNext && (

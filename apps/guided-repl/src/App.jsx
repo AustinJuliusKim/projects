@@ -9,9 +9,11 @@
  * state. The Rail is the engine's only full subscriber.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { matchCommand } from "@guided-repl/protocol";
-import { getUserName, setUserName as persistUserName } from "./identity/identity.js";
+import { useIdentity } from "./identity/IdentityContext.jsx";
+import { postLead, postEvent } from "./api/client.js";
+import { markLesson, syncFromServer } from "./state/progressStore.js";
 import { useSession } from "./state/useSession.js";
 import { loadLesson } from "./lessons/lessonLoader.js";
 import { useLessonEngine } from "./engine/useLessonEngine.js";
@@ -22,6 +24,8 @@ import PromptComposer from "./components/PromptComposer.jsx";
 import WorkspacePane from "./components/WorkspacePane.jsx";
 import PermissionModal from "./components/PermissionModal.jsx";
 import AnnotationCard from "./components/AnnotationCard.jsx";
+import AccountMenu from "./components/AccountMenu.jsx";
+import AuthCallback from "./components/AuthCallback.jsx";
 
 /** @returns {number} */
 function readSpeedParam() {
@@ -36,7 +40,10 @@ export default function App() {
   // Display-only personalization (never lesson state): fixtures carry the
   // raw {{userName}} token; stage components substitute at render time.
   // null renders the "Demo User" default.
-  const [userName, setUserNameState] = useState(() => getUserName());
+  const { anonId, userName, setUserName, user } = useIdentity();
+  const [authCallback, setAuthCallback] = useState(
+    () => window.location.pathname === "/auth/callback",
+  );
   const [lessons, setLessons] = useState(null);
   const [loaded, setLoaded] = useState(null);
   const [error, setError] = useState(null);
@@ -86,6 +93,35 @@ export default function App() {
   const step = currentStep(engine.state);
   const rail = railModel(engine.state);
 
+  // --- proof-gate instrumentation (all offline-tolerant fire-and-forget) ---
+
+  // lesson_started once per loaded lesson + progress "started" mirror.
+  useEffect(() => {
+    if (!ready) return;
+    postEvent("lesson_started", { lessonId: selectedLessonId }, anonId);
+    markLesson(selectedLessonId, "started", { anonId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, selectedLessonId]);
+
+  // lesson_completed on the graduated transition.
+  const wasGraduated = useRef(false);
+  useEffect(() => {
+    if (!engine.state.graduated) {
+      wasGraduated.current = false;
+      return;
+    }
+    if (wasGraduated.current) return;
+    wasGraduated.current = true;
+    postEvent("lesson_completed", { lessonId: selectedLessonId }, anonId);
+    markLesson(selectedLessonId, "completed", { anonId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine.state.graduated]);
+
+  // Signed in: pull the server's progress into the local mirror.
+  useEffect(() => {
+    if (user) syncFromServer();
+  }, [user]);
+
   // Entering an assertion step evaluates its rule against the settled
   // session state and records the result on the engine.
   useEffect(() => {
@@ -98,6 +134,10 @@ export default function App() {
     engine.dispatch({ type: "assertion_evaluated", stepId: step.id, result });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, state.files, state.messages]);
+
+  if (authCallback) {
+    return <AuthCallback onDone={() => setAuthCallback(false)} />;
+  }
 
   if (error && !lessons) {
     return (
@@ -130,20 +170,28 @@ export default function App() {
       return;
     }
     engine.dispatch({ type: "prompt_matched", branchId });
+    if (branchId) postEvent("branch_chosen", { lessonId: selectedLessonId, branchId }, anonId);
     prompt(text, branchId);
   }
 
   /**
    * Capture card Save: the name is already sanitized by the card (and
-   * re-sanitized by persistUserName before storage); the values land on the
-   * engine result so the step completes. Lead/event POSTs are wired in the
-   * accounts change — capture itself never blocks on the network.
+   * re-sanitized by setUserName before storage); the values land on the
+   * engine result so the step completes. The lead/event POSTs are
+   * fire-and-forget — capture never blocks on the network.
    */
   function onCapture(stepId, values, consent) {
-    if (values.name) {
-      const sanitized = persistUserName(values.name);
-      if (sanitized) setUserNameState(sanitized);
+    if (values.name) setUserName(values.name);
+    if (values.email && anonId) {
+      postLead({
+        anonId,
+        email: values.email,
+        ...(values.name || userName ? { name: values.name ?? userName } : {}),
+        consent,
+        source: `${selectedLessonId}-${stepId}`,
+      });
     }
+    postEvent("capture_submitted", { lessonId: selectedLessonId, stepId, fields: Object.keys(values) }, anonId);
     engine.dispatch({ type: "capture_submitted", stepId, values: { ...values, consent } });
   }
 
@@ -162,6 +210,7 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <h1>Guided REPL</h1>
+        <AccountMenu />
       </header>
       <main className="split-pane">
         <Rail
@@ -175,6 +224,10 @@ export default function App() {
           onRetry={onRetry}
           onCapture={onCapture}
           onCaptureSkip={onCaptureSkip}
+          userName={userName}
+          capturedEmail={
+            Object.values(engine.state.results).find((r) => r?.values?.email)?.values.email ?? null
+          }
         />
         <section className="pane pane-stage">
           {error && <div className="load-error">Failed to load lesson: {error}</div>}
