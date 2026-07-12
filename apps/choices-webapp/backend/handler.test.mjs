@@ -17,6 +17,7 @@ import { _setVerifierForTests } from "./auth.mjs";
 import { _setStripeForTests } from "./billing.mjs";
 import { _setPlacesFetchForTests } from "./places.mjs";
 import { _setBedrockForTests } from "./suggestai.mjs";
+import { _setWebpushForTests } from "./push.mjs";
 
 // Fake Cognito verifier: token "good-token" -> user u-1; anything else throws.
 function fakeVerifier() {
@@ -88,6 +89,7 @@ beforeEach(() => {
   delete process.env.BEDROCK_MODEL_ID;
   _setPlacesFetchForTests(null);
   _setBedrockForTests(null);
+  _setWebpushForTests(null);
   process.env.USER_POOL_ID = "pool";
   process.env.USER_POOL_CLIENT_ID = "client";
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
@@ -1069,8 +1071,17 @@ test("fillMyFour on the create screen counts uses on the account", async () => {
   assert.equal(data.usesLeft, 2);
   assert.equal(bedrock.calls.length, 1);
 
-  const saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input.Item;
+  const puts = ddbMock.commandCalls(PutCommand).map((c) => c.args[0].input.Item);
+  const saved = puts.find((i) => i.pk === "USER#u-1");
   assert.deepEqual(saved.aiUses, { month: CURRENT_MONTH, uses: 1 });
+
+  // Create-screen fills stand alone (no pairing to transact with).
+  const ev = puts.find((i) => i.pk.startsWith("EVENT#"));
+  assert.equal(ev.type, "fill4_used");
+  assert.equal(ev.pairing_ref, null);
+  assert.equal(ev.actor_role, "system");
+  assert.deepEqual(ev.payload, { context: "create", premium: false, uses_left: 2 });
+  assert.ok(!JSON.stringify(ev).includes("u-1")); // never a user id
 });
 
 test("fillMyFour enforces the monthly cap and resets on rollover", async () => {
@@ -1158,12 +1169,19 @@ test("fillMyFour on a pairing counts on the pairing and feeds pair history to th
   assert.ok(prompt.includes("Ramen (won 1x)"));
   assert.ok(prompt.includes("Occasion: Date night"));
 
-  const saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input;
+  // Counter bump + fill4_used outbox event in one transaction.
+  const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
+  const saved = tx.TransactItems[0].Put;
   assert.equal(saved.Item.pk, "PAIR#abc123");
   assert.equal(saved.Item.ai.uses, 1);
   assert.equal(saved.Item.ai.month, CURRENT_MONTH);
   assert.deepEqual(saved.Item.ai.lastResult, ["Pizza", "Tacos", "Sushi", "Ramen"]);
   assert.equal(saved.ConditionExpression, "version = :v");
+  const ev = tx.TransactItems[1].Put.Item;
+  assert.equal(ev.type, "fill4_used");
+  assert.equal(ev.pairing_ref, "abc123");
+  assert.equal(ev.actor_role, "A");
+  assert.deepEqual(ev.payload, { context: "pairing", premium: false, uses_left: 2 });
 });
 
 test("fillMyFour on a pairing blocks at the cap without calling Bedrock", async () => {
@@ -1300,6 +1318,184 @@ test("GET /j/ escapes HTML in choice labels", async () => {
 
   const res = await handler(jEvent("/j/PLUM-42"));
   assert.ok(!res.body.includes("<script>x</script>"));
+});
+
+// Pairing with a completed game (winner Ramen) for link-click funnels.
+function completedPairing(overrides = {}) {
+  const p = pairingItem(overrides);
+  p.game = ["B", "A", "B"].reduce((g, role, i) => applyElimination(g, role, i), p.game);
+  return p;
+}
+
+test("order-platform click emits link_clicked + order_click (place_id when known)", async () => {
+  ddbMock.on(GetCommand).resolves({ Item: completedPairing() });
+  ddbMock.on(TransactWriteCommand).resolves({});
+
+  const res = await handler(
+    postEvent({
+      action: "linkClick",
+      pairingId: "abc123",
+      role: "A",
+      token: "tok-a",
+      gameNumber: 1,
+      platform: "ubereats",
+      placeId: "place-9",
+    })
+  );
+  assert.equal(res.statusCode, 200);
+  const tx = ddbMock.commandCalls(TransactWriteCommand)[0].args[0].input;
+  assert.equal(tx.TransactItems.length, 3);
+  const types = tx.TransactItems.slice(1).map((i) => i.Put.Item.type);
+  assert.deepEqual(types, ["link_clicked", "order_click"]);
+  assert.deepEqual(tx.TransactItems[1].Put.Item.payload, { platform: "ubereats" });
+  assert.deepEqual(tx.TransactItems[2].Put.Item.payload, {
+    platform: "ubereats",
+    place_id: "place-9",
+  });
+  assert.equal(tx.TransactItems[2].Put.Item.actor_role, "A");
+});
+
+test("support clicks map to tip_given / reveal_card_shared / paywall_viewed", async () => {
+  ddbMock.on(GetCommand).callsFake(() => ({ Item: pairingItem() }));
+  ddbMock.on(TransactWriteCommand).resolves({});
+
+  const click = (platform) =>
+    postEvent({
+      action: "linkClick",
+      pairingId: "abc123",
+      role: "B",
+      token: "tok-b",
+      gameNumber: 1,
+      platform,
+    });
+
+  await handler(click("tip-venmo"));
+  await handler(click("share-reveal"));
+  await handler(click("premium-interest"));
+
+  const txs = ddbMock
+    .commandCalls(TransactWriteCommand)
+    .map((c) => c.args[0].input.TransactItems.slice(1).map((i) => i.Put.Item));
+  assert.deepEqual(txs.map((items) => items.map((i) => i.type)), [
+    ["link_clicked", "tip_given"],
+    ["link_clicked", "reveal_card_shared"],
+    ["link_clicked", "paywall_viewed"],
+  ]);
+  assert.deepEqual(txs[0][1].payload, { platform: "tip-venmo" });
+  assert.deepEqual(txs[1][1].payload, {});
+  assert.deepEqual(txs[2][1].payload, { surface: "created-tease" });
+});
+
+test("first B claim emits push_sent(joined) only when the push is delivered", async () => {
+  ddbMock
+    .on(GetCommand, { Key: { pk: "CODE#PLUM-42" } })
+    .resolves({ Item: { pk: "CODE#PLUM-42", pairingId: "abc123" } });
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .resolves({ Item: pairingItem({ tokenB: null }) });
+  ddbMock
+    .on(GetCommand, { Key: { pk: "SUB#abc123#A" } })
+    .resolves({ Item: { subscription: { endpoint: "https://push.example/x" } } });
+  ddbMock.on(PutCommand).resolves({});
+  ddbMock.on(TransactWriteCommand).resolves({});
+  _setWebpushForTests({ sendNotification: async () => ({}) });
+
+  const res = await handler(postEvent({ action: "claimSeat", code: "PLUM-42", seat: "B" }));
+  assert.equal(res.statusCode, 200);
+  const events = ddbMock
+    .commandCalls(PutCommand)
+    .map((c) => c.args[0].input.Item)
+    .filter((i) => i.pk.startsWith("EVENT#"));
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "push_sent");
+  assert.equal(events[0].pairing_ref, "abc123");
+  assert.equal(events[0].actor_role, "system");
+  assert.deepEqual(events[0].payload, { trigger: "joined" });
+
+  // A failed send (no VAPID config) emits nothing.
+  ddbMock.resetHistory();
+  _setWebpushForTests(null);
+  await handler(postEvent({ action: "claimSeat", code: "PLUM-42", seat: "B" }));
+  const after = ddbMock
+    .commandCalls(PutCommand)
+    .map((c) => c.args[0].input.Item)
+    .filter((i) => i.pk.startsWith("EVENT#"));
+  assert.equal(after.length, 0);
+});
+
+test("checkout completion with plan metadata emits sub_started (no user id)", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  _setStripeForTests(
+    fakeStripe({
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          client_reference_id: "u-1",
+          customer: "cus_1",
+          subscription: "sub_1",
+          metadata: { plan: "monthly" },
+        },
+      },
+    })
+  );
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [], premium: { status: "none" } },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(webhookEvent({}, { "stripe-signature": "valid-sig" }));
+  assert.equal(res.statusCode, 200);
+  const events = ddbMock
+    .commandCalls(PutCommand)
+    .map((c) => c.args[0].input.Item)
+    .filter((i) => i.pk.startsWith("EVENT#"));
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "sub_started");
+  assert.equal(events[0].pairing_ref, null);
+  assert.equal(events[0].actor_role, "system");
+  assert.deepEqual(events[0].payload, { plan: "monthly" });
+  const flat = JSON.stringify(events[0]);
+  assert.ok(!flat.includes("cus_1") && !flat.includes("sub_1") && !flat.includes('"u-1"'));
+});
+
+test("subscription cancellation emits sub_cancelled; legacy checkout emits nothing", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [], premium: { status: "active" } },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  _setStripeForTests(
+    fakeStripe({
+      type: "customer.subscription.deleted",
+      data: { object: { id: "sub_1", customer: "cus_1", metadata: { userId: "u-1" }, status: "canceled" } },
+    })
+  );
+  await handler(webhookEvent({}, { "stripe-signature": "valid-sig" }));
+  let events = ddbMock
+    .commandCalls(PutCommand)
+    .map((c) => c.args[0].input.Item)
+    .filter((i) => i.pk.startsWith("EVENT#"));
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "sub_cancelled");
+  assert.deepEqual(events[0].payload, {});
+
+  // Pre-metadata checkout sessions (no plan) skip sub_started rather than
+  // fabricate a plan value.
+  ddbMock.resetHistory();
+  _setStripeForTests(
+    fakeStripe({
+      type: "checkout.session.completed",
+      data: { object: { client_reference_id: "u-1", customer: "cus_1", subscription: "sub_1" } },
+    })
+  );
+  const res = await handler(webhookEvent({}, { "stripe-signature": "valid-sig" }));
+  assert.equal(res.statusCode, 200);
+  events = ddbMock
+    .commandCalls(PutCommand)
+    .map((c) => c.args[0].input.Item)
+    .filter((i) => i.pk.startsWith("EVENT#"));
+  assert.equal(events.length, 0);
 });
 
 test("origin header enforced only when flag is on", async () => {

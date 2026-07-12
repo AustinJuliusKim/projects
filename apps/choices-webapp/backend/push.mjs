@@ -21,6 +21,10 @@ function ensureConfigured() {
 // `subscription` is the PushSubscription JSON stored from the client.
 export async function sendPush(subscription, payload) {
   try {
+    if (webpushImpl) {
+      await webpushImpl.sendNotification(subscription, JSON.stringify(payload));
+      return true;
+    }
     ensureConfigured();
     await webpush.sendNotification(subscription, JSON.stringify(payload));
     return true;
@@ -29,4 +33,11 @@ export async function sendPush(subscription, payload) {
     console.error("push failed", err?.statusCode, err?.body || err?.message);
     return false;
   }
+}
+
+// Test hook (same rationale as auth.mjs/billing.mjs): lets handler tests
+// exercise the successful-send path without VAPID keys or network.
+let webpushImpl = null;
+export function _setWebpushForTests(fake) {
+  webpushImpl = fake;
 }
