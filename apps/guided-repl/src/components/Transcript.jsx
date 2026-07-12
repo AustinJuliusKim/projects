@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { interpolateUserName } from "@guided-repl/protocol";
 
 const TOOL_ICONS = { Write: "✎", Edit: "✎", MultiEdit: "✎", Read: "\u{1F4C4}", Bash: "⌘" };
 
@@ -19,7 +20,7 @@ function toolSummary({ tool, input }) {
   return tool;
 }
 
-function ToolRow({ message }) {
+function ToolRow({ message, userName }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="msg msg-tool" data-testid="transcript-tool-row">
@@ -31,7 +32,7 @@ function ToolRow({ message }) {
       {open && message.result && (
         <pre className={`tool-result ${message.result.isError ? "tool-result-error" : ""}`}>
           <span className="tool-result-marker">⎿</span>
-          {message.result.content}
+          {interpolateUserName(message.result.content, userName)}
         </pre>
       )}
     </div>
@@ -39,9 +40,11 @@ function ToolRow({ message }) {
 }
 
 /**
- * @param {{messages: Array<object>, status?: string}} props
+ * @param {{messages: Array<object>, status?: string, userName?: string|null}} props
  */
-export default function Transcript({ messages, status }) {
+export default function Transcript({ messages, status, userName = null }) {
+  // Text-mode interpolation only — React escapes these sinks itself.
+  const interp = (text) => interpolateUserName(text, userName);
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -55,7 +58,7 @@ export default function Transcript({ messages, status }) {
         if (message.role === "user") {
           return (
             <div className="msg msg-user" key={i}>
-              <span className="cli-prompt-marker">&gt;</span> {message.text}
+              <span className="cli-prompt-marker">&gt;</span> {interp(message.text)}
             </div>
           );
         }
@@ -64,14 +67,14 @@ export default function Transcript({ messages, status }) {
             <div className="msg msg-assistant" key={i}>
               <span className="cli-bullet">⏺</span>
               <span className="msg-text">
-                {message.text}
+                {interp(message.text)}
                 {isLast && status === "running" && <span className="stream-cursor" />}
               </span>
             </div>
           );
         }
         if (message.role === "tool") {
-          return <ToolRow message={message} key={message.id ?? i} />;
+          return <ToolRow message={message} userName={userName} key={message.id ?? i} />;
         }
         if (message.role === "error") {
           return (
@@ -85,7 +88,7 @@ export default function Transcript({ messages, status }) {
           // Raw terminal output from shellTranscript playback (drills).
           return (
             <pre className="msg msg-tty" data-testid="transcript-tty" key={i}>
-              {message.text}
+              {interp(message.text)}
             </pre>
           );
         }
