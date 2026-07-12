@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: guided-repl accounts/progress API (Fastify on Lambda behind HttpApi)
+
+Parameters:
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: Postgres connection string (Supabase pooler URL in v1)
+  SupabaseUrl:
+    Type: String
+    Default: ""
+    Description: Supabase project URL (https://<ref>.supabase.co)
+  SupabaseServiceRoleKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Supabase service-role key (server-side only)
+  CookieSecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Reserved for signed-cookie use
+  PublicOrigin:
+    Type: String
+    Default: https://learn.austinjuliuskim.com
+    Description: Site origin for CORS + magic-link redirects
+
+Globals:
+  Function:
+    Timeout: 15
+    MemorySize: 256
+
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: guided-repl-api
+      Runtime: nodejs20.x
+      Handler: src/lambda.handler
+      CodeUri: .
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE_KEY: !Ref SupabaseServiceRoleKey
+          COOKIE_SECRET: !Ref CookieSecret
+          PUBLIC_ORIGIN: !Ref PublicOrigin
+          SESSION_TTL_DAYS: "30"
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Description: guided-repl-api gateway (fronted by CloudFront /api/*)
+
+Outputs:
+  ApiEndpoint:
+    Description: HttpApi endpoint (use its domain as CloudFront's ApiOriginDomain)
+    Value: !Sub "${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
