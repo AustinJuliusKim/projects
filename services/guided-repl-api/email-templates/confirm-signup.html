@@ -1,12 +1,12 @@
 <!--
-  guided-repl magic-link email (Claude Code terminal style).
+  guided-repl confirm-signup email (Claude Code terminal style).
 
   How to install:
-    Supabase Dashboard -> Authentication -> Email Templates -> Magic Link
+    Supabase Dashboard -> Authentication -> Email Templates -> Confirm signup
     1. Paste everything below this comment into the template body.
     2. Set the subject line to:
-         ⏺ your sign-in link for learn.austinjuliuskim.com
-    3. Send yourself a test magic link and check it in a light-mode client —
+         ⏺ confirm your email for learn.austinjuliuskim.com
+    3. Send yourself a test signup and check it in a light-mode client —
        the dark card sits on a neutral gray backing on purpose.
 
   Notes:
@@ -16,7 +16,7 @@
       flow this app can't read (it has no Supabase JS SDK). Instead we build
       the link ourselves so it lands on our /auth/callback with the token as a
       ?token_hash= query param, which AuthCallback forwards to our backend:
-         {{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=magiclink
+         {{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup
       It appears in the button href and again as a visible plain-text fallback.
     - Everything is inline-styled and self-contained: no external images,
       fonts, or stylesheets (palette + mono stack mirror apps/guided-repl).
@@ -32,12 +32,12 @@
         </tr>
         <tr>
           <td style="padding: 20px 28px 0 28px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15px; line-height: 1.6; color: #e8e6e3;">
-            <span style="color: #e8845c;">&#9210;</span>&nbsp; Sign-in requested for this address.
+            <span style="color: #e8845c;">&#9210;</span>&nbsp; Welcome &mdash; confirm your email to start learning.
           </td>
         </tr>
         <tr>
           <td style="padding: 6px 28px 0 28px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; line-height: 1.6; color: #8a8a8e;">
-            &nbsp;&nbsp;<span style="color: #8a8a8e;">&#9151;</span>&nbsp; One click and you're back in the terminal &mdash; no password, your progress comes with you.
+            &nbsp;&nbsp;<span style="color: #8a8a8e;">&#9151;</span>&nbsp; One click confirms this address and drops you into the terminal &mdash; no password, your progress comes with you.
           </td>
         </tr>
         <tr>
@@ -45,7 +45,7 @@
             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td align="center" bgcolor="#e8845c" style="background-color: #e8845c; border-radius: 6px;">
-                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=magiclink" target="_blank" style="display: inline-block; padding: 12px 24px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; font-weight: bold; line-height: 1; color: #1a0f0a; text-decoration: none; border-radius: 6px;">Sign in &rarr;</a>
+                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup" target="_blank" style="display: inline-block; padding: 12px 24px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; font-weight: bold; line-height: 1; color: #1a0f0a; text-decoration: none; border-radius: 6px;">Confirm email &rarr;</a>
                 </td>
               </tr>
             </table>
@@ -58,7 +58,7 @@
         </tr>
         <tr>
           <td style="padding: 4px 28px 0 28px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.6; word-break: break-all;">
-            <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=magiclink" target="_blank" style="color: #e8845c; text-decoration: underline;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=magiclink</a>
+            <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup" target="_blank" style="color: #e8845c; text-decoration: underline;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup</a>
           </td>
         </tr>
         <tr>
@@ -67,7 +67,7 @@
               <tr>
                 <td style="border-top: 1px solid #2e2e30; padding-top: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.7; color: #8a8a8e;">
                   This link expires in an hour &mdash; request a new one if it's stale.<br>
-                  Didn't ask to sign in? Ignore this email; nothing happens without the link.
+                  Didn't sign up? Ignore this email; nothing happens without the link.
                 </td>
               </tr>
             </table>
