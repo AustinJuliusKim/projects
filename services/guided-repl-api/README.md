@@ -74,6 +74,16 @@ Take the `ApiEndpoint` output and set it as the frontend stack's
 alternative: `docker build -f services/guided-repl-api/Dockerfile .` from
 the repo root.
 
+## Email template
+
+`email-templates/magic-link.html` is the branded magic-link email (Claude
+Code terminal style — dark card, mono stack, ⏺/⎿ glyphs, all styles inline).
+It is not deployed by code: paste it into Supabase Dashboard → Authentication
+→ Email Templates → Magic Link, and set the subject to
+`⏺ your sign-in link for learn.austinjuliuskim.com` (full instructions in the
+file's header comment). It uses Supabase's `{{ .ConfirmationURL }}` variable
+in the button and as a plain-text fallback link.
+
 ## Supabase → Aurora swap (runbook sketch)
 
 1. Stand up Aurora Serverless v2 Postgres; run the same `migrations/`.
