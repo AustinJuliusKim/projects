@@ -1,0 +1,479 @@
+{
+  "fixtureVersion": 1,
+  "claudeCodeVersion": "2.1.198 (Claude Code)",
+  "lessonId": "l1",
+  "branchId": "plan-mode",
+  "recordedAt": "2026-07-02T19:13:27.697Z",
+  "seedSnapshotId": "l1-input",
+  "permissionMode": "plan",
+  "expectedPrompt": "make a personal landing page for my photography, single index.html file, inline CSS",
+  "events": [
+    {
+      "frame": {
+        "type": "session_ready"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "This is a simple, self-contained task (one"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 12408
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " new HTML file, no existing codebase), so I'll check what's in the working directory and then write up a short"
+        }
+      },
+      "delayMs": 481,
+      "origDelayMs": 481
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " plan."
+        }
+      },
+      "delayMs": 458,
+      "origDelayMs": 458
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01Xny79aDMj6vur1nuiJpSY6",
+          "tool": "Bash",
+          "input": {
+            "command": "ls -la ",
+            "description": "List files in working directory"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 1753
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01Xny79aDMj6vur1nuiJpSY6",
+          "content": "total 8\ndrwx------@    3 <user>  staff     96 Jul  2 12:11 .\ndrwx------@ 2012 <user>  staff  64384 Jul  2 12:11 ..\n-rw-r--r--@    1 <user>  staff     30 Jul  2 12:11 README.md",
+          "isError": false
+        }
+      },
+      "delayMs": 1433,
+      "origDelayMs": 1433
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01RHmMuWXJQbcukh8nNrVapt",
+          "tool": "Read",
+          "input": {
+            "file_path": "README.md"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 8305
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01RHmMuWXJQbcukh8nNrVapt",
+          "content": "1\t# My Page\n2\t\n3\tStarter workspace.\n4\t",
+          "isError": false
+        }
+      },
+      "delayMs": 19,
+      "origDelayMs": 19
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "The"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 9073
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " workspace is essentially empty (just a stub README), so this is a greenfield single-file build. Writing the plan now."
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01X2ZLp6qTPWVLAC5XHqq4dC",
+          "tool": "Write",
+          "input": {
+            "file_path": "~/.claude/plans/plan.md",
+            "content": "# Personal Photography Landing Page\n\n## Context\n\nThe user wants a personal landing page for their photography: a single `index.html` file with all CSS inline (in a `<style>` block — no external stylesheets, no JS frameworks, no build step). The workspace is empty except for a stub README, so this is a fresh, standalone file they can open directly in a browser or drop onto any static host.\n\n## Assumptions\n\n- No name/branding was given — use a placeholder name (\"{{userName}}\", derivable from the user's email) and placeholder tagline, clearly easy to swap.\n- Gallery images: use `https://picsum.photos` placeholder photos so the page looks real on first open; each `<img>` gets a comment noting where to swap in real photos. (Falls back gracefully to styled boxes if offline.)\n- No JavaScript needed — pure HTML/CSS.\n\n## File to create\n\n`index.html` (single file, ~250–350 lines) containing:\n\n1. **`<head>`** — meta viewport, title, and one `<style>` block with all CSS:\n   - Dark, gallery-like theme (near-black background, light text) so photos are the focus\n   - System font stack (no webfont dependency), generous letter-spacing for headings\n   - Responsive throughout via CSS grid + `clamp()` for type sizes\n2. **Hero** — full-viewport section: photographer name, one-line tagline (e.g. \"Landscape & street photography\"), subtle scroll cue\n3. **Gallery** — responsive CSS grid (3 columns → 2 → 1 on narrow screens) of 6–9 photos with hover zoom/caption effect, `loading=\"lazy\"`\n4. **About** — short bio paragraph with a small portrait placeholder\n5. **Contact / footer** — email link, placeholder social links (Instagram etc.), copyright line\n\nAccessibility basics: semantic sections, alt text on images, sufficient contrast, focus-visible styles on links.\n\n## Verification\n\n- Open the file in a browser: `open index.html`\n- Check: hero fills the viewport, gallery grid reflows at narrow widths (resize window), hover effects work, all links/anchors scroll correctly\n- Confirm the page still renders sensibly with images unloaded (offline case)\n"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 10707
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01X2ZLp6qTPWVLAC5XHqq4dC",
+          "content": "File created successfully at: ~/.claude/plans/plan.md (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 6,
+      "origDelayMs": 6
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Plan is written to the"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 11567
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " plan file. Summary of what I'll build once approved:\n\n**One file, `index.html`**, f"
+        }
+      },
+      "delayMs": 8,
+      "origDelayMs": 8
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ully self-contained with a single `<style>` block (no external CSS or JS):\n\n- **Dark g"
+        }
+      },
+      "delayMs": 13,
+      "origDelayMs": 13
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "allery-style theme** — near-black background so the photos are the visual focus, system fonts, responsive type via"
+        }
+      },
+      "delayMs": 14,
+      "origDelayMs": 14
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " `clamp()`\n- **Hero** — full-viewport section with photographer name and tagline (placeholder \"Aust"
+        }
+      },
+      "delayMs": 59,
+      "origDelayMs": 59
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "in Kim\" since no name was given — trivially swappable)\n- **Gallery** — responsive CSS grid (3 → 2 → 1 columns) of 6"
+        }
+      },
+      "delayMs": 24,
+      "origDelayMs": 24
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "–9 photos with a subtle hover effect; uses `picsum.photos` placeholders with comments mar"
+        }
+      },
+      "delayMs": 25,
+      "origDelayMs": 25
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "king where to drop in real photos\n- **About** — short bio with portrait placeholder\n- **Contact foot"
+        }
+      },
+      "delayMs": 9,
+      "origDelayMs": 9
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "er** — email and social links\n\nVerification: open it in a browser, resize to confirm the grid reflows, and check it"
+        }
+      },
+      "delayMs": 10,
+      "origDelayMs": 10
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " degrades gracefully offline.\n\nThe ExitPlanMode tool isn't available in this session, so I can't formally ex"
+        }
+      },
+      "delayMs": 4,
+      "origDelayMs": 4
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "it plan mode myself — approve the plan (or switch out of plan mode) and I'll create the file."
+        }
+      },
+      "delayMs": 3,
+      "origDelayMs": 3
+    },
+    {
+      "frame": {
+        "type": "permission_request",
+        "payload": {
+          "id": "plan-gate-1",
+          "tool": "ExitPlanMode",
+          "input": {
+            "plan": "# Personal Photography Landing Page\n\n## Context\n\nThe user wants a personal landing page for their photography: a single `index.html` file with all CSS inline (in a `<style>` block — no external stylesheets, no JS frameworks, no build step). The workspace is empty except for a stub README, so this is a fresh, standalone file they can open directly in a browser or drop onto any static host.\n\n## Assumptions\n\n- No name/branding was given — use a placeholder name (\"{{userName}}\", derivable from the use…"
+          }
+        }
+      },
+      "delayMs": 0
+    },
+    {
+      "awaitClient": "permission",
+      "choices": [
+        "approve",
+        "deny"
+      ]
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "I'll create a single self-contained `index.html` with all CSS in a `<style>` block, using gradient placeholders"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 8920
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " where your photos will go."
+        }
+      },
+      "delayMs": 463,
+      "origDelayMs": 463
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01Dur2f9mretAh6AryNfN9UR",
+          "tool": "Write",
+          "input": {
+            "file_path": "index.html",
+            "content": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>{{userName}} — Photography</title>\n<meta name=\"description\" content=\"Portfolio of photographer {{userName}} — landscapes, portraits, and street photography.\">\n<style>\n  :root {\n    --bg: #0e0e0e;\n    --surface: #171717;\n    --text: #eaeaea;\n    --muted: #9a9a9a;\n    --accent: #d9b98a;\n    --max-width: 1100px;\n  }\n\n  * {\n    margin: 0;\n    padding: 0;\n    box-sizing: border-box;\n  }\n\n  html {\n    scroll-behavior: smooth;\n  }\n\n  body {\n    background: var(--bg);\n    color: var(--text);\n    font-family: Georgia, \"Times New Roman\", serif;\n    line-height: 1.6;\n  }\n\n  a {\n    color: inherit;\n    text-decoration: none;\n  }\n\n  /* ---------- Header ---------- */\n  header {\n    position: sticky;\n    top: 0;\n    z-index: 10;\n    background: rgba(14, 14, 14, 0.85);\n    backdrop-filter: blur(8px);\n    border-bottom: 1px solid #262626;\n  }\n\n  .nav {\n    max-width: var(--max-width);\n    margin: 0 auto;\n    padding: 1rem 1.5rem;\n    display: flex;\n    align-items: baseline;\n    justify-content: space-between;\n    flex-wrap: wrap;\n    gap: 0.5rem;\n  }\n\n  .nav .logo {\n    font-size: 1.1rem;\n    letter-spacing: 0.18em;\n    text-transform: uppercase;\n  }\n\n  .nav ul {\n    display: flex;\n    gap: 1.5rem;\n    list-style: none;\n    font-family: Helvetica, Arial, sans-serif;\n    font-size: 0.8rem;\n    letter-spacing: 0.12em;\n    text-transform: uppercase;\n    color: var(--muted);\n  }\n\n  .nav ul a:hover {\n    color: var(--accent);\n  }\n\n  /* ---------- Hero ---------- */\n  .hero {\n    min-height: 85vh;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    text-align: center;\n    padding: 2rem 1.5rem;\n    /* Replace with: background: url(\"photos/hero.jpg\") center/cover; */\n    background:\n      linear-gradient(rgba(14,14,14,0.55), rgba(14,14,14,0.8)),\n      linear-gradient(135deg, #2c3a47 0%, #4a6274 40%, #8c6f4e 100%);\n  }\n\n  .hero h1 {\n    font-size: clamp(2.2rem, 6vw, 4rem);\n    font-weight: normal;\n    letter-spacing: 0.06em;\n  }\n\n  .hero p {\n    margin-top: 1rem;\n    color: var(--muted);\n    font-family: Helvetica, Arial, sans-serif;\n    font-size: 0.95rem;\n    letter-spacing: 0.08em;\n  }\n\n  .hero a.cta {\n    display: inline-block;\n    margin-top: 2.5rem;\n    padding: 0.75rem 2rem;\n    border: 1px solid var(--accent);\n    color: var(--accent);\n    font-family: Helvetica, Arial, sans-serif;\n    font-size: 0.8rem;\n    letter-spacing: 0.15em;\n    text-transform: uppercase;\n    transition: background 0.2s, color 0.2s;\n  }\n\n  .hero a.cta:hover {\n    background: var(--accent);\n    color: var(--bg);\n  }\n\n  /* ---------- Sections ---------- */\n  section {\n    max-width: var(--max-width);\n    margin: 0 auto;\n    padding: 5rem 1.5rem;\n  }\n\n  h2 {\n    font-weight: normal;\n    font-size: 1.6rem;\n    letter-spacing: 0.1em;\n    text-transform: uppercase;\n    margin-bottom: 2.5rem;\n    text-align: center;\n  }\n\n  h2::after {\n    content: \"\";\n    display: block;\n    width: 3rem;\n    height: 1px;\n    background: var(--accent);\n    margin: 0.9rem auto 0;\n  }\n\n  /* ---------- Gallery ---------- */\n  .gallery {\n    display: grid;\n    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));\n    gap: 1rem;\n  }\n\n  .gallery figure {\n    position: relative;\n    aspect-ratio: 4 / 3;\n    overflow: hidden;\n    background: var(--surface);\n  }\n\n  /* When you add real photos, drop an <img> inside each <figure>:\n     <img src=\"photos/one.jpg\" alt=\"...\"> — the rule below handles it. */\n  .gallery img {\n    width: 100%;\n    height: 100%;\n    object-fit: cover;\n    display: block;\n    transition: transform 0.4s ease;\n  }\n\n  .gallery figure:hover img {\n    transform: scale(1.04);\n  }\n\n  .placeholder {\n    width: 100%;\n    height: 100%;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    color: rgba(255, 255, 255, 0.5);\n    font-family: Helvetica, Arial, sans-serif;\n    font-size: 0.75rem;\n    letter-spacing: 0.15em;\n    text-transform: uppercase;\n    transition: transform 0.4s ease;\n  }\n\n  .gallery figure:hover .placeholder {\n    transform: scale(1.04);\n  }\n\n  .p1 { background: linear-gradient(160deg, #3b4d5c, #1f2a33); }\n  .p2 { background: linear-gradient(160deg, #6e5a43, #2e2418); }\n  .p3 { background: linear-gradient(160deg, #4d5c4a, #1e2620); }\n  .p4 { background: linear-gradient(160deg, #5c4a55, #241b22); }\n  .p5 { background: linear-gradient(160deg, #435c6e, #16222b); }\n  .p6 { background: linear-gradient(160deg, #6e4343, #2b1616); }\n\n  .gallery figcaption {\n    position: absolute;\n    left: 0;\n    right: 0;\n    bottom: 0;\n    padding: 0.6rem 0.9rem;\n    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));\n    font-family: Helvetica, Arial, sans-serif;\n    font-size: 0.75rem;\n    letter-spacing: 0.1em;\n    text-transform: uppercase;\n    color: var(--text);\n    opacity: 0;\n    transition: opacity 0.3s;\n  }\n\n  .gallery figure:hover figcaption {\n    opacity: 1;\n  }\n\n  /* ---------- About ---------- */\n  .about-inner {\n    max-width: 640px;\n    margin: 0 auto;\n    text-align: center;\n    color: var(--muted);\n    font-size: 1.05rem;\n  }\n\n  /* ---------- Contact ---------- */\n  .contact {\n    text-align: center;\n  }\n\n  .contact a.email {\n    display: inline-block;\n    margin-top: 0.5rem;\n    font-size: 1.3rem;\n    color: var(--accent);\n    border-bottom: 1px solid transparent;\n    transition: border-color 0.2s;\n  }\n\n  .contact a.email:hover {\n    border-color: var(--accent);\n  }\n\n  .socials {\n    margin-top: 1.5rem;\n    display: flex;\n    justify-content: center;\n    gap: 1.5rem;\n    font-family: Helvetica, Arial, sans-serif;\n    font-size: 0.8rem;\n    letter-spacing: 0.12em;\n    text-transform: uppercase;\n    color: var(--muted);\n  }\n\n  .socials a:hover {\n    color: var(--accent);\n  }\n\n  /* ---------- Footer ---------- */\n  footer {\n    border-top: 1px solid #262626;\n    padding: 2rem 1.5rem;\n    text-align: center;\n    color: var(--muted);\n    font-family: Helvetica, Arial, sans-serif;\n    font-size: 0.75rem;\n    letter-spacing: 0.1em;\n  }\n</style>\n</head>\n<body>\n\n<header>\n  <nav class=\"nav\">\n    <a class=\"logo\" href=\"#top\">{{userName}}</a>\n    <ul>\n      <li><a href=\"#work\">Work</a></li>\n      <li><a href=\"#about\">About</a></li>\n      <li><a href=\"#contact\">Contact</a></li>\n    </ul>\n  </nav>\n</header>\n\n<main id=\"top\">\n\n  <div class=\"hero\">\n    <div>\n      <h1>{{userName}}</h1>\n      <p>Landscape &middot; Portrait &middot; Street Photography</p>\n      <a class=\"cta\" href=\"#work\">View Work</a>\n    </div>\n  </div>\n\n  <section id=\"work\">\n    <h2>Selected Work</h2>\n    <div class=\"gallery\">\n      <figure>\n        <div class=\"placeholder p1\">Photo 1</div>\n        <figcaption>Coastal Fog, Big Sur</figcaption>\n      </figure>\n      <figure>\n        <div class=\"placeholder p2\">Photo 2</div>\n        <figcaption>Golden Hour, Joshua Tree</figcaption>\n      </figure>\n      <figure>\n        <div class=\"placeholder p3\">Photo 3</div>\n        <figcaption>Forest Trail, Olympic NP</figcaption>\n      </figure>\n      <figure>\n        <div class=\"placeholder p4\">Photo 4</div>\n        <figcaption>Portrait Session, Studio</figcaption>\n      </figure>\n      <figure>\n        <div class=\"placeholder p5\">Photo 5</div>\n        <figcaption>Blue Hour, Downtown</figcaption>\n      </figure>\n      <figure>\n        <div class=\"placeholder p6\">Photo 6</div>\n        <figcaption>Street Scene, Market District</figcaption>\n      </figure>\n    </div>\n  </section>\n\n  <section id=\"about\">\n    <h2>About</h2>\n    <div class=\"about-inner\">\n      <p>\n        I'm a photographer drawn to quiet light &mdash; early mornings on the\n        coast, the last minutes of golden hour, the in-between moments people\n        don't pose for. I shoot landscapes, portraits, and the streets of\n        wherever I happen to be. Available for commissions and print inquiries.\n      </p>\n    </div>\n  </section>\n\n  <section id=\"contact\" class=\"contact\">\n    <h2>Get in Touch</h2>\n    <p>For bookings, prints, or just to say hello:</p>\n    <a class=\"email\" href=\"mailto:<email>\"><email></a>\n    <div class=\"socials\">\n      <a href=\"#\" aria-label=\"Instagram\">Instagram</a>\n      <a href=\"#\" aria-label=\"Flickr\">Flickr</a>\n      <a href=\"#\" aria-label=\"500px\">500px</a>\n    </div>\n  </section>\n\n</main>\n\n<footer>\n  &copy; 2026 {{userName}} &middot; All photographs are the property of the artist.\n</footer>\n\n</body>\n</html>\n"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 38789
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01Dur2f9mretAh6AryNfN9UR",
+          "content": "File created successfully at: index.html (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 14,
+      "origDelayMs": 14
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Done — `index.html` is a single self-contained file with all CSS in a `<style>` block, no external dependencies."
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 10165
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " Open it directly in a browser.\n\nWhat's on the page:\n- **Sticky n"
+        }
+      },
+      "delayMs": 3,
+      "origDelayMs": 3
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "av** with your name and anchor links to Work / About / Contact\n- **Full-height hero** with a dark gradient back"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "drop, your name, and a \"View Work\" button\n- **Selected Work** — a responsive grid of six"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " 4:3 tiles with hover-reveal captions\n- **About** blurb and a **Contact** section with your"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " email as a mailto link, plus placeholder social links\n- Dark, minimal aesthetic (serif headings, war"
+        }
+      },
+      "delayMs": 1,
+      "origDelayMs": 1
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "m gold accent) that keeps attention on the photos\n\nTwo assumptions I made — easy to change:"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "\n1. I used **\"{{userName}}\"** (from your email) as the name throughout; swap it in"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " the `<title>`, nav, hero, and footer if you'd like something else.\n2. The gallery uses **gradient placeholders**"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " since I don't have your photos. To use real images, replace each `<div class=\"placeholder ...\">` with `<img src=\"photos/"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "your-photo.jpg\" alt=\"...\">` — the CSS already handles cropping and the hover zoom. Same for the hero: there"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "'s a commented-out `background: url(...)` line in the `.hero` rule.\n\nThe social links point to `#` — fill in your act"
+        }
+      },
+      "delayMs": 1,
+      "origDelayMs": 1
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ual profile URLs or delete the ones you don't use."
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "usage",
+        "payload": {
+          "inputTokens": 2879,
+          "outputTokens": 4822
+        }
+      },
+      "delayMs": 16,
+      "origDelayMs": 16
+    },
+    {
+      "frame": {
+        "type": "done"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    }
+  ],
+  "assertion": {
+    "type": "file-contains",
+    "path": "index.html",
+    "match": "<h1>"
+  }
+}
