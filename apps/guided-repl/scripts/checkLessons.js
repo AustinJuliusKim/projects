@@ -39,7 +39,7 @@ import { compileAll } from "@guided-repl/lessons";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, "..");
-const fixtureVersion = process.env.VITE_FIXTURE_VERSION || "v1";
+const fixtureVersion = process.env.VITE_FIXTURE_VERSION || "v2";
 const fixturesRoot = join(appRoot, "public", "fixtures", fixtureVersion);
 const lessonsPath = join(fixturesRoot, "lessons.json");
 
