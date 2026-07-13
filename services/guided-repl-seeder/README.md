@@ -88,7 +88,8 @@ copy's `lessonId`/`branchId`.
   and `CHAIN_ORDER`.
 - `src/runner/localRunner.js` — spawns `claude -p` in a tmp workspace
   (hard-guarded against running inside the repo); `runner.js` documents the
-  `Runner` interface; `e2bRunner.js` is a stub for a future sandboxed runner.
+  `Runner` interface; `e2bRunner.js` runs the same sessions inside an E2B
+  sandbox (see "E2B runner" below).
 - `src/streamMapper.js` — raw stream-json NDJSON → protocol `ServerMsg` frames.
 - `src/normalizer.js` — redaction (paths, usernames, display names, emails,
   UUIDs, key-shaped strings); fixtures ship publicly.
@@ -113,3 +114,27 @@ npm test
 
 Tests run against captured raw stream fixtures in `test/fixtures/raw/` and
 never invoke the live `claude` CLI (CI-safe).
+
+## E2B runner
+
+`createE2bRunner({sandboxFactory})` (`src/runner/e2bRunner.js`) implements the
+`Runner` interface against an E2B sandbox: it mirrors the local workspace into
+the sandbox, runs `claude -p ... --output-format stream-json` there, streams
+the NDJSON back, and syncs the sandbox workspace to the local dir afterwards.
+`getVersion()` reports `claude --version` from inside the sandbox — CI
+recordings must stamp that version, never the runner host's.
+
+The `e2b` SDK is imported lazily inside the default sandbox factory, so tests
+(which inject a fake sandbox) and keyless CI never load it.
+
+Live requirements (manual ops):
+
+- An E2B account and `E2B_API_KEY` in the environment (used by the SDK).
+- `ANTHROPIC_API_KEY` in the environment — passed into the sandbox as env so
+  the `claude` CLI can authenticate.
+- A published sandbox template named `guided-repl-seeder` with:
+  - node 20+
+  - the `claude` CLI installed on PATH (`npm i -g @anthropic-ai/claude-code`)
+  - a writable `/home/user/workspace`
+- Verify with one supervised run before trusting CI: `seed-lessons l1` wired
+  to the E2B runner should produce fixtures byte-comparable to a local run.
