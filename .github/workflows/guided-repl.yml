@@ -211,3 +211,95 @@ jobs:
             --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" "ApiOriginDomain=$API_ORIGIN" \
             --no-fail-on-empty-changeset
       - run: ./deploy-frontend.sh
+
+  # GitHub Actions has no job-level path filter, and the workflow-level
+  # paths also match lessons/seeder/app changes — this job diffs the push
+  # range so api-deploy only runs when the API (or its linked protocol
+  # package) actually changed.
+  api-changed:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: diff
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            # New branch or force push — can't diff, deploy to be safe.
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BEFORE" "${{ github.sha }}" \
+              | grep -qE '^(services/guided-repl-api/|packages/guided-repl-protocol/)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  api-deploy:
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.api-changed.outputs.changed == 'true'
+    needs: [api, api-changed]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for OIDC role assumption
+      contents: read
+    concurrency:
+      group: guided-repl-api-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: services/guided-repl-api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: services/guided-repl-api/package-lock.json
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::549883968767:role/guided-repl-github-deploy
+          aws-region: us-west-2
+      # sam build runs npm install itself, but the file:-linked protocol
+      # package's own node_modules must be populated first (same pattern as
+      # the test jobs / deploy-frontend.sh).
+      - run: npm ci
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
+      # ubuntu-latest runners ship the AWS SAM CLI preinstalled.
+      - run: sam build
+      # sam build reproduces the file: dep as a symlink in the build dir,
+      # where its relative target doesn't exist — the packaged zip would
+      # ship a broken link. Dereference it: replace the symlink with a real
+      # copy of the package (same root cause as commit 718ed68 fixed for
+      # the frontend deploy build).
+      - name: Dereference protocol symlink in build output
+        run: |
+          BUILT=.aws-sam/build/ApiFunction/node_modules/@guided-repl/protocol
+          if [ -L "$BUILT" ]; then
+            rm "$BUILT"
+            cp -RL ../../packages/guided-repl-protocol "$BUILT"
+          fi
+      # samconfig.toml is gitignored repo-wide, so every flag is explicit.
+      # No --parameter-overrides on purpose: the secret params (DatabaseUrl,
+      # SupabaseUrl, SupabaseServiceRoleKey, CookieSecret, PublicOrigin) are
+      # already set on the live stack, and sam deploy marks any template
+      # parameter it isn't given as UsePreviousValue=true on the update
+      # changeset (SAM CLI deploy_context.merge_parameters), so CloudFormation
+      # reuses the stack's current values. This only works because the stack
+      # already exists — a from-scratch CREATE must be done manually with
+      # full --parameter-overrides (see services/guided-repl-api/README.md).
+      - name: sam deploy
+        run: |
+          sam deploy \
+            --stack-name GuidedReplApi \
+            --region us-west-2 \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
