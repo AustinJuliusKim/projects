@@ -43,8 +43,6 @@ const fixtureVersion = process.env.VITE_FIXTURE_VERSION || "v1";
 const fixturesRoot = join(appRoot, "public", "fixtures", fixtureVersion);
 const lessonsPath = join(fixturesRoot, "lessons.json");
 
-/** Recorded (non-merge) lesson chain order; l2 reuses l1's own snapshot. */
-const CHAIN = ["l1", "l3", "l4", "l5", "l6", "l7", "l8"];
 const FIXTURE_SIZE_WARN_BYTES = 256 * 1024;
 const warnings = [];
 
@@ -245,11 +243,17 @@ for (const lesson of activeLessons) {
   }
 }
 
-// (g) chain consistency: l1 -> l3 -> l4 -> l5 -> l6 -> l7 -> l8's snapshot
-// must equal the prior recorded lesson's <lessonId>-output; l2 reuses l1's
-// own snapshot (it replays l1's constrained run from l1's start state);
-// l7 is special-cased since its lesson-level snapshot is a *variant* of
-// l6-output (the plain/CLAUDE.md branch input snapshots).
+// (g) chain consistency, derived from the manifest's snapshot references
+// instead of a hardcoded lesson list:
+//   - merge lessons (l2) reuse an earlier lesson's exact snapshotId and are
+//     not part of the recorded chain (they replay that lesson's recording);
+//   - a lesson whose seed snapshot is its own `<lessonId>-input` is a chain
+//     ROOT and has no upstream requirement (l1, and Foundry drafts whose
+//     seed snapshots are self-contained);
+//   - every other recorded lesson's snapshot must equal the previous
+//     recorded lesson's `<lessonId>-output`;
+//   - l7 stays special-cased since its lesson-level snapshot is a *variant*
+//     of the prior output (the plain/CLAUDE.md branch input snapshots).
 const byId = new Map(manifest.lessons.map((l) => [l.id, l]));
 
 const l1 = byId.get("l1");
@@ -258,11 +262,25 @@ if (l1 && l2 && l2.snapshot.snapshotId !== l1.snapshot.snapshotId) {
   fail(`chain: l2 snapshot ${JSON.stringify(l2.snapshot.snapshotId)} does not reuse l1's ${JSON.stringify(l1.snapshot.snapshotId)}`);
 }
 
+/** Recorded chain = manifest order minus snapshot-reuse (merge) lessons. */
+const CHAIN = manifest.lessons
+  .filter((lesson) => {
+    const reusedFrom = manifest.lessons.find(
+      (other) => other.id !== lesson.id && other.snapshot.snapshotId === lesson.snapshot.snapshotId && other.order < lesson.order,
+    );
+    return !reusedFrom;
+  })
+  .map((lesson) => lesson.id);
+
+/** Self-contained roots seed from their own `<id>-input` snapshot. */
+const isChainRoot = (lesson) => lesson.snapshot.snapshotId === `${lesson.id}-input`;
+
 for (let i = 1; i < CHAIN.length; i++) {
   const prevId = CHAIN[i - 1];
   const curId = CHAIN[i];
   const cur = byId.get(curId);
   if (!byId.get(prevId) || !cur) continue; // missing-lesson already reported elsewhere if active
+  if (isChainRoot(cur)) continue; // self-contained (Foundry draft): no upstream requirement
   const expectedInput = `${prevId}-output`;
 
   if (curId === "l7") {
