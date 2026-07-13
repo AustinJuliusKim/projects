@@ -1,7 +1,7 @@
 ---
 description: Architects whole implementations.
 mode: primary
-model: anthropic/claude-opus-4-6
+model: anthropic/claude-fable-5
 temperature: 0.1
 tools:
   write: true
