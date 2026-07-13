@@ -1,0 +1,31 @@
+{
+  "id": "snapshot-01-hf-blog",
+  "source": { "id": "hf-blog", "method": "rss", "url": "https://huggingface.co/blog/feed.xml", "cadence": "monthly", "benchTrigger": false },
+  "items": [
+    {
+      "id": "hf-blog-rag-eval",
+      "title": "Evaluating RAG pipelines with open judges",
+      "url": "https://huggingface.co/blog/rag-eval-open-judges",
+      "date": "2026-07-07T08:00:00Z",
+      "body": "A practical guide to measuring retrieval quality and faithfulness with open models."
+    },
+    {
+      "id": "hf-blog-tiny-finetune",
+      "title": "Fine-tuning tiny models on a laptop",
+      "url": "https://huggingface.co/blog/tiny-finetune",
+      "date": "2026-07-01T08:00:00Z",
+      "body": "QLoRA workflows that fit in 8GB of RAM."
+    },
+    {
+      "id": "hf-blog-office-party",
+      "title": "Photos from our office party",
+      "url": "https://huggingface.co/blog/office-party",
+      "date": "2026-06-28T08:00:00Z",
+      "body": "Fun was had. Nothing technical to see here."
+    }
+  ],
+  "expected": [
+    { "label": "RAG retrieval evaluation", "keywords": ["rag", "retrieval"] },
+    { "label": "local fine-tuning", "keywords": ["fine-tuning"] }
+  ]
+}

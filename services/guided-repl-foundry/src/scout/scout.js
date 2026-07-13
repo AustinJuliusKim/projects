@@ -17,7 +17,7 @@ const RadarCardSchema = z.object({
   suggestedTrack: z.enum(["guided", "advanced", "dev-basics"]).catch("advanced").default("advanced"),
 });
 
-const SCOUT_SYSTEM = `You are the Lesson Foundry scout for guided-repl, a 5-minute interactive
+export const SCOUT_SYSTEM = `You are the Lesson Foundry scout for guided-repl, a 5-minute interactive
 Claude Code lesson platform (tracks: prompting, plan mode, permission modes,
 CLAUDE.md, model choice, debugging). Given fresh items from ONE watched
 source, you write an institutional-memory note and propose lesson topics.
@@ -37,7 +37,7 @@ Respond with:
  * @param {{id: string}} source
  * @param {import("../sources/fetchers.js").SourceItem[]} items
  */
-function buildScoutPrompt(source, items) {
+export function buildScoutPrompt(source, items) {
   const lines = items.slice(0, 20).map((item) => {
     const parts = [`- ${item.title}`, item.date ? `(${item.date})` : "", `\n  url: ${item.url}`];
     if (item.body) parts.push(`\n  excerpt: ${item.body.slice(0, 500)}`);
