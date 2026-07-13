@@ -12,9 +12,19 @@ Parameters:
     Type: String
     Default: ""
     Description: ACM certificate ARN in us-east-1 for CustomDomain (required if CustomDomain is set)
+  IncludeWww:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Add www.<CustomDomain> as an alias and 301-redirect it to the apex.
+      Requires the ACM cert to cover BOTH the apex and the www name.
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
+  HasWww: !And
+    - !Condition HasCustomDomain
+    - !Equals [!Ref IncludeWww, "true"]
 
 Resources:
   SiteBucket:
@@ -25,6 +35,30 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+
+  WwwRedirectFunction:
+    Type: AWS::CloudFront::Function
+    Condition: HasWww
+    Properties:
+      Name: !Sub "${AWS::StackName}-www-redirect"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: 301-redirect www.<domain> to the apex domain
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var host = request.headers.host.value;
+          if (host.startsWith('www.')) {
+            var apex = host.substring(4);
+            return {
+              statusCode: 301,
+              statusDescription: 'Moved Permanently',
+              headers: { location: { value: 'https://' + apex + request.uri } }
+            };
+          }
+          return request;
+        }
 
   SiteOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
@@ -41,7 +75,10 @@ Resources:
       DistributionConfig:
         Enabled: true
         DefaultRootObject: index.html
-        Aliases: !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
+        Aliases: !If
+          - HasWww
+          - [!Ref CustomDomain, !Sub "www.${CustomDomain}"]
+          - !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
         ViewerCertificate: !If
           - HasCustomDomain
           - AcmCertificateArn: !Ref CertificateArn
@@ -60,6 +97,11 @@ Resources:
           # AWS managed "CachingOptimized" policy
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
           AllowedMethods: [GET, HEAD, OPTIONS]
+          FunctionAssociations: !If
+            - HasWww
+            - - EventType: viewer-request
+                FunctionARN: !GetAtt WwwRedirectFunction.FunctionARN
+            - !Ref "AWS::NoValue"
         CustomErrorResponses:
           # SPA fallback: serve index.html for client-side routes (e.g. /resume)
           - ErrorCode: 403

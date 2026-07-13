@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # One-time admin bootstrap for the portfolio deploy surfaces:
-#   a) find (or request) an ACM cert for the apex domain in us-east-1
-#   b) auto-detect a Route53 hosted zone for the apex domain; upsert the
-#      validation record (and, after stack creation, the alias record) if
-#      found, otherwise print the records for manual entry at the DNS provider
+#   a) find (or request) an ACM cert in us-east-1 covering the apex AND www
+#   b) auto-detect a Route53 hosted zone for the apex; upsert every ACM
+#      validation record (and, after stack creation, the apex + www alias
+#      records) if found, otherwise print records for manual DNS entry
 #   c) wait for the cert to reach ISSUED
 #   d) create/update the IAM role used by GitHub Actions OIDC deploys
-#   e) deploy the CloudFormation stack with the cert ARN
+#   e) deploy the CloudFormation stack with the cert ARN (+ IncludeWww)
 #   f) print the values to confirm in deploy-params.json + the workflow
 #
 # Idempotent: safe to re-run. Requires admin AWS credentials
-# (e.g. `aws login --profile admin` then `AWS_PROFILE=admin ./bootstrap-infra.sh`).
+# (e.g. `AWS_PROFILE=admin ./bootstrap-infra.sh`).
 #
 # Usage: ./bootstrap-infra.sh [--dry-run]
 set -euo pipefail
@@ -28,8 +28,10 @@ done
 STACK_NAME="Portfolio"
 REGION="us-west-2"
 CERT_REGION="us-east-1"
-DOMAIN="austinjuliuskim.com"       # apex — the site lives at the root domain
+DOMAIN="austinjuliuskim.com"        # apex — the site lives at the root domain
+WWW_DOMAIN="www.austinjuliuskim.com"
 APEX_DOMAIN="austinjuliuskim.com"
+INCLUDE_WWW="true"                  # add www.<domain> and 301-redirect it to apex
 REPO="AustinJuliusKim/projects"
 ROLE_NAME="portfolio-github-deploy"
 IAM_POLICY_FILE="docs/iam-policy.json"
@@ -45,37 +47,42 @@ run() {
 
 echo "== portfolio bootstrap =="
 echo "Stack:  $STACK_NAME ($REGION)"
-echo "Domain: $DOMAIN"
+echo "Domain: $DOMAIN (+ www: $INCLUDE_WWW)"
 echo "Repo:   $REPO"
 echo "Dry run: $DRY_RUN"
 echo ""
 
-# --- (a) ACM certificate (us-east-1) ---------------------------------------
+# --- (a) ACM certificate covering apex + www (us-east-1) --------------------
 
 echo "-- (a) ACM certificate --"
-EXISTING_CERT_ARN="$(aws acm list-certificates --region "$CERT_REGION" \
-  --query "CertificateSummaryList[?DomainName=='$DOMAIN'].CertificateArn | [0]" \
-  --output text 2>/dev/null || true)"
+CERT_ARN=""
+# Prefer an existing cert whose SANs include the www name (so it covers both).
+for arn in $(aws acm list-certificates --region "$CERT_REGION" \
+    --query "CertificateSummaryList[?DomainName=='$DOMAIN'].CertificateArn" --output text); do
+  SANS="$(aws acm describe-certificate --region "$CERT_REGION" --certificate-arn "$arn" \
+    --query "join(',', Certificate.SubjectAlternativeNames)" --output text 2>/dev/null || true)"
+  case ",$SANS," in
+    *",$WWW_DOMAIN,"*) CERT_ARN="$arn"; break ;;
+  esac
+done
 
-if [ -n "$EXISTING_CERT_ARN" ] && [ "$EXISTING_CERT_ARN" != "None" ]; then
-  CERT_ARN="$EXISTING_CERT_ARN"
-  echo "Found existing certificate: $CERT_ARN"
+if [ -n "$CERT_ARN" ]; then
+  echo "Found existing cert covering apex + www: $CERT_ARN"
+elif [ "$DRY_RUN" = true ]; then
+  echo "+ aws acm request-certificate --domain-name $DOMAIN --subject-alternative-names $WWW_DOMAIN --validation-method DNS"
+  echo "  (dry-run: skipped)"
+  CERT_ARN="arn:aws:acm:us-east-1:PENDING:certificate/dry-run"
 else
-  if [ "$DRY_RUN" = true ]; then
-    echo "+ aws acm request-certificate --domain-name $DOMAIN --validation-method DNS --region $CERT_REGION"
-    echo "  (dry-run: skipped)"
-    CERT_ARN="arn:aws:acm:us-east-1:PENDING:certificate/dry-run"
-  else
-    CERT_ARN="$(aws acm request-certificate \
-      --domain-name "$DOMAIN" \
-      --validation-method DNS \
-      --region "$CERT_REGION" \
-      --query CertificateArn --output text)"
-    echo "Requested certificate: $CERT_ARN"
-  fi
+  CERT_ARN="$(aws acm request-certificate \
+    --domain-name "$DOMAIN" \
+    --subject-alternative-names "$WWW_DOMAIN" \
+    --validation-method DNS \
+    --region "$CERT_REGION" \
+    --query CertificateArn --output text)"
+  echo "Requested certificate: $CERT_ARN"
 fi
 
-# --- (b) Route53 zone auto-detect + DNS validation record ------------------
+# --- (b) Route53 zone auto-detect + DNS validation records -----------------
 
 echo ""
 echo "-- (b) Route53 hosted zone detection --"
@@ -83,49 +90,48 @@ HOSTED_ZONE_ID="$(aws route53 list-hosted-zones-by-name --dns-name "$APEX_DOMAIN
   --query "HostedZones[?Name=='${APEX_DOMAIN}.'].Id | [0]" --output text 2>/dev/null || true)"
 HOSTED_ZONE_ID="${HOSTED_ZONE_ID#/hostedzone/}"
 
+upsert_all_validation_records() {
+  # ACM populates ResourceRecord a few seconds after request; retry briefly.
+  for _ in 1 2 3 4 5 6; do
+    RECORDS_JSON="$(aws acm describe-certificate --certificate-arn "$CERT_ARN" --region "$CERT_REGION" \
+      --query "Certificate.DomainValidationOptions[].ResourceRecord" --output json)"
+    if [ "$(python3 -c "import json,sys; print(len([r for r in json.load(sys.stdin) if r]))" <<<"$RECORDS_JSON")" -gt 0 ]; then
+      break
+    fi
+    sleep 5
+  done
+  CHANGE_BATCH="$(python3 -c "
+import json, sys
+recs = [r for r in json.load(sys.stdin) if r]
+seen, changes = set(), []
+for r in recs:
+    key = (r['Name'], r['Value'])
+    if key in seen:
+        continue
+    seen.add(key)
+    changes.append({'Action': 'UPSERT', 'ResourceRecordSet': {
+        'Name': r['Name'], 'Type': r['Type'], 'TTL': 300,
+        'ResourceRecords': [{'Value': r['Value']}]}})
+print(json.dumps({'Changes': changes}))
+" <<<"$RECORDS_JSON")"
+  aws route53 change-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" \
+    --change-batch "$CHANGE_BATCH" >/dev/null
+}
+
 if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
   echo "Found Route53 hosted zone for $APEX_DOMAIN: $HOSTED_ZONE_ID"
-
   if [ "$DRY_RUN" = true ]; then
-    echo "+ aws acm describe-certificate --certificate-arn $CERT_ARN (to fetch validation record)"
-    echo "  (dry-run: skipped)"
+    echo "+ upsert all ACM validation records into $HOSTED_ZONE_ID (dry-run: skipped)"
   else
-    VALIDATION_NAME="$(aws acm describe-certificate --certificate-arn "$CERT_ARN" --region "$CERT_REGION" \
-      --query "Certificate.DomainValidationOptions[0].ResourceRecord.Name" --output text)"
-    VALIDATION_TYPE="$(aws acm describe-certificate --certificate-arn "$CERT_ARN" --region "$CERT_REGION" \
-      --query "Certificate.DomainValidationOptions[0].ResourceRecord.Type" --output text)"
-    VALIDATION_VALUE="$(aws acm describe-certificate --certificate-arn "$CERT_ARN" --region "$CERT_REGION" \
-      --query "Certificate.DomainValidationOptions[0].ResourceRecord.Value" --output text)"
-
-    if [ "$VALIDATION_NAME" != "None" ] && [ -n "$VALIDATION_NAME" ]; then
-      CHANGE_BATCH="$(python3 -c "
-import json
-print(json.dumps({
-  'Changes': [{
-    'Action': 'UPSERT',
-    'ResourceRecordSet': {
-      'Name': '$VALIDATION_NAME',
-      'Type': '$VALIDATION_TYPE',
-      'TTL': 300,
-      'ResourceRecords': [{'Value': '$VALIDATION_VALUE'}],
-    },
-  }],
-}))
-")"
-      echo "+ aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch <validation record upsert>"
-      aws route53 change-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" \
-        --change-batch "$CHANGE_BATCH" >/dev/null
-      echo "Upserted validation record."
-    else
-      echo "Certificate already validated (no pending validation record)."
-    fi
+    upsert_all_validation_records
+    echo "Upserted validation record(s)."
   fi
 else
   echo "No Route53 hosted zone found for $APEX_DOMAIN in this account."
-  echo "Add the ACM validation record manually at your DNS provider:"
+  echo "Add the ACM validation record(s) manually at your DNS provider:"
   if [ "$DRY_RUN" = false ]; then
     aws acm describe-certificate --certificate-arn "$CERT_ARN" --region "$CERT_REGION" \
-      --query "Certificate.DomainValidationOptions[0].ResourceRecord" --output table || true
+      --query "Certificate.DomainValidationOptions[].ResourceRecord" --output table || true
   fi
   HOSTED_ZONE_ID=""
 fi
@@ -135,8 +141,7 @@ fi
 echo ""
 echo "-- (c) waiting for certificate validation --"
 if [ "$DRY_RUN" = true ]; then
-  echo "+ aws acm wait certificate-validated --certificate-arn $CERT_ARN"
-  echo "  (dry-run: skipped)"
+  echo "+ aws acm wait certificate-validated --certificate-arn $CERT_ARN (dry-run: skipped)"
 else
   echo "This can take several minutes once DNS has propagated. Waiting…"
   aws acm wait certificate-validated --certificate-arn "$CERT_ARN" --region "$CERT_REGION"
@@ -208,7 +213,7 @@ run aws cloudformation deploy \
   --template-file template.yaml \
   --stack-name "$STACK_NAME" \
   --region "$REGION" \
-  --parameter-overrides "CustomDomain=$DOMAIN" "CertificateArn=$CERT_ARN" \
+  --parameter-overrides "CustomDomain=$DOMAIN" "CertificateArn=$CERT_ARN" "IncludeWww=$INCLUDE_WWW" \
   --no-fail-on-empty-changeset
 
 if [ "$DRY_RUN" = true ]; then
@@ -219,35 +224,30 @@ else
 fi
 echo "CloudFront domain: $DIST_DOMAIN"
 
-# --- apex alias record (Route53) or manual instructions --------------------
+# --- apex + www alias records (Route53) or manual instructions --------------
 
 echo ""
-echo "-- alias record for $DOMAIN --"
-if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
+echo "-- alias records for $DOMAIN (+ www) --"
+if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ] && [ "$DRY_RUN" = false ]; then
+  ALIAS_NAMES="$DOMAIN"
+  [ "$INCLUDE_WWW" = "true" ] && ALIAS_NAMES="$DOMAIN $WWW_DOMAIN"
   ALIAS_CHANGE_BATCH="$(python3 -c "
 import json
-print(json.dumps({
-  'Changes': [{
-    'Action': 'UPSERT',
-    'ResourceRecordSet': {
-      'Name': '$DOMAIN',
-      'Type': 'A',
-      'AliasTarget': {
-        'HostedZoneId': 'Z2FDTNDATAQYW2',
-        'DNSName': '$DIST_DOMAIN',
-        'EvaluateTargetHealth': False,
-      },
-    },
-  }],
-}))
+names = '$ALIAS_NAMES'.split()
+changes = [{'Action':'UPSERT','ResourceRecordSet':{
+  'Name': n, 'Type':'A',
+  'AliasTarget': {'HostedZoneId':'Z2FDTNDATAQYW2','DNSName':'$DIST_DOMAIN','EvaluateTargetHealth': False}}} for n in names]
+print(json.dumps({'Changes': changes}))
 ")"
-  echo "+ aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch <apex alias A record upsert>"
-  run aws route53 change-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" \
+  echo "+ aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch <apex+www alias A records>"
+  aws route53 change-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" \
     --change-batch "$ALIAS_CHANGE_BATCH" >/dev/null
-  echo "Upserted apex alias record: $DOMAIN -> $DIST_DOMAIN"
+  echo "Upserted alias record(s): $ALIAS_NAMES -> $DIST_DOMAIN"
+elif [ "$DRY_RUN" = true ]; then
+  echo "+ upsert apex (+ www) alias A records -> $DIST_DOMAIN (dry-run: skipped)"
 else
-  echo "No Route53 hosted zone — the apex domain needs an ALIAS/ANAME (not CNAME)."
-  echo "Point $DOMAIN at: $DIST_DOMAIN (apex-alias support required, or move DNS to Route53)."
+  echo "No Route53 hosted zone — the apex needs an ALIAS/ANAME (not CNAME)."
+  echo "Point $DOMAIN (and $WWW_DOMAIN) at: $DIST_DOMAIN"
 fi
 
 # --- (f) values to confirm ---------------------------------------------------
