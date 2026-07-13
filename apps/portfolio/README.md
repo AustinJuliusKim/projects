@@ -35,5 +35,6 @@ CloudFront distribution. Then `npm run deploy` on every change.
 
 ## Before it goes live
 
-Resolve every `[confirm]` marker in `src/data.ts` and `deliverables/` (job
-titles, real metrics, education, exact GitHub repo URLs).
+Content is filled in and NDA-reviewed. Remaining prerequisites are infra only:
+issue the ACM cert for `austinjuliuskim.com` (us-east-1), deploy the stack, and
+point DNS — see `deploy-frontend.sh`.
