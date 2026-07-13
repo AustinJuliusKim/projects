@@ -1,0 +1,6 @@
+{
+  "StackName": "Portfolio",
+  "Region": "us-west-2",
+  "CustomDomain": "austinjuliuskim.com",
+  "CertificateArn": "FILL_AFTER_BOOTSTRAP"
+}
