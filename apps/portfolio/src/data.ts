@@ -8,7 +8,7 @@ export const profile = {
   tagline: "Senior software engineer building AI-native developer & learning tools.",
   // A slightly longer positioning line under the tagline.
   subtitle:
-    "9 years shipping React + AWS at scale — Loot Crate, Ring/Amazon, Riot Games. Now building products on top of Claude.",
+    "A decade shipping React + AWS at scale — Loot Crate, Ring/Amazon, Riot Games. Now building products on top of Claude.",
   location: "Los Angeles, CA · Open to remote",
   email: "austinjuliuskim@gmail.com",
   links: {
@@ -19,8 +19,8 @@ export const profile = {
 };
 
 export const about = [
-  "I'm a product-minded engineer with roughly nine years shipping user-facing web software. I started in front-end at Loot Crate, migrated a legacy Rails/CoffeeScript app to modern React, then spent three years at Ring (Amazon) building micro-frontends embedded in the Ring iOS and Android apps on AWS CDK.",
-  "For the last few years at Riot Games I've built internal tooling for live-service and R&D game teams — the kind of high-leverage tools a small number of people use every day to move fast.",
+  "I'm a product-minded engineer with roughly a decade shipping user-facing web software. I started in front-end at Loot Crate, porting a legacy Rails/CoffeeScript app to React/Redux, then spent three years at Ring (Amazon) building micro-frontends embedded in the Ring iOS and Android apps on AWS CDK.",
+  "At Riot Games I build internal developer platforms and tooling for game playtesting — the systems teams use to gate access to builds and run internal and public alpha/beta tests, from company-wide to player pools in the millions. I also built a shared Portal component library and a cross-team contribution model so teams across Riot ship consistent UX.",
   "Since late 2025 I've gone deep on building with LLMs: agentic development with Claude Code, and shipping my own AI-native products — a platform that teaches Claude Code by replaying real sessions, and a live consumer app with Claude-powered features. This site and both projects are things I designed, built, and deployed end-to-end.",
 ];
 
@@ -47,7 +47,7 @@ export const projects: Project[] = [
     ],
     stack: ["React", "TypeScript", "Node.js", "AWS Lambda", "CloudFront", "Claude Code"],
     live: "https://learn.austinjuliuskim.com",
-    source: "https://github.com/AustinJuliusKim", // [confirm] exact repo URL
+    source: "https://github.com/AustinJuliusKim/projects/tree/main/apps/guided-repl",
   },
   {
     name: "Choices",
@@ -61,7 +61,7 @@ export const projects: Project[] = [
     ],
     stack: ["React", "AWS Lambda", "DynamoDB", "Amazon Bedrock", "Stripe", "Web Push"],
     live: "https://choices.austinjuliuskim.com",
-    source: "https://github.com/AustinJuliusKim", // [confirm] exact repo URL
+    source: "https://github.com/AustinJuliusKim/projects/tree/main/apps/choices-webapp",
   },
 ];
 
@@ -75,29 +75,35 @@ export type Job = {
 export const experience: Job[] = [
   {
     company: "Riot Games",
-    role: "Software Engineer", // [confirm] exact title
+    role: "Senior Software Engineer (promoted from Software Engineer, 2023)",
     period: "2021 — Present",
     bullets: [
-      "Build internal tooling used daily by live-service and R&D game teams to ship and operate faster.",
-      "Own front-end and full-stack surfaces end-to-end, from prototype to production. [confirm impact/scale]",
+      "Build and own internal developer-platform tooling for game playtesting — gating and managing access to game builds and artifacts for internal and public alpha/beta playtests, from company-wide (~5,000 employees) to external player pools of hundreds of thousands to ~2M players.",
+      "Launched the team's internal portal and grew it from ~100 monthly users at launch to thousands of daily actives.",
+      "Built a reusable Portal component library and a cross-team contribution model — teams across Riot ship consistent UX, including AI-assisted contribution via agents.md/style.md conventions and smart components.",
+      "Won Riot's internal Thunderdome hackathon (2025), prototyping an Unreal Engine feature for managing skin collections.",
     ],
   },
   {
     company: "Ring (Amazon)",
-    role: "Front-End Engineer", // [confirm] exact title
+    role: "Software Development Engineer",
     period: "2018 — 2021",
     bullets: [
-      "Built and deployed micro-frontends embedded in the Ring iOS and Android mobile apps.",
-      "Worked in AWS CDK to define and ship front-end infrastructure. [confirm scale/users]",
+      "Built a micro-frontend webview embedded in the Ring iOS and Android apps for privacy controls and notification settings across the company's services.",
+      "Built internal B2B web tooling for the Neighbors org handling privacy-sensitive geolocation data, with encryption and data anonymization.",
+      "Led and mentored a team of 3 front-end contractors for ~6 months — onboarding, coaching, and feedback.",
+      "On the ML content-moderation team, built internal tooling for human moderators training automated moderation of community posts.",
     ],
   },
   {
     company: "Loot Crate",
-    role: "Front-End Engineer", // [confirm] exact title
-    period: "2016 — 2018",
+    role: "Front-End Software Engineer",
+    period: "2015 — 2018",
     bullets: [
-      "Migrated a legacy Ruby on Rails / CoffeeScript application to a modern React 15 front-end.",
-      "Shipped customer-facing e-commerce features at subscription-box scale. [confirm scale]",
+      "Led front-end development for the on-time launch of 40+ product lines over 2+ years.",
+      "Ported the front end from a Rails/CoffeeScript stack to React/Redux against a REST API.",
+      "Stood up a new subscription-box e-commerce MVP for sports fans (SportsCrate) in 6 months — Ruby/Rails, Docker, Kubernetes.",
+      "Ran A/B testing (Google Optimize), iterated on the CMS, and implemented designs as performant, accessible, responsive UIs.",
     ],
   },
 ];

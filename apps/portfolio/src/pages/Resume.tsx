@@ -30,7 +30,7 @@ export default function Resume() {
         <section className="r-section">
           <h2>Summary</h2>
           <p>
-            Product-minded engineer with ~9 years shipping user-facing web software in React and
+            Product-minded engineer with ~10 years shipping user-facing web software in React and
             AWS (Loot Crate, Ring/Amazon, Riot Games). Now building AI-native products on top of
             Claude — a learning platform that teaches Claude Code, and a live consumer app with
             Claude-powered features. Strong front-end craft, full-stack ownership, and 0→1 delivery.
@@ -81,7 +81,7 @@ export default function Resume() {
 
         <section className="r-section">
           <h2>Education</h2>
-          <p className="r-edu">[confirm — degree, institution, year]</p>
+          <p className="r-edu">University of California, Irvine — B.A. Economics, 2012</p>
         </section>
       </article>
     </div>
