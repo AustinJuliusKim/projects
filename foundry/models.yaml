@@ -1,0 +1,18 @@
+# Role-based model routing (Foundry spec v1.3). Swap models here, never in code.
+# `provider` is reserved for future local/open-model experiments; v1 = anthropic.
+# Every model id referenced here (incl. benchCandidates) must have an entry in
+# settings.yaml pricing — enforced by src/config.js.
+roles:
+  scout:
+    model: claude-haiku-4-5
+  author:
+    model: claude-fable-5
+    benchCandidates:
+      - claude-opus-4-8
+  linter:
+    model: claude-sonnet-4-6
+    benchCandidates:
+      - claude-sonnet-5
+  judge:
+    # Fixed across benchmarks; never a contestant (self-preference bias).
+    model: claude-sonnet-4-6

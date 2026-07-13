@@ -1,0 +1,29 @@
+# Foundry run settings (spec v1.3 locked defaults).
+topN: 3
+budgetCapUsd: 10
+overlapThreshold: 0.65
+# Monthly cadence (dial toward weekly post-launch). Must match foundry.yml cron.
+cadenceCron: "0 14 1 * *"
+labels:
+  draft: "foundry:draft"
+  radar: "foundry:radar"
+branchPrefix: foundry/
+# $ per MTok (input/output), verified against the Claude model catalog 2026-07.
+# sonnet-5 uses the standard sticker price (intro $2/$10 runs through 2026-08-31;
+# we budget at the durable rate).
+pricing:
+  claude-fable-5:
+    inputPerMTok: 10
+    outputPerMTok: 50
+  claude-opus-4-8:
+    inputPerMTok: 5
+    outputPerMTok: 25
+  claude-sonnet-5:
+    inputPerMTok: 3
+    outputPerMTok: 15
+  claude-sonnet-4-6:
+    inputPerMTok: 3
+    outputPerMTok: 15
+  claude-haiku-4-5:
+    inputPerMTok: 1
+    outputPerMTok: 5
