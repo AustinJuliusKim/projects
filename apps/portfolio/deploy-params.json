@@ -1,0 +1,8 @@
+{
+  "StackName": "Portfolio",
+  "Region": "us-west-2",
+  "CustomDomain": "austinjuliuskim.com",
+  "IncludeWww": "true",
+  "CertificateArn": "arn:aws:acm:us-east-1:549883968767:certificate/c29ee168-60a4-4597-898e-0d0c27517ed2",
+  "RoleArn": "arn:aws:iam::549883968767:role/portfolio-github-deploy"
+}
