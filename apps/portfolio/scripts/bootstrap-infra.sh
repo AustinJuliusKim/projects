@@ -234,12 +234,15 @@ if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ] && [ "$DRY_RUN" =
   ALIAS_CHANGE_BATCH="$(python3 -c "
 import json
 names = '$ALIAS_NAMES'.split()
+# Both A (IPv4) and AAAA (IPv6) alias records so every client hits this
+# distribution — leaving a stale AAAA pointing elsewhere breaks IPv6 viewers.
 changes = [{'Action':'UPSERT','ResourceRecordSet':{
-  'Name': n, 'Type':'A',
-  'AliasTarget': {'HostedZoneId':'Z2FDTNDATAQYW2','DNSName':'$DIST_DOMAIN','EvaluateTargetHealth': False}}} for n in names]
+  'Name': n, 'Type': t,
+  'AliasTarget': {'HostedZoneId':'Z2FDTNDATAQYW2','DNSName':'$DIST_DOMAIN','EvaluateTargetHealth': False}}}
+  for n in names for t in ('A', 'AAAA')]
 print(json.dumps({'Changes': changes}))
 ")"
-  echo "+ aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch <apex+www alias A records>"
+  echo "+ aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch <apex+www alias A/AAAA records>"
   aws route53 change-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" \
     --change-batch "$ALIAS_CHANGE_BATCH" >/dev/null
   echo "Upserted alias record(s): $ALIAS_NAMES -> $DIST_DOMAIN"
