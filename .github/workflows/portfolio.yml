@@ -64,10 +64,11 @@ jobs:
           REGION=$(node -pe "require('./deploy-params.json').Region")
           CUSTOM_DOMAIN=$(node -pe "require('./deploy-params.json').CustomDomain")
           CERT_ARN=$(node -pe "require('./deploy-params.json').CertificateArn")
+          INCLUDE_WWW=$(node -pe "require('./deploy-params.json').IncludeWww ?? 'false'")
           aws cloudformation deploy \
             --template-file template.yaml \
             --stack-name "$STACK_NAME" \
             --region "$REGION" \
-            --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" \
+            --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" "IncludeWww=$INCLUDE_WWW" \
             --no-fail-on-empty-changeset
       - run: ./deploy-frontend.sh
