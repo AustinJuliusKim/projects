@@ -56,7 +56,7 @@ Portfolio: austinjuliuskim.com
 ## 3. Experience (rewritten bullets)
 
 ### Riot Games — Senior Software Engineer · 2023 – Present  ·  Software Engineer · 2021 – 2023
-- Build and own internal developer-platform tooling for game playtesting — gating and managing access to game builds and artifacts for internal and public alpha/beta playtests, from company-wide (~5,000 employees) to external player pools of hundreds of thousands to ~2M players.
+- Build and own internal developer-platform tooling for game playtesting — gating and managing access to game builds and artifacts for internal and public alpha/beta playtests, from company-wide (~5,000 employees) to hundreds of thousands to ~2M players.
 - Launched the team's internal portal and grew it from ~100 monthly users at launch to thousands of daily actives.
 - Built a reusable Portal component library and a cross-team contribution model — teams across Riot ship consistent UX, including AI-assisted contribution via agents.md/style.md conventions and smart components.
 - Won Riot's internal Thunderdome hackathon (2025), prototyping an Unreal Engine feature for managing skin collections.
