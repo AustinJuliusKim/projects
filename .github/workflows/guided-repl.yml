@@ -8,7 +8,9 @@ on:
       - "packages/guided-repl-lessons/**"
       - "services/guided-repl-seeder/**"
       - "services/guided-repl-api/**"
+      - "services/guided-repl-foundry/**"
       - "apps/guided-repl/**"
+      - "foundry/**"
       - ".github/workflows/guided-repl.yml"
   pull_request:
     paths:
@@ -16,7 +18,9 @@ on:
       - "packages/guided-repl-lessons/**"
       - "services/guided-repl-seeder/**"
       - "services/guided-repl-api/**"
+      - "services/guided-repl-foundry/**"
       - "apps/guided-repl/**"
+      - "foundry/**"
       - ".github/workflows/guided-repl.yml"
 
 jobs:
@@ -78,6 +82,34 @@ jobs:
       - name: Install linked protocol deps
         run: npm ci
         working-directory: packages/guided-repl-protocol
+      - run: npm test
+
+  foundry:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/guided-repl-foundry
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: services/guided-repl-foundry/package-lock.json
+      - run: npm ci
+      # Populate the file:-linked packages' node_modules so their own
+      # imports (zod, yaml, protocol) resolve through the symlinks' real
+      # paths. The foundry links protocol, lessons, AND the seeder.
+      - name: Install linked protocol deps
+        run: npm ci
+        working-directory: packages/guided-repl-protocol
+      - name: Install linked lessons deps
+        run: npm ci
+        working-directory: packages/guided-repl-lessons
+      - name: Install linked seeder deps
+        run: npm ci
+        working-directory: services/guided-repl-seeder
+      # Keyless: node --test with no env vars, no network, no claude CLI.
       - run: npm test
 
   api:
