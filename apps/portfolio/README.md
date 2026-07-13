@@ -29,12 +29,20 @@ npm run preview  # serve the production build
 
 ## Deploy
 
-See the header comment in `deploy-frontend.sh`. One-time: issue an ACM cert for
-`austinjuliuskim.com` in **us-east-1**, deploy `template.yaml`, point DNS at the
-CloudFront distribution. Then `npm run deploy` on every change.
+**CI/CD:** pushes to `main` that touch `apps/portfolio/**` build and deploy
+automatically via `.github/workflows/portfolio.yml` (OIDC role
+`portfolio-github-deploy`, no stored AWS keys). PRs run the build only.
 
-## Before it goes live
+**One-time bootstrap** (admin AWS creds): `scripts/bootstrap-infra.sh` provisions
+the ACM cert + DNS validation, the GitHub OIDC deploy role (trust +
+`docs/iam-policy.json`), and the initial CloudFormation stack, then upserts the
+apex Route53 alias. Idempotent — safe to re-run. `--dry-run` to preview.
 
-Content is filled in and NDA-reviewed. Remaining prerequisites are infra only:
-issue the ACM cert for `austinjuliuskim.com` (us-east-1), deploy the stack, and
-point DNS — see `deploy-frontend.sh`.
+**Manual deploy:** `npm run deploy` (runs `deploy-frontend.sh`: build → S3 sync →
+CloudFront invalidation), reading stack outputs from `deploy-params.json`.
+
+## Status
+
+Content is filled in and NDA-reviewed. The ACM cert ARN is set in
+`deploy-params.json`. Remaining: run `bootstrap-infra.sh` once to create the
+deploy role + stack, then CI takes over.
