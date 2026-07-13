@@ -1,0 +1,229 @@
+{
+  "fixtureVersion": 1,
+  "claudeCodeVersion": "2.1.199 (Claude Code)",
+  "lessonId": "l5",
+  "branchId": "bypass",
+  "recordedAt": "2026-07-03T02:30:20.819Z",
+  "seedSnapshotId": "l4-output",
+  "permissionMode": "bypassPermissions",
+  "expectedPrompt": "rewrite the projects section removing the placeholder cards, keep it one file",
+  "events": [
+    {
+      "frame": {
+        "type": "session_ready"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Let me find the file with the projects section."
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 4695
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01GeiC5j93M6rrTjvsvCXeV6",
+          "tool": "Bash",
+          "input": {
+            "command": "ls -la  && grep -ril \"project\"  --include=\"*.html\" --include=\"*.jsx\" --include=\"*.tsx\" --include=\"*.vue\" --include=\"*.js\" --include=\"*.ts\" | head",
+            "description": "List directory and find files mentioning projects"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 3026
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01GeiC5j93M6rrTjvsvCXeV6",
+          "content": "total 24\ndrwx------@    4 <user>  staff    128 Jul  2 19:29 .\ndrwx------@ 2025 <user>  staff  64800 Jul  2 19:29 ..\n-rw-r--r--@    1 <user>  staff   5963 Jul  2 19:29 index.html\n-rw-r--r--@    1 <user>  staff     30 Jul  2 19:29 README.md\nindex.html",
+          "isError": false
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 1848
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01DBc35YekioVrKLguxwKzPA",
+          "tool": "Read",
+          "input": {
+            "file_path": "index.html"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 5665
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01DBc35YekioVrKLguxwKzPA",
+          "content": "1\t<!DOCTYPE html>\n2\t<html lang=\"en\">\n3\t<head>\n4\t  <meta charset=\"UTF-8\" />\n5\t  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n6\t  <title>{{userName}}</title>\n7\t  <style>\n8\t    :root {\n9\t      --bg: #09090b;\n10\t      --surface: #131316;\n11\t      --text: #ededf0;\n12\t      --muted: #8b8b96;\n13\t      --accent: #5eead4;\n14\t      --accent-2: #a78bfa;\n15\t      --border: #232329;\n16\t    }\n17\t\n18\t    * {\n19\t      margin: 0;\n20\t      padding: 0;\n21\t      box-sizing: border-box;\n22\t    }\n23\t\n24\t    html {\n25\t      scroll-behavior: smooth;\n26\t    }\n27\t\n28\t    ::selection {\n29\t      background: rgba(94, 234, 212, 0.25);\n30\t    }\n31\t\n32\t    body {\n33\t      font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\n34\t      background: var(--bg);\n35\t      color: var(--text);\n36\t      line-height: 1.6;\n37\t      -webkit-font-smoothing: antialiased;\n38\t    }\n39\t\n40\t    .container {\n41\t      max-width: 720px;\n42\t      margin: 0 auto;\n43\t      padding: 0 24px;\n44\t    }\n45\t\n46\t    /* Header / hero */\n47\t    header {\n48\t      position: relative;\n49\t      padding: 96px 0 64px;\n50\t    }\n51\t\n52\t    header::before {\n53\t      content: \"\";\n54\t      position: absolute;\n55\t      top: -160px;\n56\t      left: -120px;\n57\t      width: 480px;\n58\t      height: 480px;\n59\t      background: radial-gradient(circle, rgba(94, 234, 212, 0.08), transparent 70%);\n60\t      pointer-events: none;\n61\t    }\n62\t\n63\t    .avatar {\n64\t      width: 88px;\n65\t      height: 88px;\n66\t      border-radius: 50%;\n67\t      background: linear-gradient(135deg, var(--accent), var(--accent-2));\n68\t      display: flex;\n69\t      align-items: center;\n70\t      justify-content: center;\n71\t      font-size: 32px;\n72\t      font-weight: 700;\n73\t      color: var(--bg);\n74\t      margin-bottom: 24px;\n75\t      box-shadow: 0 0 40px rgba(94, 234, 212, 0.25);\n76\t    }\n77\t\n78\t    h1 {\n79\t      font-size: 40px;\n80\t      font-weight: 700;\n81\t      letter-spacing: -0.02em;\n82\t      margin-bottom: 8px;\n83\t    }\n84\t\n85\t    .tagline {\n86\t      font-size: 20px;\n87\t      color: var(--muted);\n88\t      margin-bottom: 24px;\n89\t    }\n90\t\n91\t    .intro {\n92\t      font-size: 17px;\n93\t      color: var(--text);\n94\t      max-width: 60ch;\n95\t    }\n96\t\n97\t    /* Sections */\n98\t    section {\n99\t      padding: 40px 0;\n100\t      border-top: 1px solid var(--border);\n101\t    }\n102\t\n103\t    h2 {\n104\t      font-size: 14px;\n105\t      font-weight: 600;\n106\t      text-transform: uppercase;\n107\t      letter-spacing: 0.08em;\n108\t      color: var(--muted);\n109\t      margin-bottom: 24px;\n110\t    }\n111\t\n112\t    /* Work / projects */\n113\t    .card {\n114\t      display: block;\n115\t      background: var(--surface);\n116\t      border: 1px solid var(--border);\n117\t      border-radius: 12px;\n118\t      padding: 20px 24px;\n119\t      margin-bottom: 16px;\n120\t      text-decoration: none;\n121\t      color: inherit;\n122\t      transition: border-color 0.15s ease, transform 0.15s ease;\n123\t    }\n124\t\n125\t    .card:hover {\n126\t      border-color: var(--accent);\n127\t      transform: translateY(-2px);\n128\t      box-shadow: 0 4px 24px rgba(94, 234, 212, 0.1);\n129\t    }\n130\t\n131\t    .card h3 {\n132\t      font-size: 17px;\n133\t      font-weight: 600;\n134\t      margin-bottom: 4px;\n135\t    }\n136\t\n137\t    .card p {\n138\t      font-size: 15px;\n139\t      color: var(--muted);\n140\t    }\n141\t\n142\t    /* Skills */\n143\t    .skills {\n144\t      display: grid;\n145\t      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));\n146\t      gap: 16px;\n147\t    }\n148\t\n149\t    .skill {\n150\t      background: var(--surface);\n151\t      border: 1px solid var(--border);\n152\t      border-radius: 12px;\n153\t      padding: 20px 24px;\n154\t    }\n155\t\n156\t    .skill h3 {\n157\t      font-size: 16px;\n158\t      font-weight: 600;\n159\t      margin-bottom: 4px;\n160\t    }\n161\t\n162\t    .skill p {\n163\t      font-size: 14px;\n164\t      color: var(--muted);\n165\t    }\n166\t\n167\t    /* Contact links */\n168\t    .links {\n169\t      display: flex;\n170\t      flex-wrap: wrap;\n171\t      gap: 12px;\n172\t    }\n173\t\n174\t    .links a {\n175\t      display: inline-block;\n176\t      padding: 10px 18px;\n177\t      border: 1px solid var(--border);\n178\t      border-radius: 999px;\n179\t      color: var(--text);\n180\t      text-decoration: none;\n181\t      font-size: 15px;\n182\t      transition: border-color 0.15s ease, color 0.15s ease;\n183\t    }\n184\t\n185\t    .links a:hover {\n186\t      border-color: var(--accent);\n187\t      color: var(--accent);\n188\t    }\n189\t\n190\t    footer {\n191\t      padding: 40px 0 64px;\n192\t      border-top: 1px solid var(--border);\n193\t      color: var(--muted);\n194\t      font-size: 14px;\n195\t    }\n196\t\n197\t    @media (max-width: 480px) {\n198\t      header {\n199\t        padding: 64px 0 48px;\n200\t      }\n201\t\n202\t      h1 {\n203\t        font-size: 32px;\n204\t      }\n205\t\n206\t      .tagline {\n207\t        font-size: 18px;\n208\t      }\n209\t    }\n210\t  </style>\n211\t</head>\n212\t<body>\n213\t  <div class=\"container\">\n214\t    <header>\n215\t      <div class=\"avatar\">AK</div>\n216\t      <h1>{{userName}}</h1>\n217\t      <p class=\"tagline\">Software engineer &amp; builder</p>\n218\t      <p class=\"intro\">\n219\t        Hi, I'm {{userName}}. I build software and enjoy turning ideas into simple,\n220\t        well-crafted tools. This is my corner of the internet — a place for\n221\t        what I'm working on and how to reach me.\n222\t      </p>\n223\t    </header>\n224\t\n225\t    <section>\n226\t      <h2>What I'm working on</h2>\n227\t      <a class=\"card\" href=\"#\">\n228\t        <h3>Project One</h3>\n229\t        <p>A short description of what this project does and why it exists.</p>\n230\t      </a>\n231\t      <a class=\"card\" href=\"#\">\n232\t        <h3>Project Two</h3>\n233\t        <p>Another thing I've built or am currently exploring.</p>\n234\t      </a>\n235\t    </section>\n236\t\n237\t    <section>\n238\t      <h2>Skills</h2>\n239\t      <div class=\"skills\">\n240\t        <div class=\"skill\">\n241\t          <h3>Web Development</h3>\n242\t          <p>Building responsive, accessible sites with modern HTML, CSS, and JavaScript.</p>\n243\t        </div>\n244\t        <div class=\"skill\">\n245\t          <h3>Backend &amp; APIs</h3>\n246\t          <p>Designing and shipping reliable services, from data models to deployment.</p>\n247\t        </div>\n248\t        <div class=\"skill\">\n249\t          <h3>Developer Tooling</h3>\n250\t          <p>Automating workflows and crafting small tools that make teams faster.</p>\n251\t        </div>\n252\t      </div>\n253\t    </section>\n254\t\n255\t    <section>\n256\t      <h2>Get in touch</h2>\n257\t      <div class=\"links\">\n258\t        <a href=\"mailto:<email>\">Email</a>\n259\t        <a href=\"https://github.com/\" target=\"_blank\" rel=\"noopener\">GitHub</a>\n260\t        <a href=\"https://www.linkedin.com/\" target=\"_blank\" rel=\"noopener\">LinkedIn</a>\n261\t      </div>\n262\t    </section>\n263\t\n264\t    <footer>\n265\t      &copy; 2026 {{userName}}\n266\t    </footer>\n267\t  </div>\n268\t</body>\n269\t</html>\n270\t",
+          "isError": false
+        }
+      },
+      "delayMs": 16,
+      "origDelayMs": 16
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01Wwhn3nwYpkSzB82vVaaNLH",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "    <section>\n      <h2>What I'm working on</h2>\n      <a class=\"card\" href=\"#\">\n        <h3>Project One</h3>\n        <p>A short description of what this project does and why it exists.</p>\n      </a>\n      <a class=\"card\" href=\"#\">\n        <h3>Project Two</h3>\n        <p>Another thing I've built or am currently exploring.</p>\n      </a>\n    </section>",
+            "new_string": "    <section>\n      <h2>What I'm working on</h2>\n      <p class=\"section-note\">\n        I'm always tinkering on something new. Projects will appear here as\n        they're ready to share — in the meantime, feel free to reach out below.\n      </p>\n    </section>"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 13311
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01Wwhn3nwYpkSzB82vVaaNLH",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 30,
+      "origDelayMs": 30
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01H6BT1nJeeLzZZALkh4PyS6",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "    /* Work / projects */\n    .card {\n      display: block;\n      background: var(--surface);\n      border: 1px solid var(--border);\n      border-radius: 12px;\n      padding: 20px 24px;\n      margin-bottom: 16px;\n      text-decoration: none;\n      color: inherit;\n      transition: border-color 0.15s ease, transform 0.15s ease;\n    }\n\n    .card:hover {\n      border-color: var(--accent);\n      transform: translateY(-2px);\n      box-shadow: 0 4px 24px rgba(94, 234, 212, 0.1);\n    }\n\n    .card h3 {\n      font-size: 17px;\n      font-weight: 600;\n      margin-bottom: 4px;\n    }\n\n    .card p {\n      font-size: 15px;\n      color: var(--muted);\n    }",
+            "new_string": "    /* Work / projects */\n    .section-note {\n      font-size: 16px;\n      color: var(--muted);\n      max-width: 60ch;\n    }"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 7646
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01H6BT1nJeeLzZZALkh4PyS6",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 14,
+      "origDelayMs": 14
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Done"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 6141
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": ". In `index.html`, the \"What I'm working on\" section no longer has the two fake \"Project One\"/\"Project Two\" c"
+        }
+      },
+      "delayMs": 3,
+      "origDelayMs": 3
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ards — it now shows a short honest note that projects will appear as they're ready to share, pointing readers to the contact links"
+        }
+      },
+      "delayMs": 10,
+      "origDelayMs": 10
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " below. I also removed the `.card` CSS that only those cards used and replaced it with a small `.section-note` style, so ever"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ything stays in the single file with no dead styles left behind.\n\nWhen you have real projects to list, just say"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " the word (name, one-line description, link) and I can add them back as cards."
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "usage",
+        "payload": {
+          "inputTokens": 2885,
+          "outputTokens": 1820,
+          "model": "claude-fable-5"
+        }
+      },
+      "delayMs": 39,
+      "origDelayMs": 39
+    },
+    {
+      "frame": {
+        "type": "done"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    }
+  ],
+  "assertion": {
+    "type": "quiz",
+    "question": "Which permission mode pauses for your review before a risky edit is applied?",
+    "choices": [
+      "plan mode",
+      "acceptEdits",
+      "bypassPermissions"
+    ],
+    "correctIndex": 0
+  }
+}

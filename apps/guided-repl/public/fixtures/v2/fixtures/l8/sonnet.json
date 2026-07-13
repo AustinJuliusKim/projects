@@ -1,0 +1,152 @@
+{
+  "fixtureVersion": 1,
+  "claudeCodeVersion": "2.1.199 (Claude Code)",
+  "lessonId": "l8",
+  "branchId": "sonnet",
+  "recordedAt": "2026-07-03T17:16:19.321Z",
+  "seedSnapshotId": "l7-output",
+  "permissionMode": "acceptEdits",
+  "expectedPrompt": "update the call-to-action button label to say Get in touch, keep everything else the same",
+  "events": [
+    {
+      "frame": {
+        "type": "session_ready"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_0155HBJWTa6x2BpH9RzXDBmD",
+          "tool": "Bash",
+          "input": {
+            "command": "grep -n -i \"call-to-action\\|cta\\|<button\\|btn\" \"index.html\" | head -50"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 3797
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_0155HBJWTa6x2BpH9RzXDBmD",
+          "content": "98:    .cta-button {\n111:    .cta-button:hover {\n252:      <a class=\"cta-button\" href=\"#contact\">Get in Touch</a>",
+          "isError": false
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 1747
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01L1wXtnwiF24QkPJNDvEnxi",
+          "tool": "Read",
+          "input": {
+            "file_path": "index.html",
+            "offset": 248,
+            "limit": 8
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 4126
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01L1wXtnwiF24QkPJNDvEnxi",
+          "content": "248\t        Hi, I'm {{userName}}. I build software and enjoy turning ideas into simple,\n249\t        well-crafted tools. This is my corner of the internet — a place for\n250\t        what I'm working on and how to reach me.\n251\t      </p>\n252\t      <a class=\"cta-button\" href=\"#contact\">Get in Touch</a>\n253\t    </header>\n254\t\n255\t    <section>",
+          "isError": false
+        }
+      },
+      "delayMs": 26,
+      "origDelayMs": 26
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_01RjzXUFJHGR9aKwimfCh7Yr",
+          "tool": "Edit",
+          "input": {
+            "replace_all": false,
+            "file_path": "index.html",
+            "old_string": "<a class=\"cta-button\" href=\"#contact\">Get in Touch</a>",
+            "new_string": "<a class=\"cta-button\" href=\"#contact\">Get in touch</a>"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 2967
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_01RjzXUFJHGR9aKwimfCh7Yr",
+          "content": "The file index.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 6,
+      "origDelayMs": 6
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Upd"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 1702
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ated the CTA button label from \"Get in Touch\" to \"Get in touch\" at index.html:252."
+        }
+      },
+      "delayMs": 358,
+      "origDelayMs": 358
+    },
+    {
+      "frame": {
+        "type": "usage",
+        "payload": {
+          "inputTokens": 2960,
+          "outputTokens": 620,
+          "model": "claude-sonnet-5"
+        }
+      },
+      "delayMs": 42,
+      "origDelayMs": 42
+    },
+    {
+      "frame": {
+        "type": "done"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    }
+  ],
+  "assertion": {
+    "type": "quiz",
+    "question": "For a small, well-specified text tweak like this one, which model is the better cost/quality tradeoff?",
+    "choices": [
+      "Haiku — the task is simple and well-scoped",
+      "Sonnet — always default to the most capable model",
+      "Neither — this needs a human to do it by hand",
+      "Cost doesn't matter, model choice is irrelevant"
+    ],
+    "correctIndex": 0
+  }
+}

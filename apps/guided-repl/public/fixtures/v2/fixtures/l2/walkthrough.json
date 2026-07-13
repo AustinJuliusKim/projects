@@ -1,0 +1,201 @@
+{
+  "fixtureVersion": 1,
+  "claudeCodeVersion": "2.1.198 (Claude Code)",
+  "lessonId": "l2",
+  "branchId": "walkthrough",
+  "recordedAt": "2026-07-03T02:17:52.875Z",
+  "seedSnapshotId": "l1-input",
+  "permissionMode": "acceptEdits",
+  "expectedPrompt": "make a personal landing page about me, single index.html file, inline CSS",
+  "events": [
+    {
+      "frame": {
+        "type": "session_ready"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "I'll create a single"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 9116,
+      "annotation": {
+        "title": "Explore, then plan",
+        "body": "The workspace only has a starter README — there's nothing to read or refactor, so the agentic loop's explore step is a no-op here. The model reasons about the task in this streamed text before touching any tool: single file, inline CSS, what content to invent from your prompt. That reasoning is the plan; it never gets shown as a separate step because there was nothing in the workspace worth exploring."
+      }
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "-file personal landing page. Since I only know your name and email ({{userName}}, from your email address), I'll build a clean, polished page with placehol"
+        }
+      },
+      "delayMs": 67,
+      "origDelayMs": 67
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "der bio content you can edit in place."
+        }
+      },
+      "delayMs": 157,
+      "origDelayMs": 157
+    },
+    {
+      "frame": {
+        "type": "tool_use",
+        "payload": {
+          "id": "toolu_014yinZyYEkD9hGRwobzhTKs",
+          "tool": "Write",
+          "input": {
+            "file_path": "index.html",
+            "content": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n  <title>{{userName}}</title>\n  <style>\n    :root {\n      --bg: #0f1115;\n      --surface: #171a21;\n      --text: #e8eaf0;\n      --muted: #9aa3b2;\n      --accent: #6ea8fe;\n      --border: #262b36;\n    }\n\n    * {\n      margin: 0;\n      padding: 0;\n      box-sizing: border-box;\n    }\n\n    html {\n      scroll-behavior: smooth;\n    }\n\n    body {\n      font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\n      background: var(--bg);\n      color: var(--text);\n      line-height: 1.6;\n      -webkit-font-smoothing: antialiased;\n    }\n\n    .container {\n      max-width: 720px;\n      margin: 0 auto;\n      padding: 0 24px;\n    }\n\n    /* Header / hero */\n    header {\n      padding: 96px 0 64px;\n    }\n\n    .avatar {\n      width: 88px;\n      height: 88px;\n      border-radius: 50%;\n      background: linear-gradient(135deg, var(--accent), #b388ff);\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      font-size: 32px;\n      font-weight: 700;\n      color: #0f1115;\n      margin-bottom: 24px;\n    }\n\n    h1 {\n      font-size: 40px;\n      font-weight: 700;\n      letter-spacing: -0.02em;\n      margin-bottom: 8px;\n    }\n\n    .tagline {\n      font-size: 20px;\n      color: var(--muted);\n      margin-bottom: 24px;\n    }\n\n    .intro {\n      font-size: 17px;\n      color: var(--text);\n      max-width: 60ch;\n    }\n\n    /* Sections */\n    section {\n      padding: 40px 0;\n      border-top: 1px solid var(--border);\n    }\n\n    h2 {\n      font-size: 14px;\n      font-weight: 600;\n      text-transform: uppercase;\n      letter-spacing: 0.08em;\n      color: var(--muted);\n      margin-bottom: 24px;\n    }\n\n    /* Work / projects */\n    .card {\n      display: block;\n      background: var(--surface);\n      border: 1px solid var(--border);\n      border-radius: 12px;\n      padding: 20px 24px;\n      margin-bottom: 16px;\n      text-decoration: none;\n      color: inherit;\n      transition: border-color 0.15s ease, transform 0.15s ease;\n    }\n\n    .card:hover {\n      border-color: var(--accent);\n      transform: translateY(-2px);\n    }\n\n    .card h3 {\n      font-size: 17px;\n      font-weight: 600;\n      margin-bottom: 4px;\n    }\n\n    .card p {\n      font-size: 15px;\n      color: var(--muted);\n    }\n\n    /* Contact links */\n    .links {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 12px;\n    }\n\n    .links a {\n      display: inline-block;\n      padding: 10px 18px;\n      border: 1px solid var(--border);\n      border-radius: 999px;\n      color: var(--text);\n      text-decoration: none;\n      font-size: 15px;\n      transition: border-color 0.15s ease, color 0.15s ease;\n    }\n\n    .links a:hover {\n      border-color: var(--accent);\n      color: var(--accent);\n    }\n\n    footer {\n      padding: 40px 0 64px;\n      border-top: 1px solid var(--border);\n      color: var(--muted);\n      font-size: 14px;\n    }\n\n    @media (max-width: 480px) {\n      header {\n        padding: 64px 0 48px;\n      }\n\n      h1 {\n        font-size: 32px;\n      }\n\n      .tagline {\n        font-size: 18px;\n      }\n    }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <header>\n      <div class=\"avatar\">AK</div>\n      <h1>{{userName}}</h1>\n      <p class=\"tagline\">Software engineer &amp; builder</p>\n      <p class=\"intro\">\n        Hi, I'm {{userName}}. I build software and enjoy turning ideas into simple,\n        well-crafted tools. This is my corner of the internet — a place for\n        what I'm working on and how to reach me.\n      </p>\n    </header>\n\n    <section>\n      <h2>What I'm working on</h2>\n      <a class=\"card\" href=\"#\">\n        <h3>Project One</h3>\n        <p>A short description of what this project does and why it exists.</p>\n      </a>\n      <a class=\"card\" href=\"#\">\n        <h3>Project Two</h3>\n        <p>Another thing I've built or am currently exploring.</p>\n      </a>\n    </section>\n\n    <section>\n      <h2>Get in touch</h2>\n      <div class=\"links\">\n        <a href=\"mailto:<email>\">Email</a>\n        <a href=\"https://github.com/\" target=\"_blank\" rel=\"noopener\">GitHub</a>\n        <a href=\"https://www.linkedin.com/\" target=\"_blank\" rel=\"noopener\">LinkedIn</a>\n      </div>\n    </section>\n\n    <footer>\n      &copy; 2026 {{userName}}\n    </footer>\n  </div>\n</body>\n</html>\n"
+          }
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 15830,
+      "annotation": {
+        "title": "The Write tool call",
+        "body": "This is the one tool call in the whole run: `Write` with `file_path: \"index.html\"` and the full page content as `input.content`. This is the moment the plan becomes a real file — everything above was reasoning, this is the only step that changes the workspace. Because it's a single-file page, one Write call is enough to finish the job."
+      }
+    },
+    {
+      "frame": {
+        "type": "tool_result",
+        "payload": {
+          "id": "toolu_014yinZyYEkD9hGRwobzhTKs",
+          "content": "File created successfully at: index.html (file state is current in your context — no need to Read it back)",
+          "isError": false
+        }
+      },
+      "delayMs": 13,
+      "origDelayMs": 13,
+      "annotation": {
+        "title": "Verify before finishing",
+        "body": "The `tool_result` confirms the write succeeded and — notice the message — tells the model the file's content is already \"current in context,\" so it doesn't need to Read it back to check its own work. That confirmation is what lets the agent move straight to summarizing what it built instead of re-reading the file it just wrote."
+      }
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "Done"
+        }
+      },
+      "delayMs": 1500,
+      "origDelayMs": 8201
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " — `index.html` is created with everything (CSS included) in the one file."
+        }
+      },
+      "delayMs": 11,
+      "origDelayMs": 11
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " It's a dark, minimal landing page with:\n\n- A hero section with an \"AK\" avatar, your"
+        }
+      },
+      "delayMs": 1,
+      "origDelayMs": 1
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " name, a tagline, and a short intro\n- A \"What I'm working on\" section with two placeholder project cards\n- A contact section with your email w"
+        }
+      },
+      "delayMs": 6,
+      "origDelayMs": 6
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ired up, plus GitHub/LinkedIn placeholders\n- Responsive layout that tightens up on mobile\n\nOpen it directly in a"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " browser to see it. Things you'll want to personalize: the tagline and intro text, the two project cards, and the GitHub/LinkedI"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "n URLs (they currently point to the site roots). If you tell me a bit about yourself — what you do, proj"
+        }
+      },
+      "delayMs": 2,
+      "origDelayMs": 2
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": "ects, links — I can fill in the real content, or restyle it (light theme, different accent color, etc.) if the"
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "text",
+        "payload": {
+          "delta": " look isn't your taste."
+        }
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    },
+    {
+      "frame": {
+        "type": "usage",
+        "payload": {
+          "inputTokens": 2879,
+          "outputTokens": 2464
+        }
+      },
+      "delayMs": 46,
+      "origDelayMs": 46
+    },
+    {
+      "frame": {
+        "type": "done"
+      },
+      "delayMs": 0,
+      "origDelayMs": 0
+    }
+  ],
+  "assertion": {
+    "type": "file-contains",
+    "path": "index.html",
+    "match": "<h1>"
+  }
+}
