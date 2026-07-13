@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Portfolio: static site (Vite build) served via private S3 + CloudFront (OAC, SPA fallback).
+  No backend — plain CloudFormation (not SAM). Mirrors apps/guided-repl/template.yaml.
+
+Parameters:
+  CustomDomain:
+    Type: String
+    Default: ""
+    Description: Optional custom domain for the site, e.g. austinjuliuskim.com (leave blank to use the CloudFront URL)
+  CertificateArn:
+    Type: String
+    Default: ""
+    Description: ACM certificate ARN in us-east-1 for CustomDomain (required if CustomDomain is set)
+  IncludeWww:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Add www.<CustomDomain> as an alias and 301-redirect it to the apex.
+      Requires the ACM cert to cover BOTH the apex and the www name.
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
+  HasWww: !And
+    - !Condition HasCustomDomain
+    - !Equals [!Ref IncludeWww, "true"]
+
+Resources:
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  WwwRedirectFunction:
+    Type: AWS::CloudFront::Function
+    Condition: HasWww
+    Properties:
+      Name: !Sub "${AWS::StackName}-www-redirect"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: 301-redirect www.<domain> to the apex domain
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var host = request.headers.host.value;
+          if (host.startsWith('www.')) {
+            var apex = host.substring(4);
+            return {
+              statusCode: 301,
+              statusDescription: 'Moved Permanently',
+              headers: { location: { value: 'https://' + apex + request.uri } }
+            };
+          }
+          return request;
+        }
+
+  SiteOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  SiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Aliases: !If
+          - HasWww
+          - [!Ref CustomDomain, !Sub "www.${CustomDomain}"]
+          - !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasCustomDomain
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins:
+          - Id: SiteS3Origin
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt SiteOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: SiteS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          # AWS managed "CachingOptimized" policy
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          FunctionAssociations: !If
+            - HasWww
+            - - EventType: viewer-request
+                FunctionARN: !GetAtt WwwRedirectFunction.FunctionARN
+            - !Ref "AWS::NoValue"
+        CustomErrorResponses:
+          # SPA fallback: serve index.html for client-side routes (e.g. /resume)
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${SiteBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution.Id}"
+
+Outputs:
+  SiteBucketName:
+    Description: S3 bucket to upload the built frontend (aws s3 sync dist/)
+    Value: !Ref SiteBucket
+  DistributionId:
+    Description: CloudFront distribution ID (for cache invalidations)
+    Value: !Ref SiteDistribution
+  DistributionDomainName:
+    Description: CloudFront domain to point your DNS alias at
+    Value: !GetAtt SiteDistribution.DomainName
+  SiteUrl:
+    Description: Your portfolio URL (open this!)
+    Value: !If
+      - HasCustomDomain
+      - !Sub "https://${CustomDomain}"
+      - !Sub "https://${SiteDistribution.DomainName}"
