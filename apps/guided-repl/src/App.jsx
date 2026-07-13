@@ -52,7 +52,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    const version = import.meta.env.VITE_FIXTURE_VERSION ?? "v1";
+    const version = import.meta.env.VITE_FIXTURE_VERSION ?? "v2";
     loadLesson(import.meta.env.BASE_URL, version, selectedLessonId)
       .then((result) => {
         if (cancelled) return;

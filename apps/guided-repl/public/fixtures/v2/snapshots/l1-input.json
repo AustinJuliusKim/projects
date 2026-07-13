@@ -1,0 +1,9 @@
+{
+  "snapshotId": "l1-input",
+  "files": [
+    {
+      "path": "README.md",
+      "content": "# My Page\n\nStarter workspace.\n"
+    }
+  ]
+}
