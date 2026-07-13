@@ -1,0 +1,18 @@
+[
+  {
+    "sha": "abc1234def5678900000000000000000000000aa",
+    "html_url": "https://github.com/modelcontextprotocol/modelcontextprotocol/commit/abc1234",
+    "commit": {
+      "message": "spec: add streamable HTTP transport resumability\n\nDefines resume tokens for dropped connections.",
+      "author": { "date": "2026-07-03T09:30:00Z" }
+    }
+  },
+  {
+    "sha": "bbb1234def5678900000000000000000000000bb",
+    "html_url": "https://github.com/modelcontextprotocol/modelcontextprotocol/commit/bbb1234",
+    "commit": {
+      "message": "docs: clarify sampling capability negotiation",
+      "author": { "date": "2026-06-29T14:10:00Z" }
+    }
+  }
+]
