@@ -56,3 +56,17 @@ test("rewriteRefs strips executable url schemes to about:blank", () => {
   assert.ok(!/vbscript:/i.test(out));
   assert.ok(out.includes("about:blank"));
 });
+
+test("rewriteRefs applies transformContent to inlined file content before encoding", () => {
+  const files = {
+    "index.html": { content: '<link href="style.css">', prevContent: undefined },
+    "style.css": { content: "h1::after { content: '{{userName}}'; }", prevContent: undefined },
+  };
+  const out = rewriteRefs(files["index.html"].content, files, "index.html", (c) =>
+    c.replaceAll("{{userName}}", "Ada"),
+  );
+  const match = out.match(/href="data:text\/css;base64,([^"]+)"/);
+  assert.ok(match, `expected a data: URI, got: ${out}`);
+  const decoded = decodeURIComponent(escape(atob(match[1])));
+  assert.equal(decoded, "h1::after { content: 'Ada'; }");
+});

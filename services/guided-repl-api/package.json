@@ -1,0 +1,22 @@
+{
+  "name": "guided-repl-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "FAKE_AUTH=1 node src/server.js",
+    "test": "node --test",
+    "migrate": "node scripts/migrate.js"
+  },
+  "dependencies": {
+    "@fastify/aws-lambda": "^5.1.0",
+    "@fastify/cookie": "^10.0.1",
+    "@fastify/cors": "^10.0.0",
+    "@guided-repl/protocol": "file:../../packages/guided-repl-protocol",
+    "fastify": "^5.0.0",
+    "pg": "^8.13.0",
+    "zod": "^4.0.0"
+  }
+}

@@ -20,6 +20,15 @@
           "md": "**Ship a page in 90 seconds.** Pick a prompt below and run it — you'll watch Claude Code explore the workspace, plan, edit files, and verify, ending with a live personal page in the preview pane."
         },
         {
+          "type": "capture",
+          "id": "capture-name",
+          "fields": [
+            "name"
+          ],
+          "purposeMd": "**What should your page call you?** Totally optional — it personalizes the page Claude builds in this demo.",
+          "optional": true
+        },
+        {
           "type": "promptBuilder",
           "id": "compose",
           "suggestions": [
@@ -83,6 +92,18 @@
             "type": "file-contains",
             "path": "index.html",
             "match": "<h1>"
+          }
+        },
+        {
+          "type": "capture",
+          "id": "capture-email",
+          "fields": [
+            "email"
+          ],
+          "purposeMd": "**Keep your progress + get your page link.** Drop an email and we'll save where you left off.",
+          "optional": true,
+          "consent": {
+            "label": "Also send me the newsletter (occasional, unsubscribe anytime)"
           }
         }
       ],

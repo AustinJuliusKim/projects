@@ -136,7 +136,7 @@ test("OS display full name (injected via ctx) is redacted with word boundaries",
   const out = normalizeFrame(frame, { cwd: CWD, home: HOME, fullName: "Jane Doe" });
   assert.equal(
     out.payload.content,
-    "Since I only know your name and email (Demo User, <email>), ..."
+    "Since I only know your name and email ({{userName}}, <email>), ..."
   );
 });
 

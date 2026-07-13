@@ -36,6 +36,9 @@ body {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--cli-border);
   background: var(--cli-bg-panel);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .app-header h1 {
@@ -877,4 +880,163 @@ button.lesson-item:hover {
   background: var(--cli-bg-panel-raised);
   color: var(--cli-muted);
   font-size: 0.85rem;
+}
+
+/* CaptureCard */
+
+.capture-card {
+  border: 1px solid var(--cli-border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--cli-bg-panel);
+  font-size: 0.85rem;
+}
+
+.capture-purpose p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.capture-input {
+  background: var(--cli-bg-panel-raised);
+  border: 1px solid var(--cli-border);
+  border-radius: 6px;
+  color: var(--cli-fg);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.capture-consent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.capture-error {
+  color: var(--cli-warn);
+  font-size: 0.8rem;
+}
+
+.capture-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.capture-submit {
+  background: var(--cli-accent);
+  color: var(--cli-accent-fg);
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.capture-skip {
+  background: var(--cli-bg-panel-raised);
+  color: var(--cli-fg);
+  border: 1px solid var(--cli-border);
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* AccountMenu */
+
+.account-menu {
+  position: relative;
+}
+
+.account-trigger {
+  background: var(--cli-bg-panel-raised);
+  color: var(--cli-fg);
+  border: 1px solid var(--cli-border);
+  border-radius: 6px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.account-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border: 1px solid var(--cli-border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: var(--cli-bg-panel);
+  font-size: 0.85rem;
+}
+
+.account-note {
+  margin: 0;
+  color: var(--cli-muted);
+}
+
+.account-link {
+  color: var(--cli-accent);
+  font-size: 0.8rem;
+}
+
+.account-danger {
+  background: none;
+  color: var(--cli-warn);
+  border: 1px solid var(--cli-warn);
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* GraduationPanel + CompletionBadge */
+
+.graduation-panel {
+  border: 1px solid var(--cli-border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--cli-bg-panel);
+  font-size: 0.85rem;
+}
+
+.completion-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid var(--cli-accent);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+}
+
+.completion-badge-glyph {
+  font-size: 1.4rem;
+  color: var(--cli-accent);
+}
+
+.completion-badge-title {
+  font-weight: 600;
+}
+
+.completion-badge-sub {
+  color: var(--cli-muted);
+  font-size: 0.75rem;
 }
