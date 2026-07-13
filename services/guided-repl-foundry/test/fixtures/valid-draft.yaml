@@ -1,0 +1,64 @@
+# A minimal Foundry-shaped draft that passes validateLessonDoc and the v1
+# draft constraints (track advanced, self-contained <id>-input snapshot,
+# simple+plan branch kinds only, exactly one assertion).
+schemaVersion: 1
+id: l9
+slug: evaluating-rag-retrieval-quality
+title: Evaluating RAG retrieval quality
+track: advanced
+order: 9
+durationTargetSec: 300
+prereqs: []
+snapshot:
+  snapshotId: l9-input
+fixtures:
+  measure:
+    path: fixtures/l9/measure.json
+    kind: claudeStream
+  eyeball:
+    path: fixtures/l9/eyeball.json
+    kind: claudeStream
+steps:
+  - type: instruction
+    id: intro
+    md: >-
+      **Does your retriever actually retrieve?** Run an evaluation two ways —
+      eyeballing outputs vs. measuring recall — and see why the metric wins.
+  - type: promptBuilder
+    id: compose
+    suggestions:
+      - text: check if the retrieved chunks look relevant
+        description: the eyeball check
+        branchId: eyeball
+      - text: write eval.md scoring retrieval recall against golden-questions.json
+        description: the measured check
+        branchId: measure
+  - type: run
+    id: run
+    branches:
+      eyeball:
+        fixture: eyeball
+        expectedPrompt: check if the retrieved chunks look relevant
+        permissionMode: acceptEdits
+      measure:
+        fixture: measure
+        expectedPrompt: write eval.md scoring retrieval recall against golden-questions.json
+        permissionMode: acceptEdits
+  - type: quiz
+    id: quiz
+    question: Why does measured recall beat eyeballing retrieved chunks?
+    options:
+      - It is faster to run
+      - It catches the misses you never see
+      - It needs no golden questions
+    answerIdx: 1
+  - type: assertion
+    id: grade
+    rule:
+      type: file-contains
+      path: eval.md
+      match: recall
+completion:
+  assertionIds:
+    - grade
+  next: null
