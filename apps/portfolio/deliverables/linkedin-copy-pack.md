@@ -37,7 +37,7 @@ systems teams use to gate access to builds and run internal and public alpha/bet
 tests, from company-wide to player pools in the millions — plus a shared Portal
 component library and cross-team contribution model so teams ship consistent UX.
 
-Since late 2025 I've gone all-in on building with LLMs: agentic development with
+Since late 2025, I've gone all-in on building with LLMs: agentic development with
 Claude Code, and shipping my own AI-native products end-to-end. I built Guided
 REPL — a learning platform that teaches Claude Code by replaying real recorded
 sessions frame-by-frame — and Choices, a 0→1 serverless app with Google auth,
