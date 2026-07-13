@@ -20,8 +20,8 @@ export const profile = {
 
 export const about = [
   "I'm a product-minded engineer with roughly a decade shipping user-facing web software. I started in front-end at Loot Crate, porting a legacy Rails/CoffeeScript app to React/Redux, then spent three years at Ring (Amazon) building micro-frontends embedded in the Ring iOS and Android apps on AWS CDK.",
-  "At Riot Games I build internal developer platforms and tooling for game playtesting — the systems teams use to gate access to builds and run internal and public alpha/beta tests, from company-wide to player pools in the millions. I also built a shared Portal component library and a cross-team contribution model so teams across Riot ship consistent UX.",
-  "Since late 2025 I've gone deep on building with LLMs: agentic development with Claude Code, and shipping my own AI-native products — a platform that teaches Claude Code by replaying real sessions, and a live consumer app with Claude-powered features. This site and both projects are things I designed, built, and deployed end-to-end.",
+  "At Riot Games, I build internal developer platforms and tooling for game playtesting — the systems teams use to gate access to builds and run internal and public alpha/beta tests, from company-wide to player pools in the millions. I also built a shared Portal component library and a cross-team contribution model so teams across Riot ship consistent UX.",
+  "Since late 2025, I've gone deep on building with LLMs: agentic development with Claude Code, and shipping my own AI-native products — a platform that teaches Claude Code by replaying real sessions, and a live consumer app with Claude-powered features. This site and both projects are things I designed, built, and deployed end-to-end.",
 ];
 
 export type Project = {
@@ -75,10 +75,10 @@ export type Job = {
 export const experience: Job[] = [
   {
     company: "Riot Games",
-    role: "Senior Software Engineer (promoted from Software Engineer, 2023)",
+    role: "Senior Software Engineer",
     period: "2021 — Present",
     bullets: [
-      "Build and own internal developer-platform tooling for game playtesting — gating and managing access to game builds and artifacts for internal and public alpha/beta playtests, from company-wide (~5,000 employees) to external player pools of hundreds of thousands to ~2M players.",
+      "Build and own internal developer-platform tooling for game playtesting — gating and managing access to game builds and artifacts for internal and public alpha/beta playtests, from company-wide (~5,000 employees) to hundreds of thousands to ~2M players.",
       "Launched the team's internal portal and grew it from ~100 monthly users at launch to thousands of daily actives.",
       "Built a reusable Portal component library and a cross-team contribution model — teams across Riot ship consistent UX, including AI-assisted contribution via agents.md/style.md conventions and smart components.",
       "Won Riot's internal Thunderdome hackathon (2025), prototyping an Unreal Engine feature for managing skin collections.",

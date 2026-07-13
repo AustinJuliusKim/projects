@@ -37,7 +37,7 @@ systems teams use to gate access to builds and run internal and public alpha/bet
 tests, from company-wide to player pools in the millions — plus a shared Portal
 component library and cross-team contribution model so teams ship consistent UX.
 
-Since late 2025 I've gone all-in on building with LLMs: agentic development with
+Since late 2025, I've gone all-in on building with LLMs: agentic development with
 Claude Code, and shipping my own AI-native products end-to-end. I built Guided
 REPL — a learning platform that teaches Claude Code by replaying real recorded
 sessions frame-by-frame — and Choices, a 0→1 serverless app with Google auth,
@@ -56,7 +56,7 @@ Portfolio: austinjuliuskim.com
 ## 3. Experience (rewritten bullets)
 
 ### Riot Games — Senior Software Engineer · 2023 – Present  ·  Software Engineer · 2021 – 2023
-- Build and own internal developer-platform tooling for game playtesting — gating and managing access to game builds and artifacts for internal and public alpha/beta playtests, from company-wide (~5,000 employees) to external player pools of hundreds of thousands to ~2M players.
+- Build and own internal developer-platform tooling for game playtesting — gating and managing access to game builds and artifacts for internal and public alpha/beta playtests, from company-wide (~5,000 employees) to hundreds of thousands to ~2M players.
 - Launched the team's internal portal and grew it from ~100 monthly users at launch to thousands of daily actives.
 - Built a reusable Portal component library and a cross-team contribution model — teams across Riot ship consistent UX, including AI-assisted contribution via agents.md/style.md conventions and smart components.
 - Won Riot's internal Thunderdome hackathon (2025), prototyping an Unreal Engine feature for managing skin collections.
