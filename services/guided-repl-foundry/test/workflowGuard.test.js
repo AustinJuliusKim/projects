@@ -31,6 +31,12 @@ test("never-full-auto-publish is structural: no merge, no push to main", () => {
   assert.ok(!/push[^\n]*origin\s+main\b/.test(scripts), "workflow must never push to main");
   assert.ok(!/HEAD:main/.test(scripts), "workflow must never push HEAD:main");
   assert.ok(!/git\s+push\s+(-f|--force)/.test(scripts), "workflow must never force-push");
+  // REST/GraphQL merges must not slip past the literal `gh pr merge` check.
+  assert.ok(
+    !/gh\s+api[\s\S]*?(merge|pulls\/.*\/merge|merge_method|mergePullRequest)/i.test(scripts),
+    "workflow must never merge via gh api / GraphQL",
+  );
+  assert.ok(!/mergePullRequest|merge_method/i.test(raw), "no merge mutations anywhere in the workflow");
   // The only PR creation is DRAFT PR creation.
   const creates = scripts.match(/gh pr create[^\n]*(?:\n\s+--[^\n]+)*/g) ?? [];
   assert.ok(creates.length >= 1, "workflow opens draft PRs");
@@ -64,6 +70,19 @@ test("foundry CLI sources contain no git/PR write operations", () => {
   }
   const queueSrc = fs.readFileSync(path.join(srcDir, "pr/queue.js"), "utf8");
   assert.match(queueSrc, /"pr",\s*\n?\s*"list"/, "queue.js only lists PRs");
+});
+
+test("uses: steps are allowlisted — no marketplace actions can merge/publish", () => {
+  const ALLOWED_USES = [/^actions\/checkout@/, /^actions\/setup-node@/];
+  for (const [jobName, job] of Object.entries(workflow.jobs)) {
+    for (const step of job.steps ?? []) {
+      if (!step.uses) continue;
+      assert.ok(
+        ALLOWED_USES.some((re) => re.test(step.uses)),
+        `job ${jobName}: uses "${step.uses}" is not in the allowlist — a third-party action could bypass the publish guard`,
+      );
+    }
+  }
 });
 
 test("workflow permissions are exactly contents+pull-requests write", () => {

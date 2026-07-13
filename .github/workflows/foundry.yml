@@ -147,7 +147,10 @@ jobs:
           set -euo pipefail
           git config user.name "foundry-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- foundry/bench/results; then
+          # Scorecards are NEW files (<date>-<role>.md/.json) — untracked, so
+          # `git diff` can't see them; porcelain status covers both new and
+          # modified results.
+          if [ -z "$(git status --porcelain -- foundry/bench/results)" ]; then
             echo "no new bench results"; exit 0
           fi
           stamp=$(date -u +%Y%m%d)
