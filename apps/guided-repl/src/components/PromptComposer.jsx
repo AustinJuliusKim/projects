@@ -9,6 +9,7 @@
  */
 
 import { useMemo, useRef, useState } from "react";
+import { interpolateUserName } from "@guided-repl/protocol";
 import { filterSuggestions } from "../lessons/fuzzyMatch.js";
 
 /** Same normalization as matchPrompt — the binding contract. */
@@ -24,9 +25,10 @@ function normalize(text) {
  *   onSubmit: (text: string, branchId?: string) => void,
  *   freeText?: boolean,
  *   placeholder?: string,
+ *   userName?: string|null,
  * }} props
  */
-export default function PromptComposer({ suggestions, status, hint, onSubmit, freeText = false, placeholder }) {
+export default function PromptComposer({ suggestions, status, hint, onSubmit, freeText = false, placeholder, userName = null }) {
   const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -37,14 +39,23 @@ export default function PromptComposer({ suggestions, status, hint, onSubmit, fr
   const inputRef = useRef(null);
 
   const running = status === "running";
+
+  // Display text is {{userName}}-interpolated; rawText keeps the authored
+  // token so submits preserve the matchPrompt/expectedPrompt contract
+  // (branchId precedence already handles the personalized display text).
+  const displaySuggestions = useMemo(
+    () => suggestions.map((s) => ({ ...s, text: interpolateUserName(s.text, userName), rawText: s.text })),
+    [suggestions, userName],
+  );
+
   const filtered = useMemo(
-    () => (freeText ? [] : filterSuggestions(input, suggestions)),
-    [freeText, input, suggestions],
+    () => (freeText ? [] : filterSuggestions(input, displaySuggestions)),
+    [freeText, input, displaySuggestions],
   );
 
   const exactMatches = useMemo(
-    () => (freeText ? [] : suggestions.filter((s) => normalize(s.text) === normalize(input))),
-    [freeText, input, suggestions],
+    () => (freeText ? [] : displaySuggestions.filter((s) => normalize(s.text) === normalize(input))),
+    [freeText, input, displaySuggestions],
   );
   const resolved =
     picked && normalize(picked.text) === normalize(input)
@@ -71,7 +82,7 @@ export default function PromptComposer({ suggestions, status, hint, onSubmit, fr
       setMenuOpen(true);
       return;
     }
-    onSubmit(resolved.text, resolved.branchId);
+    onSubmit(resolved.rawText ?? resolved.text, resolved.branchId);
     setMenuOpen(false);
     setLocalHint(null);
   }

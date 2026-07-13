@@ -66,7 +66,9 @@ export function sanitizeString(str, ctx) {
 
   if (fullName) {
     const fullNameRe = new RegExp(`\\b${escapeRegExp(fullName)}\\b`, "g");
-    s = s.replace(fullNameRe, "Demo User");
+    // Interpolation token, not a literal: the player substitutes the
+    // learner's captured name at render time ("Demo User" when anonymous).
+    s = s.replace(fullNameRe, "{{userName}}");
   }
 
   if (cwd) {

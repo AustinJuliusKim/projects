@@ -10,6 +10,8 @@ import { marked } from "marked";
 import LessonRail from "./LessonRail.jsx";
 import QuizCard from "./QuizCard.jsx";
 import GradeBanner from "./GradeBanner.jsx";
+import CaptureCard from "./CaptureCard.jsx";
+import GraduationPanel from "./GraduationPanel.jsx";
 
 /**
  * @param {{
@@ -21,6 +23,10 @@ import GradeBanner from "./GradeBanner.jsx";
  *   onContinue: () => void,
  *   onQuizAnswer: (stepId: string, answerIdx: number) => void,
  *   onRetry: () => void,
+ *   onCapture: (stepId: string, values: {name?: string, email?: string}, consent: boolean) => void,
+ *   onCaptureSkip: (stepId: string) => void,
+ *   userName?: string|null,
+ *   capturedEmail?: string|null,
  * }} props
  */
 export default function Rail({
@@ -32,10 +38,19 @@ export default function Rail({
   onContinue,
   onQuizAnswer,
   onRetry,
+  onCapture,
+  onCaptureSkip,
+  userName = null,
+  capturedEmail = null,
 }) {
-  const { mode, dots, instructionMd, currentStep, results, graduated } = rail;
+  const { mode, dots, instructionMd, currentStep, results, graduated, latestAssertionResult } = rail;
   const collapsed = mode === "running";
-  const assertionResult = currentStep?.type === "assertion" ? results[currentStep.id] : null;
+  // The banner tracks the most recent assertion result so it stays visible
+  // while the post-grade capture step is current.
+  const assertionResult = latestAssertionResult;
+  const showContinue =
+    (mode === "instructing" && currentStep?.type === "instruction") ||
+    (currentStep?.type === "assertion" && results[currentStep.id]?.pass && !graduated);
 
   return (
     <aside className={`rail ${collapsed ? "rail-collapsed" : ""}`} data-testid="rail" data-mode={mode}>
@@ -58,7 +73,7 @@ export default function Rail({
             />
           )}
 
-          {mode === "instructing" && (
+          {showContinue && (
             <button type="button" className="rail-continue" data-testid="rail-continue" onClick={onContinue}>
               Continue
             </button>
@@ -68,15 +83,23 @@ export default function Rail({
             <QuizCard key={currentStep.id} step={currentStep} onAnswer={onQuizAnswer} />
           )}
 
+          {currentStep?.type === "capture" && !results[currentStep.id] && (
+            <CaptureCard key={currentStep.id} step={currentStep} onSubmit={onCapture} onSkip={onCaptureSkip} />
+          )}
+
           {assertionResult && (
             <>
               <GradeBanner result={assertionResult} />
-              {!assertionResult.pass && (
+              {!assertionResult.pass && currentStep?.type === "assertion" && (
                 <button type="button" className="rail-retry" data-testid="rail-retry" onClick={onRetry}>
                   Try again
                 </button>
               )}
             </>
+          )}
+
+          {graduated && completionNext === null && (
+            <GraduationPanel userName={userName} capturedEmail={capturedEmail} />
           )}
 
           {graduated && completionNext && (

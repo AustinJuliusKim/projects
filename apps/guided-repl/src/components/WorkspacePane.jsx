@@ -9,9 +9,9 @@ import FileViewer from "./FileViewer.jsx";
 import { getFile } from "../lib/virtualFs.js";
 
 /**
- * @param {{files: import("../lib/virtualFs.js").VFiles, openFile: string|null, onOpenFile: (path: string) => void}} props
+ * @param {{files: import("../lib/virtualFs.js").VFiles, openFile: string|null, onOpenFile: (path: string) => void, userName?: string|null}} props
  */
-export default function WorkspacePane({ files, openFile, onOpenFile }) {
+export default function WorkspacePane({ files, openFile, onOpenFile, userName = null }) {
   const lastWrittenRef = useRef(null);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function WorkspacePane({ files, openFile, onOpenFile }) {
   return (
     <div className="workspace-pane" data-testid="workspace">
       <FileTree files={files} openFile={openFile} onOpen={onOpenFile} />
-      <FileViewer path={openFile} file={getFile(files, openFile ?? "")} files={files} />
+      <FileViewer path={openFile} file={getFile(files, openFile ?? "")} files={files} userName={userName} />
     </div>
   );
 }

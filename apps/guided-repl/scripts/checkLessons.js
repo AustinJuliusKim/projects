@@ -23,6 +23,8 @@
  *       plain/claudemd special case)
  *   (h) redaction grep over the manifest and every fixture/snapshot file
  *   (i) drift: recompiling the YAML sources reproduces the committed manifest
+ *   (j) token lint: {{userName}} is the only interpolation token allowed in
+ *       the manifest and fixture/snapshot files (typo/unknown-token gate)
  *
  * Usage: node scripts/checkLessons.js
  * Exit code is non-zero (with precise error messages on stderr) on any
@@ -305,6 +307,9 @@ if (existsSync(snapshotsDir)) {
 }
 
 // (h) redaction grep over the manifest and every fixture/snapshot file.
+// (j) token lint: any "{{" not immediately opening "{{userName}}" is a
+// typo'd or unknown interpolation token — the player would ship it verbatim.
+const UNKNOWN_TOKEN_RE = /\{\{(?!userName\}\})/;
 for (const filePath of checkedFiles) {
   if (!existsSync(filePath)) continue;
   const raw = readFileSync(filePath, "utf8");
@@ -313,6 +318,11 @@ for (const filePath of checkedFiles) {
     if (match) {
       fail(`redaction: ${filePath} contains a ${name} match: ${JSON.stringify(match[0])}`);
     }
+  }
+  const tokenMatch = raw.match(UNKNOWN_TOKEN_RE);
+  if (tokenMatch) {
+    const at = tokenMatch.index ?? 0;
+    fail(`token lint: ${filePath} contains a non-{{userName}} "{{" token near ${JSON.stringify(raw.slice(at, at + 24))}`);
   }
 }
 

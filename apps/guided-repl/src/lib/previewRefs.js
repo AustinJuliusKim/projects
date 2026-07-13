@@ -113,12 +113,17 @@ function isUntouchable(ref) {
  * data:/blob:/mailto: URIs, anchors, and refs that don't resolve to a known
  * file are left untouched (graceful degrade).
  *
+ * `transformContent`, when given, is applied to each resolved file's content
+ * before base64 encoding (used for render-time {{userName}} interpolation —
+ * inlined files are markup sinks, so callers pass an HTML-escaping transform).
+ *
  * @param {string} html
  * @param {import("./virtualFs.js").VFiles} files
  * @param {string} basePath
+ * @param {(content: string) => string} [transformContent]
  * @returns {string}
  */
-export function rewriteRefs(html, files, basePath) {
+export function rewriteRefs(html, files, basePath, transformContent) {
   return html.replace(REF_RE, (match, tag, pre, attr, quote, ref, post) => {
     // Defense-in-depth for future untrusted (BYOK) content: strip executable
     // URL schemes rather than passing them through. Harmless today (the
@@ -132,7 +137,8 @@ export function rewriteRefs(html, files, basePath) {
     const file = getFile(files, resolved);
     if (!file) return match;
 
-    const dataUri = `data:${mimeFor(resolved)};base64,${toBase64(file.content)}`;
+    const content = transformContent ? transformContent(file.content) : file.content;
+    const dataUri = `data:${mimeFor(resolved)};base64,${toBase64(content)}`;
     return `<${tag}${pre} ${attr}=${quote}${dataUri}${quote}${post}>`;
   });
 }

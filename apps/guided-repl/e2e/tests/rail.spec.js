@@ -64,6 +64,10 @@ test("next-lesson affordance advances to completion.next", async ({ page }) => {
   await composePrompt(page, { description: "the vague prompt" });
   await runPrompt(page);
 
+  // The post-grade email capture is the last flow step — skipping it
+  // graduates the lesson.
+  await page.getByTestId("capture-skip").click();
+
   const rail = page.getByTestId("rail");
   await expect(rail).toHaveAttribute("data-mode", "graduated");
   await page.getByTestId("rail-next-lesson").click();

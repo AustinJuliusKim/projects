@@ -175,6 +175,8 @@
 "@guided-repl/protocol@file:../../packages/guided-repl-protocol":
   version "0.1.0"
   resolved "file:../../packages/guided-repl-protocol"
+  dependencies:
+    zod "^4.0.0"
 
 "@jridgewell/gen-mapping@^0.3.12", "@jridgewell/gen-mapping@^0.3.5":
   version "0.3.13"

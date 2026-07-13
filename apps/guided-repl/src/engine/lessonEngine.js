@@ -70,6 +70,8 @@ export function stageMode(state) {
     case "quiz":
     case "assertion":
       return "reflecting";
+    case "capture":
+      return "instructing";
     default:
       return "instructing";
   }
@@ -162,7 +164,27 @@ export function engineReducer(state, action) {
       if (action.result.pass && atEnd && completionSatisfied(next)) {
         return { ...next, graduated: true };
       }
+      // Mid-lesson pass advances (mirrors quiz) — enables post-assertion
+      // steps like the email capture; GradeBanner stays visible via
+      // railModel's latestAssertionResult.
+      if (action.result.pass && !atEnd) {
+        return advanceFrom(next, state.stepIndex);
+      }
       return next;
+    }
+
+    case "capture_submitted": {
+      const step = currentStep(state);
+      if (step?.type !== "capture" || step.id !== action.stepId) return state;
+      const results = { ...state.results, [step.id]: { pass: true, values: action.values } };
+      return advanceFrom({ ...state, results }, state.stepIndex);
+    }
+
+    case "capture_skipped": {
+      const step = currentStep(state);
+      if (step?.type !== "capture" || step.id !== action.stepId || !step.optional) return state;
+      const results = { ...state.results, [step.id]: { pass: true, skipped: true } };
+      return advanceFrom({ ...state, results }, state.stepIndex);
     }
 
     case "retry": {
@@ -217,7 +239,7 @@ export function evaluateRule(rule, { files, messages, results }) {
  */
 export function railModel(state) {
   if (!state.lesson) {
-    return { mode: "instructing", dots: [], instructionMd: null, currentStep: null, results: {}, graduated: false };
+    return { mode: "instructing", dots: [], instructionMd: null, currentStep: null, results: {}, graduated: false, latestAssertionResult: null };
   }
   const steps = state.lesson.steps;
   const flowSteps = steps.filter(isFlowStep);
@@ -237,6 +259,16 @@ export function railModel(state) {
     }
   }
 
+  // The most recent assertion result at or before the current step — keeps
+  // the GradeBanner visible while a post-assertion capture step is current.
+  let latestAssertionResult = null;
+  for (let i = Math.min(state.stepIndex, steps.length - 1); i >= 0; i--) {
+    if (steps[i].type === "assertion" && state.results[steps[i].id]) {
+      latestAssertionResult = state.results[steps[i].id];
+      break;
+    }
+  }
+
   return {
     mode: stageMode(state),
     dots,
@@ -244,5 +276,6 @@ export function railModel(state) {
     currentStep: currentStep(state),
     results: state.results,
     graduated: state.graduated,
+    latestAssertionResult,
   };
 }
