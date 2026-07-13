@@ -4,14 +4,10 @@
 # stack outputs. Params (stack name, region) come from deploy-params.json
 # unless overridden via STACK_NAME/REGION env vars.
 #
-# First-time setup (once):
-#   1. Issue an ACM cert for austinjuliuskim.com in us-east-1, put its ARN in
-#      deploy-params.json (CertificateArn).
-#   2. aws cloudformation deploy --template-file template.yaml \
-#        --stack-name Portfolio --region us-west-2 \
-#        --parameter-overrides CustomDomain=austinjuliuskim.com CertificateArn=<arn>
-#   3. Point austinjuliuskim.com DNS at the DistributionDomainName output.
-# Then run this script to build + upload on every change.
+# First-time setup (once, admin creds): run scripts/bootstrap-infra.sh — it
+# provisions the ACM cert/DNS, the GitHub OIDC deploy role, and the initial
+# stack. After that, pushes to main deploy automatically via
+# .github/workflows/portfolio.yml. Run this script directly for a manual deploy.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
