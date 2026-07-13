@@ -70,6 +70,8 @@ export async function runPipeline({
   let itemsBySource = {};
   let cards = [];
   let spentUsd = 0;
+  let scoutUsage = { calls: 0, costUsd: 0 };
+  const authorUsage = { drafts: 0, costUsd: 0 };
 
   if (mode === "radar") {
     cursors = readCursors(cursorsPath ?? `${foundryDir}/state/cursors.json`);
@@ -88,6 +90,7 @@ export async function runPipeline({
     errors = scout.errors;
     itemsBySource = scout.itemsBySource;
     cards = scout.cards;
+    scoutUsage = scout.usage;
     spentUsd += scout.usage.costUsd;
     log(`scout: ${notes.length} note(s), ${cards.length} card(s), ${errors.length} error(s), $${scout.usage.costUsd.toFixed(4)}`);
   } else if (mode === "idea") {
@@ -161,6 +164,8 @@ export async function runPipeline({
       const sourceItems = itemsBySource[card.sourceId] ?? [];
       const draft = await authorDraft({ agentClient, card, sourceItems, fixedBlock });
       spentUsd += draft.provenance.costUsd;
+      authorUsage.drafts += 1;
+      authorUsage.costUsd += draft.provenance.costUsd;
 
       const validation = await validateDraft({
         doc: draft.doc,
@@ -214,7 +219,7 @@ export async function runPipeline({
       errors,
       settings,
       outDir,
-      usage: { calls: cards.length, costUsd: spentUsd },
+      usage: { scout: scoutUsage, author: authorUsage, totalUsd: spentUsd },
       now,
     });
   }

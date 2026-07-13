@@ -166,7 +166,7 @@ test("radar bundle: notes + cursors + radar.md decisions table", () => {
       errors: [{ sourceId: "dead-feed", message: "fetch failed: HTTP 404" }],
       settings,
       outDir,
-      usage: { calls: 3, costUsd: 0.0123 },
+      usage: { scout: { calls: 3, costUsd: 0.0123 }, author: { drafts: 1, costUsd: 2.1 }, totalUsd: 2.1123 },
       now: NOW,
     });
 
@@ -182,7 +182,9 @@ test("radar bundle: notes + cursors + radar.md decisions table", () => {
     assert.match(radar, /gated-out — overlap 0\.91 >= 0\.65 with lesson l1/);
     assert.match(radar, /over-budget — projected \$12\.10 > cap \$10/);
     assert.match(radar, /dead-feed.*HTTP 404/);
-    assert.match(radar, /3 scout call\(s\), \$0\.0123/);
+    assert.match(radar, /scout: 3 call\(s\), \$0\.0123/);
+    assert.match(radar, /author: 1 draft\(s\), \$2\.1000/);
+    assert.match(radar, /total: \$2\.1123/);
 
     const body = fs.readFileSync(path.join(bundle.dir, "PR_BODY.md"), "utf8");
     assert.match(body, /1 bench trigger\(s\) fired/);

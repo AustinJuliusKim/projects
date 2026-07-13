@@ -25,7 +25,7 @@ function monthDir(d) {
  * @param {{sourceId: string, message: string}[]} opts.errors
  * @param {object} opts.settings
  * @param {string} opts.outDir
- * @param {{calls: number, costUsd: number}} [opts.usage] scout spend
+ * @param {{scout: {calls: number, costUsd: number}, author: {drafts: number, costUsd: number}, totalUsd: number}} [opts.usage] run spend breakdown
  * @param {() => Date} [opts.now]
  * @returns {{dir: string, branchName: string, labels: string[], title: string, files: string[]}}
  */
@@ -63,7 +63,11 @@ export function buildRadarBundle({ notes, cards, cursors, errors, settings, outD
 ${cardLines.join("\n") || "| (no cards this run) | | | | |"}
 
 ${errorLines.length ? `## Source errors\n\n${errorLines.join("\n")}\n` : ""}${
-    usage ? `## Scout spend\n\n- ${usage.calls} scout call(s), $${usage.costUsd.toFixed(4)}\n` : ""
+    usage
+      ? `## Run spend\n\n- scout: ${usage.scout.calls} call(s), $${usage.scout.costUsd.toFixed(4)}\n` +
+        `- author: ${usage.author.drafts} draft(s), $${usage.author.costUsd.toFixed(4)}\n` +
+        `- total: $${usage.totalUsd.toFixed(4)}\n`
+      : ""
   }`;
   assertRedacted(radarMd, "radar.md");
   writeRepoFile(`foundry/notes/${month}/radar.md`, radarMd);
