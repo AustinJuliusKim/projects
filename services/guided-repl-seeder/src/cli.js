@@ -11,30 +11,28 @@
  */
 
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { execFileSync } from "node:child_process";
 
-import { run as localRun } from "./runner/localRunner.js";
-import { mapEvent } from "./streamMapper.js";
-import { normalizeFrame } from "./normalizer.js";
-import { computePacing } from "./pacing.js";
 import { snapshotWorkspace } from "./snapshotter.js";
 import { buildFixture, writeJson } from "./fixtureWriter.js";
 import { applyAuthorGate, applyMultiPlanGate } from "./authorGate.js";
-import { captureModelFromRaw, stampUsageModel } from "./modelStamp.js";
 import { mergeAnnotations } from "./annotationMerge.js";
 import { makeWorkspaceFromSnapshot } from "./workspace.js";
 import { recipes, CHAIN_ORDER } from "./recipes/index.js";
+import {
+  getClaudeCodeVersion,
+  makeSeedWorkspace,
+  recordSimpleBranch,
+  recordPlanBranch,
+  runSegment,
+} from "./seedLib.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SEEDER_ROOT = path.resolve(__dirname, "..");
 const REPO_ROOT = path.resolve(SEEDER_ROOT, "..", "..");
 const APP_FIXTURES_DIR = path.join(REPO_ROOT, "apps", "guided-repl", "public", "fixtures", "v1");
 const LESSONS_JSON_PATH = path.join(APP_FIXTURES_DIR, "lessons.json");
-
-const SEED_README = "# My Page\n\nStarter workspace.\n";
 
 /**
  * Parses argv (excluding node/script) into the seed-lessons options.
@@ -65,117 +63,6 @@ export function parseArgs(argv) {
   }
 
   return { lessonId, branch, out };
-}
-
-/**
- * Runs `claude --version` and returns its trimmed output.
- * @returns {string}
- */
-function getClaudeCodeVersion() {
-  return execFileSync("claude", ["--version"]).toString().trim();
-}
-
-/**
- * Consumes a Runner's raw NDJSON stream, mapping/normalizing each event
- * into paced fixture events (no awaitClient markers — those are added by
- * authorGate for the plan branch).
- *
- * @param {AsyncIterable<object>} rawEvents
- * @param {string} cwd
- * @returns {Promise<import("@guided-repl/protocol").FixtureEvent[]>}
- */
-async function collectPacedEvents(rawEvents, cwd) {
-  // Resolve symlinks (e.g. macOS /tmp -> /private/tmp, /var -> /private/var)
-  // so the normalizer's cwd match lines up with the *resolved* absolute
-  // paths the claude CLI reports in tool_use/tool_result payloads.
-  const realCwd = fs.realpathSync(cwd);
-  const timed = [];
-  let model;
-  for await (const raw of rawEvents) {
-    const capturedModel = captureModelFromRaw(raw);
-    if (capturedModel) model = capturedModel;
-    const tMs = Date.now();
-    for (const frame of mapEvent(raw)) {
-      timed.push({ frame: normalizeFrame(frame, { cwd: realCwd }), tMs });
-    }
-  }
-  return stampUsageModel(computePacing(timed), model);
-}
-
-/**
- * Creates a fresh tmp workspace seeded with the starter README.
- * @returns {string} workspace dir
- */
-function makeSeedWorkspace() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "guided-repl-seed-"));
-  fs.writeFileSync(path.join(dir, "README.md"), SEED_README);
-  return dir;
-}
-
-/**
- * Records one non-plan branch (single acceptEdits run).
- *
- * @param {{lessonId: string, branchId: string, expectedPrompt: string, permissionMode: string, assertion: object, claudeCodeVersion: string, seedSnapshotId: string}} opts
- * @returns {Promise<{fixture: object, workspace: string}>}
- */
-async function recordSimpleBranch(opts) {
-  const workspace = makeSeedWorkspace();
-  const rawEvents = localRun({
-    prompt: opts.expectedPrompt,
-    cwd: workspace,
-    permissionMode: opts.permissionMode,
-  });
-  const events = await collectPacedEvents(rawEvents, workspace);
-  const fixture = buildFixture({
-    lessonId: opts.lessonId,
-    branchId: opts.branchId,
-    claudeCodeVersion: opts.claudeCodeVersion,
-    seedSnapshotId: opts.seedSnapshotId,
-    permissionMode: opts.permissionMode,
-    expectedPrompt: opts.expectedPrompt,
-    events,
-    assertion: opts.assertion,
-  });
-  return { fixture, workspace };
-}
-
-/**
- * Records the plan-mode branch: a plan run, then an acceptEdits execution
- * run in the same workspace with the same prompt, spliced via authorGate.
- *
- * @param {{lessonId: string, branchId: string, expectedPrompt: string, assertion: object, claudeCodeVersion: string, seedSnapshotId: string}} opts
- * @returns {Promise<{fixture: object, workspace: string}>}
- */
-async function recordPlanBranch(opts) {
-  const workspace = makeSeedWorkspace();
-
-  const planRawEvents = localRun({
-    prompt: opts.expectedPrompt,
-    cwd: workspace,
-    permissionMode: "plan",
-  });
-  const planEvents = await collectPacedEvents(planRawEvents, workspace);
-
-  const executionRawEvents = localRun({
-    prompt: opts.expectedPrompt,
-    cwd: workspace,
-    permissionMode: "acceptEdits",
-  });
-  const executionEvents = await collectPacedEvents(executionRawEvents, workspace);
-
-  const events = applyAuthorGate(planEvents, executionEvents);
-
-  const fixture = buildFixture({
-    lessonId: opts.lessonId,
-    branchId: opts.branchId,
-    claudeCodeVersion: opts.claudeCodeVersion,
-    seedSnapshotId: opts.seedSnapshotId,
-    permissionMode: "plan",
-    expectedPrompt: opts.expectedPrompt,
-    events,
-    assertion: opts.assertion,
-  });
-  return { fixture, workspace };
 }
 
 /**
@@ -273,23 +160,6 @@ function loadPublishedSnapshot(snapshotId) {
     throw new Error(`seed-lessons: snapshot "${snapshotId}" not found at ${p} — record the prior lesson first`);
   }
   return JSON.parse(fs.readFileSync(p, "utf8"));
-}
-
-/**
- * Runs one `claude -p` segment in `cwd` and returns its paced, normalized,
- * model-stamped fixture events.
- *
- * @param {{prompt: string, cwd: string, permissionMode: string, model?: string|null}} opts
- * @returns {Promise<import("@guided-repl/protocol").FixtureEvent[]>}
- */
-async function runSegment(opts) {
-  const rawEvents = localRun({
-    prompt: opts.prompt,
-    cwd: opts.cwd,
-    permissionMode: opts.permissionMode,
-    ...(opts.model ? { model: opts.model } : {}),
-  });
-  return collectPacedEvents(rawEvents, opts.cwd);
 }
 
 /**
