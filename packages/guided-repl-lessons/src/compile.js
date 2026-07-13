@@ -7,6 +7,8 @@
  *   node src/compile.js                 build dist/lessons.json
  *   node src/compile.js --check         compile in memory and diff against
  *                                       the app's committed lessons.json
+ *   node src/compile.js --lessons-dir <dir>     override lesson YAML source dir
+ *                                               (e.g. a Foundry staging tree)
  *   node src/compile.js --fixtures-root <dir>   override fixture asset root
  *   node src/compile.js --out <file>            override output path
  */
@@ -254,10 +256,11 @@ function main(argv) {
     const i = args.indexOf(name);
     return i === -1 ? undefined : args[i + 1];
   };
+  const lessonsDir = flag("--lessons-dir") ?? DEFAULT_LESSONS_DIR;
   const fixturesRoot = flag("--fixtures-root") ?? DEFAULT_FIXTURES_ROOT;
   const outPath = flag("--out") ?? DEFAULT_OUT;
 
-  const manifest = compileAll({ fixturesRoot });
+  const manifest = compileAll({ lessonsDir, fixturesRoot });
   const json = `${JSON.stringify(manifest, null, 2)}\n`;
 
   if (args.includes("--check")) {
