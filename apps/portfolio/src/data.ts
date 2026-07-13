@@ -86,7 +86,7 @@ export const experience: Job[] = [
   },
   {
     company: "Ring (Amazon)",
-    role: "Software Development Engineer",
+    role: "Software Development Engineer II",
     period: "2018 — 2021",
     bullets: [
       "Built a micro-frontend webview embedded in the Ring iOS and Android apps for privacy controls and notification settings across the company's services.",

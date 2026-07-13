@@ -61,7 +61,7 @@ Portfolio: austinjuliuskim.com
 - Built a reusable Portal component library and a cross-team contribution model — teams across Riot ship consistent UX, including AI-assisted contribution via agents.md/style.md conventions and smart components.
 - Won Riot's internal Thunderdome hackathon (2025), prototyping an Unreal Engine feature for managing skin collections.
 
-### Ring (Amazon) — Software Development Engineer · 2018 – 2021
+### Ring (Amazon) — Software Development Engineer II · 2018 – 2021
 - Built a micro-frontend webview embedded in the Ring iOS and Android apps for privacy controls and notification settings across the company's services.
 - Built internal B2B web tooling for the Neighbors org handling privacy-sensitive geolocation data, with encryption and data anonymization.
 - Led and mentored a team of 3 front-end contractors for ~6 months — onboarding, coaching, and feedback.
