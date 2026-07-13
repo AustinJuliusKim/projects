@@ -102,6 +102,7 @@ export async function runScout({
   const notes = [];
   const cards = [];
   const errors = [];
+  const itemsBySource = {};
   const nextCursors = { sources: { ...cursors.sources } };
   let calls = 0;
   let costUsd = 0;
@@ -112,6 +113,7 @@ export async function runScout({
       const { newItems, state } = filterNewItems(nextCursors.sources[source.id] ?? {}, items, { now });
       nextCursors.sources[source.id] = state;
       if (newItems.length === 0) continue;
+      itemsBySource[source.id] = newItems;
 
       const { text, costUsd: callCost } = await agentClient.complete({
         role: "scout",
@@ -145,7 +147,7 @@ export async function runScout({
           sourceId: source.id,
         };
         if (lessonIndex) {
-          const { score, nearestLessonId } = lessonIndex.overlapScore(`${card.topic} ${card.whyNow}`);
+          const { score, nearestLessonId } = lessonIndex.overlapScore(card.topic);
           card.overlapScore = score;
           card.nearestLessonId = nearestLessonId;
         }
@@ -163,5 +165,5 @@ export async function runScout({
     }
   }
 
-  return { notes, cards, cursors: nextCursors, errors, usage: { calls, costUsd } };
+  return { notes, cards, cursors: nextCursors, errors, itemsBySource, usage: { calls, costUsd } };
 }
