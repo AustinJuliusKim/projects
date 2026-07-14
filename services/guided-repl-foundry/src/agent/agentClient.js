@@ -16,6 +16,7 @@ import { costForModel } from "./pricing.js";
  * @property {string} prompt
  * @property {string} [system]
  * @property {string} model
+ * @property {number} [maxTurns] Agent SDK turn budget; omitted → live-path default
  * @property {string} [role] metadata for fakes/telemetry; the live path ignores it
  *
  * @typedef {object} QueryResult
@@ -28,11 +29,12 @@ import { costForModel } from "./pricing.js";
 /**
  * Live path: drives the Agent SDK's query() with no tools — Foundry prompts
  * are fully context-stuffed (sources are fetched by the pipeline, not by the
- * agent), so `allowedTools: []` and a single turn.
+ * agent), so `allowedTools: []`. `maxTurns` (settings.authorMaxTurns) bounds
+ * the turn budget; a too-low cap surfaces as an `error_max_turns` throw below.
  *
  * @type {QueryImpl}
  */
-async function defaultQueryImpl({ prompt, system, model }) {
+async function defaultQueryImpl({ prompt, system, model, maxTurns = 3 }) {
   const { query } = await import("@anthropic-ai/claude-agent-sdk");
   const stream = query({
     prompt,
@@ -40,7 +42,7 @@ async function defaultQueryImpl({ prompt, system, model }) {
       model,
       ...(system ? { systemPrompt: system } : {}),
       allowedTools: [],
-      maxTurns: 1,
+      maxTurns,
     },
   });
 
@@ -75,9 +77,10 @@ async function defaultQueryImpl({ prompt, system, model }) {
  * @param {{roles: Record<string, {model: string}>}} opts.models parsed models.yaml
  * @param {Record<string, {inputPerMTok: number, outputPerMTok: number}>} opts.pricing settings.pricing
  * @param {Record<string, string>} [opts.overrides] per-run role → model overrides (--model-<role>)
+ * @param {number} [opts.maxTurns] Agent SDK turn budget (settings.authorMaxTurns)
  * @returns {{complete: (req: {role: string, prompt: string, system?: string, model?: string}) => Promise<{text: string, usage: object, costUsd: number, model: string, role: string}>, modelForRole: (role: string) => string}}
  */
-export function createAgentClient({ queryImpl = defaultQueryImpl, models, pricing, overrides = {} }) {
+export function createAgentClient({ queryImpl = defaultQueryImpl, models, pricing, overrides = {}, maxTurns }) {
   /**
    * Resolves the model for a role: explicit per-call model > per-run
    * override > models.yaml role default.
@@ -100,7 +103,7 @@ export function createAgentClient({ queryImpl = defaultQueryImpl, models, pricin
 
     async complete({ role, prompt, system, model }) {
       const resolved = resolveModel(role, model);
-      const { text, usage } = await queryImpl({ prompt, system, model: resolved, role });
+      const { text, usage } = await queryImpl({ prompt, system, model: resolved, role, ...(maxTurns != null ? { maxTurns } : {}) });
       const costUsd = costForModel(usage ?? {}, resolved, pricing);
       return { text, usage: usage ?? {}, costUsd, model: resolved, role };
     },

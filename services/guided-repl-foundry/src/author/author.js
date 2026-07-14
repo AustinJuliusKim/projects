@@ -1,7 +1,8 @@
 /**
  * Author stage: one AgentClient call (role: author) → fenced YAML → parsed +
- * Zod-validated lesson doc with provenance. One retry on parse/validation
- * failure, with the error message appended to the prompt.
+ * Zod-validated lesson doc with provenance. One retry on any failure — agent/
+ * SDK (e.g. error_max_turns) or parse/validation — with the error message
+ * appended to the prompt.
  */
 
 import { parse as parseYaml } from "yaml";
@@ -57,12 +58,14 @@ export async function authorDraft({ agentClient, card, sourceItems = [], fixedBl
         : `${basePrompt}\n\n---\n\nYour previous draft was rejected: ${lastError.message}\n` +
           "Fix the problem and respond again with a single fenced ```yaml block.";
 
-    const result = await agentClient.complete({ role: "author", prompt, model });
-    usages.push(result.usage);
-    costUsd += result.costUsd;
-    resolvedModel = result.model;
-
     try {
+      // The complete() call is inside the try so agent/SDK failures (e.g.
+      // error_max_turns) are retried too, not just bad-output failures.
+      const result = await agentClient.complete({ role: "author", prompt, model });
+      usages.push(result.usage);
+      costUsd += result.costUsd;
+      resolvedModel = result.model;
+
       const yamlText = extractYamlBlock(result.text);
       const doc = validateLessonDoc(parseYaml(yamlText));
       return {

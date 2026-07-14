@@ -14,6 +14,7 @@ import { runScout } from "./scout/scout.js";
 import { buildLessonIndex, gateTopic } from "./overlap/lessonIndex.js";
 import { buildFixedBlock } from "./author/promptPack.js";
 import { authorDraft } from "./author/author.js";
+import { nextLessonOrder, withLessonOrder } from "./lessons/nextOrder.js";
 import { validateDraft } from "./validate/validateDraft.js";
 import { buildDraftBundle } from "./pr/draftBundle.js";
 import { buildRadarBundle } from "./radar/radarBundle.js";
@@ -145,6 +146,9 @@ export async function runPipeline({
   const fixedBlock = buildFixedBlock();
   const draftBundles = [];
   let budgetBlown = false;
+  // The author copies the exemplar's order (1); assign corpus-unique orders,
+  // distinct across drafts in this run so co-merged PRs don't collide.
+  let nextOrder = nextLessonOrder();
 
   for (const card of candidates.slice(0, takeN)) {
     if (budgetBlown) {
@@ -163,6 +167,7 @@ export async function runPipeline({
     try {
       const sourceItems = itemsBySource[card.sourceId] ?? [];
       const draft = await authorDraft({ agentClient, card, sourceItems, fixedBlock });
+      Object.assign(draft, withLessonOrder(draft.yamlText, draft.doc, nextOrder++));
       spentUsd += draft.provenance.costUsd;
       authorUsage.drafts += 1;
       authorUsage.costUsd += draft.provenance.costUsd;
