@@ -8,7 +8,7 @@ sources:
     cadence: monthly
 
   - id: anthropic-academy
-    # Catalog page has no feed — the one scrape-lite exception; failure-isolated.
+    # Catalog page has no feed — scrape-lite (see anthropic-news); failure-isolated.
     method: htmlList
     url: https://www.anthropic.com/learn
     cadence: monthly
@@ -31,7 +31,8 @@ sources:
 
   - id: anthropic-news
     # Model announcements: scout emits kind:"bench" radar cards from this source.
-    method: rss
-    url: https://www.anthropic.com/news/rss.xml
+    # Newsroom has no RSS feed (news/rss.xml 404s) — scrape-lite, failure-isolated.
+    method: htmlList
+    url: https://www.anthropic.com/news
     cadence: monthly
     benchTrigger: true
