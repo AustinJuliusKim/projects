@@ -34,7 +34,7 @@ export function buildPrompt({ historyEntries = [], occasion = "" } = {}) {
     .slice(0, 12);
   if (top.length) {
     lines.push(
-      "This pair has played before. Their past entries (wins marked):",
+      "They've played before. Their past entries (wins marked):",
       ...top.map(
         (e) => `- ${e.label}${e.winCount ? ` (won ${e.winCount}x)` : ""}`
       ),
