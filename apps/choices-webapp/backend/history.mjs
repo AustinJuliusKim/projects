@@ -57,6 +57,36 @@ function evictPastCap(entries) {
   return Object.fromEntries(keep.map((k) => [k, entries[k]]));
 }
 
+// Create-screen Fill-my-4: derive prompt history from a signed-in user's own
+// USER# record. Folds recentGames (each game's 4 choices + winner) into the
+// same entry shape as HIST# so buildPrompt needs no second format. Uses
+// recentGames alone — mixing in all-time stats.topWinners would double-count
+// wins already present in the window.
+export function userHistoryEntries(user) {
+  const entries = {};
+  for (const rec of user?.recentGames ?? []) {
+    const winnerKey = normalizeLabel(rec.winnerLabel);
+    const at = rec.completedAt ?? 0;
+    for (const label of rec.choices ?? []) {
+      const key = normalizeLabel(label);
+      if (!key) continue;
+      const prev = entries[key] ?? {
+        label: String(label).trim(),
+        entryCount: 0,
+        winCount: 0,
+        lastAt: 0,
+      };
+      entries[key] = {
+        ...prev,
+        entryCount: prev.entryCount + 1,
+        winCount: prev.winCount + (key === winnerKey ? 1 : 0),
+        lastAt: Math.max(prev.lastAt, at),
+      };
+    }
+  }
+  return Object.values(entries);
+}
+
 // The anonymized global-feed record for one finished game (Phase 0's S3
 // append; Phase 2's nightly batch reads these). Deliberately tiny: day (no
 // exact timestamp), normalized texts, and a keyed pairHash — never a

@@ -31,7 +31,7 @@ import {
   LINK_PLATFORMS,
 } from "./game.mjs";
 import { applyCompletedGame, emptyStats, RECENT_GAMES_CAP } from "./stats.mjs";
-import { applyGameToHistory, anonRecord } from "./history.mjs";
+import { applyGameToHistory, anonRecord, userHistoryEntries } from "./history.mjs";
 import { verifyIdToken, AuthError } from "./auth.mjs";
 import {
   billingEnabled,
@@ -804,7 +804,12 @@ async function fillForUser(user, occasion) {
     throw new HttpError(409, AI_LIMIT_MSG, "AI_LIMIT");
   }
 
-  const choices = await fillFour({ occasion });
+  // The user's own recentGames seed the prompt — the create-screen
+  // counterpart of the pairing path's HIST# memory (never crosses users).
+  const choices = await fillFour({
+    historyEntries: userHistoryEntries(item),
+    occasion,
+  });
   if (!choices) {
     throw new HttpError(502, "Couldn't fill your 4 — try again.", "AI_FAILED");
   }
