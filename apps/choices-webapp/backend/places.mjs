@@ -35,9 +35,11 @@ const WORLD_BIAS = {
   },
 };
 
-// geo: { latitude, longitude } -> 30km circle; anything else -> world rect
-// (📍 pin off, permission not granted, or an old client).
+// geo: { latitude, longitude } -> 30km circle; "off" (explicit 📍 pin-off
+// override, must beat the viewer-geo headers) or null (no coords from body
+// or headers) -> world rect.
 function locationBias(geo) {
+  if (geo === "off") return { locationBias: WORLD_BIAS };
   if (geo) {
     return {
       locationBias: { circle: { center: geo, radius: BIAS_RADIUS_METERS } },

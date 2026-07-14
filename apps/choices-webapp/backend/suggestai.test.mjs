@@ -20,6 +20,19 @@ test("buildPrompt without history stays occasion-only", () => {
   const prompt = buildPrompt({ occasion: "Quick bite" });
   assert.ok(prompt.includes("Occasion: Quick bite"));
   assert.ok(!prompt.includes("played before"));
+  assert.ok(!prompt.includes("They're near"));
+});
+
+test("buildPrompt adds the city hint only when a city is present", () => {
+  const withPlace = buildPrompt({
+    occasion: "Date night",
+    place: { city: "Portland", country: "US" },
+  });
+  assert.ok(withPlace.includes("They're near Portland, US"));
+  const cityOnly = buildPrompt({ place: { city: "Portland", country: null } });
+  assert.ok(cityOnly.includes("They're near Portland —"));
+  const noCity = buildPrompt({ place: { city: null, country: "US" } });
+  assert.ok(!noCity.includes("They're near"));
 });
 
 test("buildPrompt caps history at the 12 strongest entries", () => {

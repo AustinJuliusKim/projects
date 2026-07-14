@@ -238,7 +238,7 @@ test("GET getState works and never exposes the code", async () => {
     getEvent({ action: "getState", pairingId: "abc123", role: "A", token: "tok-a" })
   );
   assert.equal(res.statusCode, 200);
-  assert.equal(res.headers["cache-control"], "no-cache");
+  assert.equal(res.headers["cache-control"], "public, max-age=1"); // edge-cacheable
   const data = JSON.parse(res.body);
   assert.equal(data.state.code, undefined); // cache-safety invariant
   assert.equal(data.state.gameNumber, 1);
@@ -1187,7 +1187,7 @@ test("placesSuggest without coords sends the neutral world rectangle", async () 
   });
 
   await handler(postEvent({ action: "placesSuggest", input: "pizza" }, AUTH));
-  // Old clients may still send the retired nearMe flag — same neutral path.
+  // Explicit pin-off (nearMe:false) — same neutral world rect.
   await handler(postEvent({ action: "placesSuggest", input: "pizza", nearMe: false }, AUTH));
 
   assert.equal(bodies.length, 2);
@@ -1215,6 +1215,53 @@ test("placesSuggest treats junk or out-of-range body coords as absent", async ()
   }
   assert.equal(bodies.length, 4);
   assert.ok(bodies.every((b) => JSON.stringify(b.locationBias) === JSON.stringify(WORLD_RECT)));
+});
+
+test("placesSuggest hybrid precedence: body coords > viewer headers > world rect", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  mockPremiumUser();
+  const bodies = [];
+  _setPlacesFetchForTests(async (url, opts) => {
+    bodies.push(JSON.parse(opts.body));
+    return { ok: true, json: async () => ({ suggestions: [] }) };
+  });
+  const geoHeaders = {
+    ...AUTH,
+    "cloudfront-viewer-latitude": "45.52",
+    "cloudfront-viewer-longitude": "-122.68",
+  };
+
+  // Headers alone -> ambient 30km circle.
+  await handler(postEvent({ action: "placesSuggest", input: "pizza" }, geoHeaders));
+  // Body coords beat headers.
+  await handler(
+    postEvent(
+      { action: "placesSuggest", input: "pizza", geo: { latitude: 34.05, longitude: -118.24 } },
+      geoHeaders
+    )
+  );
+  // Explicit pin-off beats headers.
+  await handler(
+    postEvent({ action: "placesSuggest", input: "pizza", nearMe: false }, geoHeaders)
+  );
+  // Junk headers degrade to the neutral world rect.
+  await handler(
+    postEvent(
+      { action: "placesSuggest", input: "pizza" },
+      { ...AUTH, "cloudfront-viewer-latitude": "junk", "cloudfront-viewer-longitude": "999" }
+    )
+  );
+
+  assert.deepEqual(bodies[0].locationBias.circle.center, {
+    latitude: 45.52,
+    longitude: -122.68,
+  });
+  assert.deepEqual(bodies[1].locationBias.circle.center, {
+    latitude: 34.05,
+    longitude: -118.24,
+  });
+  assert.deepEqual(bodies[2].locationBias, WORLD_RECT);
+  assert.deepEqual(bodies[3].locationBias, WORLD_RECT);
 });
 
 test("placesSuggest validates input length without calling upstream", async () => {
@@ -1372,6 +1419,47 @@ test("fillMyFour on the create screen runs unlimited for a premium account", asy
   assert.equal(ev.actor_role, "system");
   assert.deepEqual(ev.payload, { context: "create", premium: true, uses_left: null });
   assert.ok(!JSON.stringify(ev).includes("u-1")); // never a user id
+});
+
+test("fillMyFour passes the viewer city hint to the prompt, never junk", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  const bedrock = fakeBedrock();
+  _setBedrockForTests(bedrock);
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: {
+      pk: "USER#u-1", userId: "u-1", version: 1,
+      stats: {}, recentGames: [], premium: { status: "active" },
+    },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  await handler(
+    postEvent(
+      { action: "fillMyFour", occasion: "Date night" },
+      {
+        authorization: "Bearer good-token",
+        "cloudfront-viewer-city": "S%C3%A3o%20Paulo",
+        "cloudfront-viewer-country": "BR",
+      }
+    )
+  );
+  const prompt = bedrock.calls[0].input.messages[0].content[0].text;
+  assert.ok(prompt.includes("near São Paulo, BR"));
+
+  // Invalid country code is dropped from the hint, not passed through.
+  await handler(
+    postEvent(
+      { action: "fillMyFour", occasion: "Date night" },
+      {
+        authorization: "Bearer good-token",
+        "cloudfront-viewer-city": "Portland",
+        "cloudfront-viewer-country": "junk!",
+      }
+    )
+  );
+  const prompt2 = bedrock.calls[1].input.messages[0].content[0].text;
+  assert.ok(prompt2.includes("near Portland —"));
+  assert.ok(!prompt2.includes("junk"));
 });
 
 test("fillMyFour on the create screen feeds the user's own history to the prompt", async () => {

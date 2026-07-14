@@ -87,11 +87,11 @@ function originAllowed(event) {
   return event?.headers?.["x-origin-verify"] === process.env.ORIGIN_VERIFY_SECRET;
 }
 
-// getState replies: never cached — the /api* behavior uses the managed
-// CachingDisabled policy (see template.yaml for why), and browsers must
-// always revalidate. publicState still must never carry credentials, so a
-// future caching-enabled policy stays safe to introduce.
-const GETSTATE_HEADERS = { "cache-control": "no-cache" };
+// getState replies: edge-cacheable for 1s — the custom /api* ApiCachePolicy
+// (payg-unlocks) keys on the getState query strings and honors this header,
+// so CloudFront absorbs poll/retry storms. The cache-safety invariant is
+// test-enforced: publicState never carries `code` or tokens.
+const GETSTATE_HEADERS = { "cache-control": "public, max-age=1" };
 
 export async function handler(event) {
   const method = event?.requestContext?.http?.method;
@@ -166,11 +166,11 @@ export async function handler(event) {
       case "getPairHistory":
         return reply(200, await doGetPairHistory(body));
       case "placesSuggest":
-        return reply(200, await doPlacesSuggest(body, user));
+        return reply(200, await doPlacesSuggest(body, user, viewerGeo(event)));
       case "placeDetails":
         return reply(200, await doPlaceDetails(body, user));
       case "fillMyFour":
-        return reply(200, await doFillMyFour(body, user));
+        return reply(200, await doFillMyFour(body, user, viewerGeo(event)));
       case "getMe":
         return reply(200, await doGetMe(user));
       case "createCheckoutSession":
@@ -701,7 +701,7 @@ async function isPremiumUser(user) {
   return user ? isPremium((await loadUser(user.sub)) ?? {}) : false;
 }
 
-async function doPlacesSuggest(body, user) {
+async function doPlacesSuggest(body, user, viewer) {
   if (!(await isPremiumUser(user))) {
     return { suggestions: [], enabled: placesEnabled(), premiumRequired: true };
   }
@@ -709,11 +709,47 @@ async function doPlacesSuggest(body, user) {
   if (input.length < 2 || input.length > 60) {
     return { suggestions: [], enabled: placesEnabled() };
   }
-  // Location comes from browser geolocation in the body (the 📍 pin is the
-  // consent surface) — CloudFront's geo headers were rejected by prod's
-  // pricing plan (see template.yaml). No coords -> neutral world-rect bias,
-  // never the Lambda's own IP location.
-  return autocomplete(input, sessionToken(body), clientGeo(body));
+  // Hybrid bias precedence (locked in the PAYG migration plan): precise
+  // body coords (📍 pin, the consent surface) > CloudFront viewer-geo
+  // headers (IP-derived, zero prompts, needs the custom /api* origin
+  // request policy) > neutral world rect. nearMe:false is the explicit
+  // "road-trip" override — headers must not win over a dimmed pin.
+  const geo =
+    body.nearMe === false ? "off" : clientGeo(body) ?? viewer?.coords ?? null;
+  return autocomplete(input, sessionToken(body), geo);
+}
+
+// Approximate viewer location from CloudFront's IP-derived geo headers
+// (added by the custom /api* origin request policy). City-level accuracy;
+// used only to bias Places queries and hint Fill-my-4 — never stored, never
+// in events, never returned. Absent on direct Function URL calls and until
+// the payg-unlocks origin request policy is live.
+function viewerGeo(event) {
+  const h = event?.headers ?? {};
+  const latitude = Number.parseFloat(h["cloudfront-viewer-latitude"]);
+  const longitude = Number.parseFloat(h["cloudfront-viewer-longitude"]);
+  const coords =
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    Math.abs(latitude) <= 90 &&
+    Math.abs(longitude) <= 180
+      ? { latitude, longitude }
+      : null;
+  // City arrives RFC 3986-encoded when non-ASCII; country is an ISO code.
+  let city = null;
+  if (typeof h["cloudfront-viewer-city"] === "string" && h["cloudfront-viewer-city"]) {
+    try {
+      city = decodeURIComponent(h["cloudfront-viewer-city"]).slice(0, 60);
+    } catch {
+      city = null;
+    }
+  }
+  const country =
+    typeof h["cloudfront-viewer-country"] === "string" &&
+    /^[A-Z]{2}$/.test(h["cloudfront-viewer-country"])
+      ? h["cloudfront-viewer-country"]
+      : null;
+  return { coords, city, country };
 }
 
 // Validated {latitude, longitude} from the request body, or null. Used only
@@ -761,20 +797,23 @@ const AI_FREE_USES = 0;
 const utcMonth = () => new Date().toISOString().slice(0, 7);
 const AI_LIMIT_MSG = "Fill my 4 is a Premium feature. Unlock unlimited AI fills. ✨";
 
-async function doFillMyFour(body, user) {
+async function doFillMyFour(body, user, viewer) {
   if (!aiEnabled()) {
     throw new HttpError(400, "AI fills are not enabled here.", "AI_DISABLED");
   }
   const occasion =
     typeof body.occasion === "string" ? body.occasion.trim().slice(0, 40) : "";
+  // City-level hint only — request-scoped, never persisted (viewer coords
+  // stay Places-only; the prompt gets at most "city, CC").
+  const place = viewer?.city ? { city: viewer.city, country: viewer.country } : null;
   const res = body.pairingId
-    ? await fillForPairing(body, occasion)
-    : await fillForUser(user, occasion);
+    ? await fillForPairing(body, occasion, place)
+    : await fillForUser(user, occasion, place);
   emitCount("FillMyFour");
   return res;
 }
 
-async function fillForPairing(body, occasion) {
+async function fillForPairing(body, occasion, place) {
   const { pairingId, role, token, actionId } = body;
   const pairing = await loadPairing(pairingId);
   assertToken(pairing, role, token);
@@ -795,6 +834,7 @@ async function fillForPairing(body, occasion) {
   const choices = await fillFour({
     historyEntries: Object.values(hist?.entries ?? {}),
     occasion,
+    place,
   });
   if (!choices) {
     throw new HttpError(502, "Couldn't fill your 4 — try again.", "AI_FAILED");
@@ -823,7 +863,7 @@ async function fillForPairing(body, occasion) {
   return { choices, usesLeft };
 }
 
-async function fillForUser(user, occasion) {
+async function fillForUser(user, occasion, place) {
   if (!user) {
     throw new HttpError(401, "Sign in to fill your 4.", "SIGN_IN_REQUIRED");
   }
@@ -840,6 +880,7 @@ async function fillForUser(user, occasion) {
   const choices = await fillFour({
     historyEntries: userHistoryEntries(item),
     occasion,
+    place,
   });
   if (!choices) {
     throw new HttpError(502, "Couldn't fill your 4 — try again.", "AI_FAILED");

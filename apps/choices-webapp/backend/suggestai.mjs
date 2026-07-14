@@ -26,9 +26,16 @@ const SYSTEM =
   "cuttable — 4 solid options, not 1 obvious winner and 3 fillers.";
 
 // history entries: HIST# values [{ label, entryCount, winCount, lastAt }].
-export function buildPrompt({ historyEntries = [], occasion = "" } = {}) {
+// place: { city, country } from CloudFront viewer-geo headers — a hint, not
+// a constraint (players may be picking for somewhere they're headed).
+export function buildPrompt({ historyEntries = [], occasion = "", place = null } = {}) {
   const lines = ["Suggest 4 food choices for the next game."];
   if (occasion) lines.push(`Occasion: ${occasion}`);
+  if (place?.city) {
+    lines.push(
+      `They're near ${place.city}${place.country ? `, ${place.country}` : ""} — a local nod or two is welcome, but don't force it.`
+    );
+  }
   const top = [...historyEntries]
     .sort((a, b) => b.winCount - a.winCount || b.lastAt - a.lastAt)
     .slice(0, 12);
@@ -65,7 +72,7 @@ export function parseFour(text) {
 }
 
 // -> [4 strings] or null on an unparseable reply.
-export async function fillFour({ historyEntries, occasion } = {}) {
+export async function fillFour({ historyEntries, occasion, place } = {}) {
   const res = await getBedrock().send(
     new ConverseCommand({
       modelId: process.env.BEDROCK_MODEL_ID,
@@ -73,7 +80,7 @@ export async function fillFour({ historyEntries, occasion } = {}) {
       messages: [
         {
           role: "user",
-          content: [{ text: buildPrompt({ historyEntries, occasion }) }],
+          content: [{ text: buildPrompt({ historyEntries, occasion, place }) }],
         },
       ],
       inferenceConfig: { maxTokens: 300, temperature: 0.9 },

@@ -144,12 +144,19 @@ export const linkClick = (pairingId, role, token, gameNumber, platform) =>
 export const getPairHistory = (pairingId, role, token) =>
   post("getPairHistory", { pairingId, role, token });
 // geo ({latitude, longitude}, pre-rounded by nearMeStore) rides along only
-// while the 📍 pin is lit; absent = neutral suggestions.
-// Places is premium-gated server-side (real per-use Google cost), so the auth
-// header rides along to identify the account; guests/free get empty results
-// with premiumRequired: true.
-export const placesSuggest = async (input, sessionToken, geo = null) =>
-  post("placesSuggest", { input, sessionToken, ...(geo ? { geo } : {}) }, await authHeaders());
+// while the 📍 pin is lit. A dimmed pin sends the explicit nearMe:false —
+// with the pin lit but no browser grant, the server falls back to
+// CloudFront's viewer-geo headers (ambient bias), so mere absence of coords
+// no longer means "neutral". Places is premium-gated server-side (real
+// per-use Google cost), so the auth header rides along to identify the
+// account; guests/free get empty results with premiumRequired: true.
+export const placesSuggest = async (input, sessionToken, geo = null, nearMe = true) =>
+  post("placesSuggest", {
+    input,
+    sessionToken,
+    ...(geo ? { geo } : {}),
+    ...(nearMe ? {} : { nearMe: false }),
+  }, await authHeaders());
 export const placeDetails = async (placeId, sessionToken) =>
   post("placeDetails", { placeId, sessionToken }, await authHeaders());
 // "Fill my 4": with a pairing (rematch) the seat token authorizes and the

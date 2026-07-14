@@ -6,18 +6,19 @@ import { readStreak } from "./streakCache.js";
 const PLACES_ENABLED = import.meta.env.VITE_PLACES_ENABLED === "true";
 
 // Icon-only 📍 pin in the top bar, shown on game screens only (TopBar.jsx).
-// Lit = suggestions bias to the player's browser location;
-// dimmed = neutral (pin off, or location not granted yet). Tapping a dimmed
-// pin requests browser geolocation — the tap IS the consent, so the
-// permission prompt is never unsolicited. "Near me" arrives as a hover
-// tooltip rather than copy.
+// Lit = near-me enabled — precise browser coords when granted, otherwise
+// the server's ambient CloudFront viewer-geo bias; dimmed = explicitly off
+// (sends nearMe:false so ambient bias is overridden too). Tapping a dimmed
+// pin re-enables and requests browser geolocation — the tap IS the consent,
+// so the permission prompt is never unsolicited. "Near me" arrives as a
+// hover tooltip rather than copy.
 export default function NearMeToggle() {
   useEffect(() => {
     if (!PLACES_ENABLED) return;
     initNearMe();
   }, []);
 
-  const { enabled, coords } = useNearMe();
+  const { enabled } = useNearMe();
   if (!PLACES_ENABLED) return null;
 
   // Near-me suggestions are premium-gated server-side (Places has real cost).
@@ -40,7 +41,7 @@ export default function NearMeToggle() {
     );
   }
 
-  const active = enabled && coords != null;
+  const active = enabled;
   return (
     <button
       type="button"

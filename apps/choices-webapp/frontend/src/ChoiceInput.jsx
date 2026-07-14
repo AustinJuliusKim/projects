@@ -54,14 +54,14 @@ export default function ChoiceInput({ value, onChange, placeholder, pairEntries 
     const seq = ++seqRef.current;
     const timer = setTimeout(async () => {
       try {
-        const res = await placesSuggest(q, sessionRef.current, geo);
+        const res = await placesSuggest(q, sessionRef.current, geo, nearMe);
         if (seq === seqRef.current) setPlacesResults(res.suggestions ?? []);
       } catch {
         /* suggestions are best-effort */
       }
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [value, open, geo]);
+  }, [value, open, geo, nearMe]);
 
   function onFocus() {
     if (!sessionRef.current) sessionRef.current = crypto.randomUUID();

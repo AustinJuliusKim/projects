@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Self-managed edge WAF for the Choices prod CloudFront distribution —
+  exact replication of the console "protection pack" WebACL
+  (CreatedByCloudFront-8bb2952d) so it can be swapped in when the
+  distribution's pricing plan drops to pay-as-you-go (the pack cannot be
+  modified or replaced while the Free plan is active). Rule actions are
+  parameters so the Count->Block soak flip is a stack update, not a
+  template change. CLOUDFRONT scope requires us-east-1. Deploy manually
+  with admin credentials (CI role lacks wafv2, same as billing-alarms):
+    aws cloudformation deploy --template-file ops/edge-waf.yaml \
+      --stack-name ChoicesEdgeWaf --region us-east-1
+  Then, the moment the pricing plan drops: sam deploy prod with
+  WebAclArn=<WebAclArn output> (existing app param) and verify the
+  protection-pack ACL detached.
+
+Parameters:
+  ManagedRulesAction:
+    Type: String
+    Default: Count
+    AllowedValues: [Count, Block]
+    Description: >
+      Action for the three AWS managed rule groups. Count to soak (the
+      pack has been Count since 2026-07-04); flip to Block after ~1 week
+      of clean metrics.
+  RateLimitAction:
+    Type: String
+    Default: Block
+    AllowedValues: [Count, Block]
+    Description: >
+      ChoicesRateLimitPerIp action. Block from day one (locked decision
+      2026-07-08 — it soaked in Count since 2026-07-04).
+  RateLimitPerIp:
+    Type: Number
+    Default: 600
+    Description: Requests per IP per evaluation window before the rule matches.
+  RateLimitWindowSec:
+    Type: Number
+    Default: 300
+
+Conditions:
+  ManagedBlock: !Equals [!Ref ManagedRulesAction, Block]
+  RateBlock: !Equals [!Ref RateLimitAction, Block]
+
+Resources:
+  EdgeWebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: ChoicesEdgeWaf
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: ChoicesEdgeWaf
+      Rules:
+        - Name: AWS-AWSManagedRulesAmazonIpReputationList
+          Priority: 0
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+          OverrideAction: !If
+            - ManagedBlock
+            - None: {}
+            - Count: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWS-AWSManagedRulesAmazonIpReputationList
+        - Name: AWS-AWSManagedRulesCommonRuleSet
+          Priority: 1
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          OverrideAction: !If
+            - ManagedBlock
+            - None: {}
+            - Count: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWS-AWSManagedRulesCommonRuleSet
+        - Name: AWS-AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 2
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          OverrideAction: !If
+            - ManagedBlock
+            - None: {}
+            - Count: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWS-AWSManagedRulesKnownBadInputsRuleSet
+        - Name: ChoicesRateLimitPerIp
+          Priority: 3
+          Statement:
+            RateBasedStatement:
+              Limit: !Ref RateLimitPerIp
+              EvaluationWindowSec: !Ref RateLimitWindowSec
+              AggregateKeyType: IP
+          Action: !If
+            - RateBlock
+            - Block: {}
+            - Count: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: ChoicesRateLimitPerIp
+
+Outputs:
+  WebAclArn:
+    Description: Pass as the app stack's WebAclArn parameter when the plan drops.
+    Value: !GetAtt EdgeWebAcl.Arn

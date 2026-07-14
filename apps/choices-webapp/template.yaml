@@ -554,6 +554,67 @@ Resources:
           return request;
         }
 
+  # Custom origin request policy for /api*: forwards the viewer headers the
+  # API actually reads PLUS CloudFront's IP-derived geo headers, which power
+  # Places locationBias (suggestion engine L3) and the Fill-my-4 city hint
+  # with zero permission prompts. Whitelist mode is forced: the managed
+  # AllViewerAndCloudFrontHeaders policy would forward Host, which Lambda
+  # Function URLs reject (same reason /api* previously used
+  # AllViewerExceptHostHeader). stripe-signature is load-bearing — the
+  # Stripe webhook rides this behavior and whitelist mode drops unlisted
+  # viewer headers. x-origin-verify is unaffected (it's an
+  # OriginCustomHeaders injection, not a viewer header). Rejected by prod's
+  # old flat-rate Free pricing plan 2026-07-08; restored for the PAYG plan
+  # (downgrade initiated 2026-07-14) — do not deploy to prod before the
+  # plan drops.
+  ApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub "${AWS::StackName}-api-origin-request"
+        Comment: Viewer headers the API reads + CloudFront geo for Places bias
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - content-type
+            - authorization
+            - stripe-signature
+            - cloudfront-viewer-latitude
+            - cloudfront-viewer-longitude
+            - cloudfront-viewer-city
+            - cloudfront-viewer-country
+        CookiesConfig:
+          CookieBehavior: none
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  # Custom cache policy for /api*: 1s default TTL keyed on the getState
+  # query strings, so the edge absorbs poll/retry storms. Safe because
+  # mutations are POSTs (never cached), only getState sends
+  # `cache-control: public, max-age=1`, and publicState never carries
+  # `code`/tokens (test-enforced cache-safety invariant). No headers or
+  # cookies in the key — Function URLs reject a forwarded Host, and
+  # cache-key headers are always forwarded.
+  ApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${AWS::StackName}-api-cache"
+        Comment: 1s edge cache for getState polling; mutations are POSTs
+        MinTTL: 0
+        DefaultTTL: 1
+        MaxTTL: 5
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+          HeadersConfig:
+            HeaderBehavior: none
+          CookiesConfig:
+            CookieBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: whitelist
+            QueryStrings: [action, pairingId, role, token]
+
   SiteDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -600,24 +661,8 @@ Resources:
             TargetOriginId: ApiFunctionOrigin
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
-            # AWS managed "CachingDisabled". Constraints that force this:
-            # prod's CloudFront flat-rate pricing plan excludes custom cache
-            # policies, and the only caching-enabled managed policy that
-            # honors origin Cache-Control (UseOriginCacheControlHeaders-*)
-            # puts `host` in the cache key — cache-key headers are always
-            # forwarded, and Lambda Function URLs reject a viewer Host
-            # header. If the distribution ever leaves the pricing plan,
-            # restore a custom 1s-TTL policy here (keyed on the getState
-            # query strings) so the edge absorbs retry storms.
-            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            # AWS managed "AllViewerExceptHostHeader" origin request policy
-            # (Function URLs reject a forwarded viewer Host header). A custom
-            # policy carrying CloudFront's viewer-geo headers was tried and
-            # REJECTED by prod's flat-rate Free pricing plan (2026-07-08:
-            # "Distributions with the Free pricing plan can't have: Custom
-            # origin request policy") — Places location bias comes from
-            # browser geolocation in the request body instead.
-            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            CachePolicyId: !Ref ApiCachePolicy
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
           # Share-link OG previews prerendered at origin (GET /j/{code}).
           # Must bypass the SPA-rewrite function (default behavior only), and
           # per-code pages must never cross-cache -> CachingDisabled.
