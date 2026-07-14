@@ -84,6 +84,7 @@ export const SettingsConfigSchema = z.strictObject({
   topN: z.number().int().min(1),
   budgetCapUsd: z.number().positive(),
   overlapThreshold: z.number().min(0).max(1),
+  authorMaxTurns: z.number().int().min(1).default(3),
   cadenceCron: z.string().min(1),
   labels: z.strictObject({
     draft: z.string().min(1),

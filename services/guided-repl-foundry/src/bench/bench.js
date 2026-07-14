@@ -16,6 +16,7 @@ import { parse as parseYaml } from "yaml";
 import { createAgentClient } from "../agent/agentClient.js";
 import { buildFixedBlock } from "../author/promptPack.js";
 import { authorDraft } from "../author/author.js";
+import { nextLessonOrder, withLessonOrder } from "../lessons/nextOrder.js";
 import { validateDraft } from "../validate/validateDraft.js";
 import { SCOUT_SYSTEM, buildScoutPrompt, extractCards } from "../scout/scout.js";
 import { judgePair } from "./judges.js";
@@ -65,6 +66,9 @@ function topicMatches(topic, expected) {
  */
 export async function benchAuthor({ contestants, briefs, agentClient, judgeModel, runner, versionProvider, noSeed, log }) {
   const fixedBlock = buildFixedBlock();
+  // Corpus-unique order so seed-pass % isn't skewed by order collisions;
+  // each draft compiles in its own staging dir, so one shared value suffices.
+  const benchOrder = nextLessonOrder();
   /** drafts[briefId][model] = {model, yamlText, doc} */
   const drafts = {};
   const perModel = Object.fromEntries(
@@ -87,6 +91,7 @@ export async function benchAuthor({ contestants, briefs, agentClient, judgeModel
           fixedBlock,
           model,
         });
+        Object.assign(draft, withLessonOrder(draft.yamlText, draft.doc, benchOrder));
         stats.latencyMs += Date.now() - started;
         stats.costUsd += draft.provenance.costUsd;
         stats.schemaPass += 1;
@@ -228,6 +233,7 @@ export async function runBench({ opts, config, deps = {}, log }) {
     ...(deps.queryImpl ? { queryImpl: deps.queryImpl } : {}),
     models: config.models,
     pricing: config.settings.pricing,
+    maxTurns: config.settings.authorMaxTurns,
   });
   const goldenDir = deps.goldenDir ?? path.join(config.foundryDir, "bench/golden");
   const resultsDir = deps.resultsDir ?? path.join(config.foundryDir, "bench/results");
