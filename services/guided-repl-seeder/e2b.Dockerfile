@@ -4,9 +4,9 @@
 # src/runner/e2bRunner.js (`E2B_TEMPLATE = "guided-repl-seeder"`). Any other
 # name and Sandbox.create() can't find it.
 #
-#   npm i -g @e2b/cli && e2b auth login
+#   npm i -g @e2b/cli
 #   cd services/guided-repl-seeder
-#   e2b template build --name guided-repl-seeder
+#   E2B_API_KEY=... e2b template create guided-repl-seeder   # Build System v2; auto-finds this file
 #
 # Runtime contract this image must satisfy:
 #   - node 20+                       (this base image)
