@@ -92,6 +92,26 @@ test("authorDraft: fails hard after the second bad attempt", async () => {
   await assert.rejects(authorDraft({ agentClient: client, card: CARD }), /draft failed after retry/);
 });
 
+test("authorDraft: retries an SDK error (error_max_turns) then succeeds", async () => {
+  let n = 0;
+  const queryImpl = async () => {
+    if (++n === 1) throw new Error("agentClient: query ended with error_max_turns");
+    return { text: VALID_REPLY, usage: { input_tokens: 40_000, output_tokens: 2_000 } };
+  };
+  const client = createAgentClient({ queryImpl, models, pricing: settings.pricing });
+  const { provenance } = await authorDraft({ agentClient: client, card: CARD });
+  assert.equal(provenance.attempts, 2);
+  assert.equal(n, 2, "the failed first attempt was retried, not escaped");
+});
+
+test("authorDraft: a persistent SDK error fails hard after retry", async () => {
+  const queryImpl = async () => {
+    throw new Error("agentClient: query ended with error_max_turns");
+  };
+  const client = createAgentClient({ queryImpl, models, pricing: settings.pricing });
+  await assert.rejects(authorDraft({ agentClient: client, card: CARD }), /draft failed after retry — .*error_max_turns/);
+});
+
 test("extractYamlBlock handles yml fences and missing blocks", () => {
   assert.equal(extractYamlBlock("```yml\nfoo: 1\n```"), "foo: 1\n");
   assert.throws(() => extractYamlBlock("plain text"), /no fenced/);

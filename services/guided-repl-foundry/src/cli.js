@@ -134,6 +134,7 @@ export async function main(argv, deps = {}) {
       models: config.models,
       pricing: config.settings.pricing,
       overrides: opts.overrides,
+      maxTurns: config.settings.authorMaxTurns,
     });
 
     let runner = deps.runner;

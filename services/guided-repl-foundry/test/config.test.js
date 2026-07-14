@@ -41,6 +41,7 @@ test("loadConfig validates the committed foundry/ config", () => {
   assert.equal(settings.labels.radar, "foundry:radar");
   assert.equal(settings.branchPrefix, "foundry/");
   assert.match(settings.cadenceCron, /^\S+ \S+ \S+ \S+ \S+$/);
+  assert.equal(settings.authorMaxTurns, 3);
 });
 
 // --- rejection cases ---
@@ -91,6 +92,15 @@ test("models: missing role is a hard error", () => {
 test("settings: overlapThreshold outside [0,1] rejected", () => {
   const { settings } = loadConfig();
   assert.throws(() => parseSettingsConfig({ ...structuredClone(settings), overlapThreshold: 1.5 }));
+});
+
+test("settings: authorMaxTurns defaults to 3 when omitted, rejects non-int/<1", () => {
+  const { settings } = loadConfig();
+  const { authorMaxTurns: _omit, ...withoutTurns } = structuredClone(settings);
+  assert.equal(parseSettingsConfig(withoutTurns).authorMaxTurns, 3);
+  assert.equal(parseSettingsConfig({ ...structuredClone(settings), authorMaxTurns: 5 }).authorMaxTurns, 5);
+  assert.throws(() => parseSettingsConfig({ ...structuredClone(settings), authorMaxTurns: 0 }));
+  assert.throws(() => parseSettingsConfig({ ...structuredClone(settings), authorMaxTurns: 2.5 }));
 });
 
 test("pricing coverage: model referenced without a pricing entry is a hard error", () => {

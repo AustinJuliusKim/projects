@@ -53,6 +53,7 @@ test("e2e radar --dry-run: full spine with built-in fakes, bundle layout", async
     assert.equal(Object.keys(cursors.sources).length, 6);
 
     // Each draft bundle is a complete PR working set.
+    const orders = [];
     for (const d of draftDirs) {
       const files = walk(path.join(out, d));
       assert.ok(files.includes("meta.json") && files.includes("PR_BODY.md") && files.includes("provenance.json"), d);
@@ -62,7 +63,15 @@ test("e2e radar --dry-run: full spine with built-in fakes, bundle layout", async
       assert.deepEqual(meta.labels, ["foundry:draft"]);
       assert.ok(meta.files.some((f) => f.startsWith("packages/guided-repl-lessons/lessons/")));
       assert.ok(meta.files.includes("apps/guided-repl/public/fixtures/v1/lessons.json"));
+
+      // The dry-run draft YAML hardcodes order: 9; the pipeline must rewrite
+      // each draft to a corpus-unique order (l1–l8 → 9, 10, 11), not collide.
+      const lessonRel = files.find((f) => f.startsWith("packages/guided-repl-lessons/lessons/") && f.endsWith(".yaml"));
+      const orderLine = fs.readFileSync(path.join(out, d, lessonRel), "utf8").match(/^order:[ \t]*(\d+)/m);
+      orders.push(Number(orderLine[1]));
     }
+    orders.sort((a, b) => a - b);
+    assert.deepEqual(orders, [9, 10, 11], "drafts get distinct corpus-unique orders");
   } finally {
     fs.rmSync(out, { recursive: true, force: true });
   }
