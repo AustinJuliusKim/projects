@@ -4,6 +4,7 @@ import {
   normalizeLabel,
   applyGameToHistory,
   anonRecord,
+  userHistoryEntries,
   HIST_CAP,
 } from "./history.mjs";
 
@@ -85,4 +86,41 @@ test("anonRecord holds only day, normalized texts, and the pairHash", () => {
   });
   assert.equal(rec.pairingId, undefined);
   assert.equal(rec.completedAt, undefined);
+});
+
+test("userHistoryEntries folds recentGames into HIST#-shaped entries", () => {
+  const user = {
+    recentGames: [
+      {
+        choices: ["Ramen", "Pizza", "Sushi", "Tacos"],
+        winnerLabel: "Ramen",
+        completedAt: 2000,
+      },
+      {
+        choices: ["ramen ", "Burgers", "Pho", "Curry"],
+        winnerLabel: "Burgers",
+        completedAt: 1000,
+      },
+    ],
+  };
+  const entries = userHistoryEntries(user);
+  const ramen = entries.find((e) => e.label === "Ramen");
+  assert.deepEqual(ramen, {
+    label: "Ramen",
+    entryCount: 2,
+    winCount: 1,
+    lastAt: 2000,
+  });
+  const burgers = entries.find((e) => e.label === "Burgers");
+  assert.equal(burgers.winCount, 1);
+  assert.equal(entries.length, 7);
+});
+
+test("userHistoryEntries is empty for missing or blank history", () => {
+  assert.deepEqual(userHistoryEntries(undefined), []);
+  assert.deepEqual(userHistoryEntries({}), []);
+  assert.deepEqual(
+    userHistoryEntries({ recentGames: [{ choices: [""], winnerLabel: "x" }] }),
+    []
+  );
 });

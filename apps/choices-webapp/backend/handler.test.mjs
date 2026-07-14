@@ -1084,6 +1084,38 @@ test("fillMyFour on the create screen counts uses on the account", async () => {
   assert.ok(!JSON.stringify(ev).includes("u-1")); // never a user id
 });
 
+test("fillMyFour on the create screen feeds the user's own history to the prompt", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  const bedrock = fakeBedrock();
+  _setBedrockForTests(bedrock);
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: {
+      pk: "USER#u-1", userId: "u-1", version: 1,
+      stats: {}, premium: { status: "none" },
+      recentGames: [
+        {
+          choices: ["Ramen", "Pizza", "Sushi", "Tacos"],
+          winnerLabel: "Ramen",
+          completedAt: 1000,
+        },
+      ],
+    },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(
+    postEvent(
+      { action: "fillMyFour", occasion: "Date night" },
+      { authorization: "Bearer good-token" }
+    )
+  );
+  assert.equal(res.statusCode, 200);
+  const prompt = bedrock.calls[0].input.messages[0].content[0].text;
+  assert.ok(prompt.includes("Ramen (won 1x)"));
+  assert.ok(prompt.includes("- Pizza"));
+  assert.ok(prompt.includes("Occasion: Date night"));
+});
+
 test("fillMyFour enforces the monthly cap and resets on rollover", async () => {
   process.env.BEDROCK_MODEL_ID = "model-x";
   const bedrock = fakeBedrock();
