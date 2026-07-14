@@ -2,6 +2,9 @@
 topN: 3
 budgetCapUsd: 10
 overlapThreshold: 0.65
+# Author's Agent SDK turn budget (context-stuffed, no tools). Dial up if drafts
+# fail with error_max_turns; keep low to bound cost/latency.
+authorMaxTurns: 3
 # Monthly cadence (dial toward weekly post-launch). Must match foundry.yml cron.
 cadenceCron: "0 14 1 * *"
 labels:
