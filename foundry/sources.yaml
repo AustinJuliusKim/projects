@@ -1,0 +1,38 @@
+# Foundry source registry (spec: 3-5 content sources + bench trigger).
+# Sources are a permanent maintenance surface: add slowly, prune rarely.
+# method: githubReleases | githubCommits (repo) · rss | htmlList (url)
+sources:
+  - id: claude-code-releases
+    method: githubReleases
+    repo: anthropics/claude-code
+    cadence: monthly
+
+  - id: anthropic-academy
+    # Catalog page has no feed — scrape-lite (see anthropic-news); failure-isolated.
+    method: htmlList
+    url: https://www.anthropic.com/learn
+    cadence: monthly
+
+  - id: mcp-spec
+    method: githubCommits
+    repo: modelcontextprotocol/modelcontextprotocol
+    cadence: monthly
+
+  - id: genai-for-beginners
+    # Registry course: radar signal only, never raw material (licensing rules).
+    method: githubCommits
+    repo: microsoft/generative-ai-for-beginners
+    cadence: monthly
+
+  - id: hf-blog
+    method: rss
+    url: https://huggingface.co/blog/feed.xml
+    cadence: monthly
+
+  - id: anthropic-news
+    # Model announcements: scout emits kind:"bench" radar cards from this source.
+    # Newsroom has no RSS feed (news/rss.xml 404s) — scrape-lite, failure-isolated.
+    method: htmlList
+    url: https://www.anthropic.com/news
+    cadence: monthly
+    benchTrigger: true

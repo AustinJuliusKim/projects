@@ -8,7 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const SEED_README = "# My Page\n\nStarter workspace.\n";
+export const SEED_README = "# My Page\n\nStarter workspace.\n";
 
 /**
  * Creates a fresh tmp workspace seeded with the starter README (l1 only).
