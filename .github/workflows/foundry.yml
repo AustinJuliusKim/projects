@@ -1,0 +1,167 @@
+# Lesson Foundry pipeline (spec v1.3 LOCKED).
+#
+# STRUCTURAL INVARIANT — never full-auto publish: this workflow's ONLY write
+# paths are `git push origin <foundry/* branch>` and `gh pr create --draft`.
+# It must never push to main, never merge a PR, never deploy. Publish = a
+# human merging the draft PR (branch protection on main is the backstop).
+# test/workflowGuard.test.js in services/guided-repl-foundry enforces this
+# file's shape.
+name: foundry
+
+on:
+  schedule:
+    # Monthly cadence — MUST match foundry/settings.yaml cadenceCron
+    # (workflowGuard.test.js asserts they stay in sync).
+    - cron: "0 14 1 * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Pipeline mode"
+        type: choice
+        options: [radar, idea, bench]
+        default: radar
+      idea:
+        description: "Idea-box topic (mode: idea)"
+        type: string
+        required: false
+      top_n:
+        description: "Override settings topN (mode: radar)"
+        type: string
+        required: false
+      models:
+        description: "Comma-separated contestant models (mode: bench)"
+        type: string
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: foundry
+  cancel-in-progress: false
+
+jobs:
+  foundry:
+    runs-on: ubuntu-latest
+    env:
+      OUT_DIR: /tmp/foundry-out
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+
+      # The cron is safe to merge before any secrets exist: without keys the
+      # run exits 0 with a notice instead of failing every month.
+      - name: Guard — skip gracefully without secrets
+        id: guard
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ] || [ -z "$E2B_API_KEY" ]; then
+            echo "::notice::foundry: ANTHROPIC_API_KEY / E2B_API_KEY not configured — skipping run (see services/guided-repl-foundry/README.md manual ops)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install workspace deps
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          npm ci --prefix packages/guided-repl-protocol
+          npm ci --prefix packages/guided-repl-lessons
+          npm ci --prefix services/guided-repl-seeder
+          npm ci --prefix services/guided-repl-foundry
+
+      - name: Run foundry pipeline
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
+          MODE: ${{ github.event.inputs.mode || 'radar' }}
+          IDEA: ${{ github.event.inputs.idea }}
+          TOP_N: ${{ github.event.inputs.top_n }}
+          MODELS: ${{ github.event.inputs.models }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT_DIR"
+          if [ "$MODE" = "bench" ]; then
+            node services/guided-repl-foundry/src/cli.js bench --role author \
+              ${MODELS:+--models "$MODELS"} --runner e2b
+          else
+            node services/guided-repl-foundry/src/cli.js run --mode "$MODE" \
+              ${IDEA:+--idea "$IDEA"} ${TOP_N:+--top-n "$TOP_N"} \
+              --runner e2b --out "$OUT_DIR"
+          fi
+
+      # Draft PRs only. FOUNDRY_PR_TOKEN (fine-grained PAT) is preferred so
+      # the PRs trigger guided-repl CI; plain GITHUB_TOKEN works but GitHub's
+      # anti-recursion rule suppresses CI on those PRs — we warn in the body.
+      - name: Open draft PRs from bundles
+        if: steps.guard.outputs.skip != 'true' && github.event.inputs.mode != 'bench'
+        env:
+          FOUNDRY_PR_TOKEN: ${{ secrets.FOUNDRY_PR_TOKEN }}
+          GH_TOKEN: ${{ secrets.FOUNDRY_PR_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "foundry-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -z "$FOUNDRY_PR_TOKEN" ]; then
+            echo "::warning::FOUNDRY_PR_TOKEN not set — PRs opened with GITHUB_TOKEN will not trigger guided-repl CI (close/reopen each PR to run checks)."
+          fi
+          shopt -s nullglob
+          for meta in "$OUT_DIR"/*/meta.json; do
+            bundle_dir=$(dirname "$meta")
+            branch=$(jq -r .branchName "$meta")
+            title=$(jq -r .title "$meta")
+            commit_msg=$(jq -r .commitMessage "$meta")
+            body_file="$bundle_dir/$(jq -r .prBodyFile "$meta")"
+            if [ -z "$FOUNDRY_PR_TOKEN" ]; then
+              printf '\n> **Warning:** opened with GITHUB_TOKEN — guided-repl CI will not auto-trigger on this PR; close/reopen it to run checks.\n' >> "$body_file"
+            fi
+            git switch -c "$branch" "$GITHUB_SHA"
+            while IFS= read -r file; do
+              mkdir -p "$(dirname "$file")"
+              cp "$bundle_dir/$file" "$file"
+              git add "$file"
+            done < <(jq -r '.files[]' "$meta")
+            git commit -m "$commit_msg"
+            git push origin "$branch"
+            gh pr create --draft \
+              --title "$title" \
+              --body-file "$body_file" \
+              --head "$branch" \
+              --base main \
+              $(jq -r '.labels[] | "--label \(.)"' "$meta")
+            git switch --detach "$GITHUB_SHA"
+          done
+
+      - name: Open bench results PR
+        if: steps.guard.outputs.skip != 'true' && github.event.inputs.mode == 'bench'
+        env:
+          GH_TOKEN: ${{ secrets.FOUNDRY_PR_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "foundry-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Scorecards are NEW files (<date>-<role>.md/.json) — untracked, so
+          # `git diff` can't see them; porcelain status covers both new and
+          # modified results.
+          if [ -z "$(git status --porcelain -- foundry/bench/results)" ]; then
+            echo "no new bench results"; exit 0
+          fi
+          stamp=$(date -u +%Y%m%d)
+          branch="foundry/bench-$stamp"
+          git switch -c "$branch" "$GITHUB_SHA"
+          git add foundry/bench/results
+          git commit -m "foundry: bench scorecard $stamp"
+          git push origin "$branch"
+          gh pr create --draft \
+            --title "Foundry bench scorecard $stamp" \
+            --body "Model Lab sweep results in foundry/bench/results/. Ops tasks: None." \
+            --head "$branch" \
+            --base main \
+            --label "foundry:radar"

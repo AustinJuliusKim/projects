@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Hugging Face Blog</title>
+    <link>https://huggingface.co/blog</link>
+    <item>
+      <title><![CDATA[Evaluating RAG pipelines with open judges]]></title>
+      <link>https://huggingface.co/blog/rag-eval-open-judges</link>
+      <guid>hf-blog-rag-eval</guid>
+      <pubDate>Tue, 07 Jul 2026 08:00:00 GMT</pubDate>
+      <description><![CDATA[A practical guide to measuring retrieval quality &amp; faithfulness with open models.]]></description>
+    </item>
+    <item>
+      <title>Fine-tuning tiny models on a laptop</title>
+      <link>https://huggingface.co/blog/tiny-finetune</link>
+      <guid>hf-blog-tiny-finetune</guid>
+      <pubDate>Wed, 01 Jul 2026 08:00:00 GMT</pubDate>
+      <description>QLoRA workflows that fit in 8GB of RAM.</description>
+    </item>
+  </channel>
+</rss>

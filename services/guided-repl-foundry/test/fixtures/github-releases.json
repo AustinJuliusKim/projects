@@ -1,0 +1,18 @@
+[
+  {
+    "id": 2001,
+    "tag_name": "v2.5.0",
+    "name": "Claude Code v2.5.0",
+    "html_url": "https://github.com/anthropics/claude-code/releases/tag/v2.5.0",
+    "published_at": "2026-07-01T12:00:00Z",
+    "body": "## Highlights\n- New /goal command for long-horizon runs\n- Plan-mode improvements: revise-in-place\n- Faster startup"
+  },
+  {
+    "id": 2000,
+    "tag_name": "v2.4.1",
+    "name": "Claude Code v2.4.1",
+    "html_url": "https://github.com/anthropics/claude-code/releases/tag/v2.4.1",
+    "published_at": "2026-06-18T12:00:00Z",
+    "body": "Bugfix release: permission prompt rendering on Windows terminals."
+  }
+]
