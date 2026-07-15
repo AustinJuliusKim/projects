@@ -8,7 +8,10 @@ import { authEnabled, hasSession } from "./auth.js";
 export default function Landing() {
   return (
     <div className="container">
-      <h1>Choices</h1>
+      <div className="brand-row">
+        <img className="brand-logo" src="/favicon.svg" alt="" width="44" height="44" />
+        <h1>Choices</h1>
+      </div>
       <p className="muted">
         Decide what to eat, together. 4 choices, 3 cuts, 1 winner — no blame,
         no apathy.
