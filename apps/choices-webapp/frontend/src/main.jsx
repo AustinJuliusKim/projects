@@ -75,7 +75,7 @@ function App() {
   // pill (right). Visibility of each is a pure function of the hash inside TopBar.
   return (
     <>
-      <TopBar hash={hash} />
+      <TopBar hash={hash} hasIdentity={!!identity} />
       {renderView()}
     </>
   );
