@@ -957,13 +957,20 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   font-size: 0.85rem;
 }
 
-/* Sign out is a full-width ghost button in its footer — drop the .btn top
-   margin so it sits snug under the divider. */
+/* Footer ghost buttons drop the .btn top margin so they sit snug under the
+   divider. A lone footer button (AccountView "Sign out") stays full width;
+   when it shares the row with a label (PlayView "Leave / switch player") it
+   goes auto-width so the label + action read as one line. */
 .footer .btn {
   margin-top: 0;
+}
+.footer span ~ .btn {
+  width: auto;
 }
 
 .link-btn {

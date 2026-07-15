@@ -10,6 +10,7 @@ import { drawRevealCard } from "./revealCard.js";
 import { PLATFORMS } from "./affiliates.js";
 import TipJar from "./support.jsx";
 import Button from "./Button.jsx";
+import NavButton from "./NavButton.jsx";
 import { WinnerAccountLine } from "./AccountView.jsx";
 import { clearIdentity } from "./storage.js";
 import { enablePush, pushSupported, isIosSafari, isStandalone } from "./push.js";
@@ -438,9 +439,9 @@ export default function PlayView({ identity, onLeave }) {
                 </h2>
                 <div className="platform-btns reveal" style={{ "--d": "650ms" }}>
                   {PLATFORMS.map((p) => (
-                    <a
+                    <NavButton
                       key={p.id}
-                      className="btn platform"
+                      className="platform"
                       style={{ "--brand": p.brandColor }}
                       href={p.buildUrl(winnerName)}
                       target="_blank"
@@ -462,7 +463,7 @@ export default function PlayView({ identity, onLeave }) {
                         </span>
                       )}
                       <span className="platform-label">{p.label}</span>
-                    </a>
+                    </NavButton>
                   ))}
                 </div>
                 <p className="disclosure muted reveal" style={{ "--d": "750ms" }}>
@@ -545,7 +546,7 @@ export default function PlayView({ identity, onLeave }) {
 
       <div className="footer">
         <span className="muted">You are Player {role}</span>
-        <Button variant="link" onClick={leaveGame}>
+        <Button variant="ghost" onClick={leaveGame}>
           Leave / switch player
         </Button>
       </div>
