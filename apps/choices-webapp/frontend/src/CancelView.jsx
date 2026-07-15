@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { getMe, cancelSubscription } from "./api.js";
 import { authEnabled, hasSession } from "./auth.js";
+import Button from "./Button.jsx";
+import NavButton from "./NavButton.jsx";
 
 // The cute unsubscribe page (reached from the Premium badge). Choicey makes a
 // cheeky plea, then a single Confirm sets cancel_at_period_end at Stripe — the
@@ -58,9 +60,9 @@ export default function CancelView() {
               : "Your Premium is set to cancel at the end of your billing period."}
           </p>
           <p className="muted">Change your mind? You can resubscribe anytime.</p>
-          <a className="btn primary" href="#/account">
+          <NavButton variant="primary" href="#/account">
             Back to my games
-          </a>
+          </NavButton>
         </>
       ) : loading ? (
         <p className="muted" aria-busy="true">Loading…</p>
@@ -68,9 +70,9 @@ export default function CancelView() {
         <>
           <h1>Nothing to cancel</h1>
           <p className="muted">You're not on Premium right now.</p>
-          <a className="btn primary" href="#/account">
+          <NavButton variant="primary" href="#/account">
             Back to my games
-          </a>
+          </NavButton>
         </>
       ) : alreadyCanceling ? (
         <>
@@ -80,9 +82,9 @@ export default function CancelView() {
               ? `Your Premium is already ending on ${fmt(me.premium.currentPeriodEnd)}.`
               : "Your Premium is already set to cancel at period end."}
           </p>
-          <a className="btn primary" href="#/account">
+          <NavButton variant="primary" href="#/account">
             Back to my games
-          </a>
+          </NavButton>
         </>
       ) : (
         <>
@@ -98,16 +100,16 @@ export default function CancelView() {
           </p>
           {error && <p className="error">{error}</p>}
           <div className="cancel-actions">
-            <a className="btn primary" href="#/account">
+            <NavButton variant="primary" href="#/account">
               Never mind, keep Premium
-            </a>
-            <button
-              className="btn danger"
-              disabled={phase === "busy"}
+            </NavButton>
+            <Button
+              variant="danger"
+              busy={phase === "busy"}
               onClick={confirmCancel}
             >
               {phase === "busy" ? "Canceling…" : "Confirm cancel"}
-            </button>
+            </Button>
           </div>
         </>
       )}

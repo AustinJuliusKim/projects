@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { getMe, createCheckoutSession, createPortalSession, track } from "./api.js";
 import { authEnabled, hasSession, getProfile, signIn, signOut } from "./auth.js";
 import AccountSkeleton from "./AccountSkeleton.jsx";
+import Button from "./Button.jsx";
+import NavButton from "./NavButton.jsx";
 
 // Premium purchase/manage section. Web-only by construction (AccountView is
 // unreachable in the native shell): Apple 3.1.1 forbids linking to external
@@ -46,17 +48,18 @@ function PremiumSection({ me }) {
           <div className="premium-badge-sub">{status}</div>
         </div>
         <div className="premium-badge-actions">
-          <button
-            className="link-btn subtle"
-            disabled={busy}
+          <Button
+            variant="link"
+            className="subtle"
+            busy={busy}
             onClick={() => go(createPortalSession)}
           >
             Manage billing
-          </button>
+          </Button>
           {!p.cancelAtPeriodEnd && (
-            <a className="link-btn subtle" href="#/cancel">
+            <NavButton variant="link" className="subtle" href="#/cancel">
               Cancel subscription
-            </a>
+            </NavButton>
           )}
         </div>
         {error && <p className="error">{error}</p>}
@@ -80,20 +83,19 @@ function PremiumSection({ me }) {
         winner you've crowned.
       </p>
       <div className="premium-btns">
-        <button
-          className="btn primary"
-          disabled={busy}
+        <Button
+          variant="primary"
+          busy={busy}
           onClick={() => go(createCheckoutSession, "monthly")}
         >
           $2.99/mo
-        </button>
-        <button
-          className="btn"
-          disabled={busy}
+        </Button>
+        <Button
+          busy={busy}
           onClick={() => go(createCheckoutSession, "annual")}
         >
           $24/yr
-        </button>
+        </Button>
       </div>
       {error && <p className="error">{error}</p>}
     </div>
@@ -163,7 +165,6 @@ export default function AccountView() {
       <div className="container">
         <h1>My games</h1>
         <p className="muted">Accounts aren't available here yet.</p>
-        <a className="btn ghost" href="#/">← Back</a>
       </div>
     );
   }
@@ -176,10 +177,9 @@ export default function AccountView() {
           Sign in to keep your game history on every device — every finished
           game, what won, and your play streak.
         </p>
-        <button className="btn primary" onClick={signIn}>
+        <Button variant="primary" onClick={signIn}>
           Continue with Google
-        </button>
-        <a className="btn ghost" href="#/">← Back</a>
+        </Button>
       </div>
     );
   }
@@ -264,10 +264,9 @@ export default function AccountView() {
       )}
 
       <div className="footer">
-        <a className="link-btn" href="#/">← Back</a>
-        <button className="link-btn" onClick={signOut}>
+        <Button variant="link" onClick={signOut}>
           Sign out
-        </button>
+        </Button>
       </div>
     </div>
   );

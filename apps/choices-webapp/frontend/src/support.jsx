@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { isNative } from "./platform.js";
+import Button from "./Button.jsx";
 
 // Tip-the-dev links + premium tease (growth plan §8). Tips are goodwill /
 // hosting money, not revenue — placement is post-value only (created screen,
@@ -85,15 +86,15 @@ export function PremiumTease({ onInterest }) {
   }
   return (
     <p className="premium-tease muted">
-      <button
-        className="link-btn"
+      <Button
+        variant="link"
         onClick={() => {
           setNoted(true);
           if (onInterest) onInterest();
         }}
       >
         ✨ Premium — bigger games &amp; themes, coming soon
-      </button>
+      </Button>
     </p>
   );
 }

@@ -12,13 +12,9 @@ const PLACES_ENABLED = import.meta.env.VITE_PLACES_ENABLED === "true";
 // permission prompt is never unsolicited. "Near me" arrives as a hover
 // tooltip rather than copy.
 export default function NearMeToggle() {
-  // Same body class AccountCorner sets: it clears the corner row on every
-  // view, and the pin can be the only occupant (iOS shell hides accounts).
   useEffect(() => {
     if (!PLACES_ENABLED) return;
     initNearMe();
-    document.body.classList.add("account-corner-active");
-    return () => document.body.classList.remove("account-corner-active");
   }, []);
 
   const { enabled, coords } = useNearMe();
