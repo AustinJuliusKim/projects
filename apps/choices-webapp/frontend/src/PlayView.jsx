@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
-import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour, track } from "./api.js";
+import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour, getMe, track } from "./api.js";
+import { authEnabled, hasSession } from "./auth.js";
 import ChoiceInput from "./ChoiceInput.jsx";
+import PlayViewSkeleton from "./PlayViewSkeleton.jsx";
 import FillMyFour from "./FillMyFour.jsx";
 import { drawRevealCard } from "./revealCard.js";
 import { PLATFORMS } from "./affiliates.js";
@@ -31,10 +33,21 @@ export default function PlayView({ identity, onLeave }) {
   const [pushPrompted, setPushPrompted] = useState(false);
   const [rematchChoices, setRematchChoices] = useState(["", "", "", ""]);
 
+  // Premium perk: signed-in premium players may start the next game out of
+  // turn, so the rematch form needs the account's premium status. One getMe
+  // per mount, signed-in sessions only — guests never grow an auth call.
+  const [premium, setPremium] = useState(false);
+  useEffect(() => {
+    if (!authEnabled || !hasSession()) return;
+    getMe()
+      .then((me) => setPremium(["active", "past_due"].includes(me.premium?.status)))
+      .catch(() => {});
+  }, []);
+
   // Winner-reveal card flip. `complete` (and `iCanRematch`, which hooks also
   // depend on) is computed before the early returns (hooks rule).
   const complete = state?.game?.status === "complete";
-  const iCanRematch = complete && state?.nextStarter === role;
+  const iCanRematch = complete && (state?.nextStarter === role || premium);
   const sceneRef = useRef(null); // confetti origin
   const prevCompleteRef = useRef(null); // null = no snapshot yet (fresh load)
   const lastWinnerRef = useRef(null); // keeps back face populated during flip-back
@@ -229,7 +242,13 @@ export default function PlayView({ identity, onLeave }) {
       rematchFilledRef.current = false;
     } catch (err) {
       if (isBumped(err)) setBumped(true);
-      else setError(err.message);
+      else if (err.code === "GAME_IN_PROGRESS") {
+        // Both players hit restart at once and the other one won — their new
+        // game is the real state now, so sync to it instead of erroring.
+        getState(pairingId, role, token)
+          .then((res) => setState(res.state))
+          .catch(() => {});
+      } else setError(err.message);
     } finally {
       setBusy(false);
     }
@@ -332,8 +351,8 @@ export default function PlayView({ identity, onLeave }) {
 
   if (!state) {
     return (
-      <div className="container">
-        <p className="muted">Loading game…</p>
+      <div className="container" aria-busy="true">
+        <PlayViewSkeleton />
       </div>
     );
   }
@@ -505,6 +524,13 @@ export default function PlayView({ identity, onLeave }) {
       {complete && !iCanRematch && (
         <div className="banner waiting">
           Waiting for player {state.nextStarter} to start the next game…
+          {authEnabled && (
+            <p className="upsell-line">
+              <a href="#/account" onClick={() => reportLinkClick("premium-interest")}>
+                Or skip the wait — premium players deal the next 4 ⚡
+              </a>
+            </p>
+          )}
         </div>
       )}
 

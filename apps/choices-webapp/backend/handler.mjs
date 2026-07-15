@@ -149,7 +149,7 @@ export async function handler(event) {
       case "eliminate":
         return reply(200, await doEliminate(body));
       case "rematch":
-        return reply(200, await doRematch(body));
+        return reply(200, await doRematch(body, user));
       case "subscribe":
         return reply(200, await doSubscribe(body));
       case "linkClick":
@@ -528,10 +528,14 @@ function archivePut(pairing, pairingId, summary) {
   return { Put: { TableName: TABLE, Item: item } };
 }
 
-async function doRematch(body) {
+async function doRematch(body, user) {
   const { role, choices } = body;
+  // Premium perk: a signed-in premium caller may start the next game out of
+  // turn. Checked up front (one USER# read, signed-in callers only) because
+  // the mutate callback must stay sync.
+  const premiumBypass = user ? isPremium((await loadUser(user.sub)) ?? {}) : false;
   const { pairing, replay } = await mutatePairing(body, (pairing) => {
-    if (role !== pairing.nextStarter) {
+    if (role !== pairing.nextStarter && !premiumBypass) {
       throw new HttpError(409, "It's not your turn to start.", "NOT_YOUR_TURN_TO_START");
     }
     if (pairing.game.status !== "complete") {

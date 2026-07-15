@@ -264,6 +264,18 @@ h1 {
   margin-top: 20px;
 }
 
+/* Premium tease under the post-game waiting banner */
+.upsell-line {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.upsell-line a {
+  color: var(--indigo);
+  text-decoration: none;
+}
+
 .choices {
   list-style: none;
   padding: 0;
@@ -892,12 +904,77 @@ body.account-corner-active .container {
   width: 64px;
 }
 
+/* --- Play view skeleton (PlayViewSkeleton.jsx) ---
+   Sized to the real elements (no layout shift): h1 is 1.6rem (~26px line,
+   8px below), the turn banner is 14px padding + one 600-weight line (~50px,
+   20px below), .choice-btn is 18px padding + 1.1rem line (~62px). */
+.play-skeleton {
+  opacity: 0;
+  animation: sk-appear 0.2s ease 0.2s forwards;
+}
+
+.sk-title {
+  height: 26px;
+  width: 46%;
+  margin: 0 0 8px;
+}
+
+.sk-banner {
+  height: 50px;
+  border-radius: var(--radius-card);
+  margin: 12px 0 20px;
+}
+
+.sk-choice {
+  height: 62px;
+  border-radius: var(--radius-choice);
+}
+
+/* --- Admin dashboard skeleton (AdminSkeleton.jsx) ---
+   Sized to the real elements: .stat-num is 2.2rem/700 (~35px line),
+   .stat-label 0.82rem (~13px) with 6px above, panel h2 is 0.95rem with
+   12px below, bar tracks are 12px with 8px gaps. */
+.admin-skeleton {
+  opacity: 0;
+  animation: sk-appear 0.2s ease 0.2s forwards;
+}
+
+.sk-admin-num {
+  height: 35px;
+  width: 48px;
+}
+
+.sk-admin-label {
+  height: 13px;
+  width: 85%;
+  margin-top: 6px;
+}
+
+.sk-admin-heading {
+  height: 15px;
+  width: 160px;
+  margin-bottom: 12px;
+}
+
+.sk-admin-line {
+  height: 18px;
+  width: 70%;
+}
+
+.sk-admin-bar {
+  height: 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sk {
     animation: none;
     background: rgba(148, 163, 184, 0.18);
   }
-  .account-skeleton {
+  .account-skeleton,
+  .play-skeleton,
+  .admin-skeleton {
     animation: none;
     opacity: 1;
   }
