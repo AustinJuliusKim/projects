@@ -5,8 +5,10 @@ production `ChoicesWebApp` stack or `choices.austinjuliuskim.com`.
 
 ## How isolation works
 
-- CI only deploys on push to `main` (`.github/workflows/choices-webapp.yml`,
-  `deploy` job gate), so feature branches and PRs never deploy anything.
+- CI deploys **prod** only on push to `main` (`.github/workflows/choices-webapp.yml`,
+  `deploy` job gate). Same-repo PRs touching the app deploy the **preview
+  stack** automatically (`deploy-preview` job) — see "CI preview deploys"
+  below. Fork PRs never deploy (GitHub withholds the OIDC token).
 - The preview stack is a second, fully independent CloudFormation stack
   (`ChoicesWebApp-preview`, config env `preview` in `samconfig.toml`): its own
   DynamoDB table (`choices-games-preview`, via the `TableName` template
@@ -28,10 +30,32 @@ production `ChoicesWebApp` stack or `choices.austinjuliuskim.com`.
   (Update the committed public key in `samconfig.toml` to match.) Subsequent
   `sam deploy --config-env preview` updates reuse the stored private key.
 
+## CI preview deploys (automatic, on PR)
+
+The `deploy-preview` job runs on every same-repo PR that touches
+`apps/choices-webapp/**`: `sam deploy --config-env preview` + the frontend
+script against `ChoicesWebApp-preview`, then comments the preview URL on the
+PR (once, on open). The preview stack is **shared** — concurrent PRs
+serialize via the workflow concurrency group and the last deploy wins.
+
+One-time IAM setup on `choices-webapp-github-deploy` (both applied via the
+admin profile; keep `docs/iam-policy.json` in sync):
+
+1. Trust policy: allow the `pull_request` OIDC sub alongside `main`:
+   `"token.actions.githubusercontent.com:sub": ["repo:AustinJuliusKim/projects:ref:refs/heads/main", "repo:AustinJuliusKim/projects:pull_request"]`
+   (fork PRs are excluded by GitHub itself: no `id-token` for forks; a
+   same-repo `pull_request` run could in principle deploy prod, which is
+   acceptable on a repo where only the owner can push branches).
+2. Inline policy `choices-webapp-deploy`: broaden the two bucket patterns to
+   match preview names — `choiceswebapp-sitebucket-*` → `choiceswebapp*sitebucket-*`
+   (and `/*`), `choiceswebapp-suggestdatabucket-*` → `choiceswebapp*suggestdatabucket-*`.
+   All other patterns (`ChoicesWebApp*`, `choices-games*`, `choices_events*`)
+   already match the preview stack's resource names.
+
 ## Deploy (local, from any branch)
 
-Requires an admin AWS session (`aws login`) — the CI OIDC role is scoped to the
-prod stack names and cannot deploy the preview stack.
+Also possible with an admin AWS session (`aws login`) when you want a preview
+without opening a PR:
 
 ```sh
 cd apps/choices-webapp
@@ -84,6 +108,5 @@ sam delete --config-env preview
 
 - Cost at idle is ~zero (pay-per-request DynamoDB, Lambda, CloudFront).
 - Preview CORS is `*` (no fixed domain to pin). Prod stays pinned.
-- To deploy previews from CI later: add a `workflow_dispatch` job and broaden
-  the OIDC role policy (`docs/iam-policy.json`) from `ChoicesWebApp`/
-  `choices-games` to `ChoicesWebApp*`/`choices-games*`.
+- CI preview deploys shipped (see "CI preview deploys" above) — the old
+  workflow_dispatch idea was superseded by the on-PR `deploy-preview` job.
