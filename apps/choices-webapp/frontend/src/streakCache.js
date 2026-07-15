@@ -3,7 +3,7 @@
 // value from another account never leaks across sign-ins.
 const STREAK_KEY = "choices:streak";
 
-export function writeStreak(sub, stats) {
+export function writeStreak(sub, stats, premium = false) {
   if (!sub || !stats) return;
   localStorage.setItem(
     STREAK_KEY,
@@ -11,6 +11,7 @@ export function writeStreak(sub, stats) {
       sub,
       currentStreak: stats.currentStreak ?? 0,
       streakLocked: !!stats.streakLocked,
+      premium: !!premium,
       at: Date.now(),
     })
   );

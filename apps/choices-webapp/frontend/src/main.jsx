@@ -5,6 +5,7 @@ import JoinView from "./JoinView.jsx";
 import PlayView from "./PlayView.jsx";
 import Landing from "./Landing.jsx";
 import AccountView from "./AccountView.jsx";
+import CancelView from "./CancelView.jsx";
 import AdminView from "./AdminView.jsx";
 import AccountCorner from "./AccountCorner.jsx";
 import NearMeToggle from "./NearMeToggle.jsx";
@@ -39,6 +40,12 @@ function App() {
       return <AccountView />;
     }
 
+    // Cancel-subscription page (the Choicey plea), reached from the Premium
+    // badge. Above the identity gate so it's reachable mid-game like account.
+    if (hash.startsWith("#/cancel")) {
+      return <CancelView />;
+    }
+
     // Owner-only activity dashboard — also above the identity gate so it's
     // reachable mid-game. The real access boundary is the backend assertAdmin.
     if (hash.startsWith("#/admin")) {
@@ -69,7 +76,9 @@ function App() {
   // the 📍 near-me pin (hidden when Places is dormant) + the account pill.
   return (
     <>
-      {!hash.startsWith("#/account") && !hash.startsWith("#/admin") && (
+      {!hash.startsWith("#/account") &&
+        !hash.startsWith("#/admin") &&
+        !hash.startsWith("#/cancel") && (
         <div className="corner-tools">
           <NearMeToggle />
           <AccountCorner />
