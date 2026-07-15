@@ -42,6 +42,60 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+  # PR previews: every same-repo PR touching the app redeploys the single
+  # shared preview stack (last-writer-wins; concurrency serializes runs).
+  # Fork PRs are skipped — GitHub withholds the OIDC token there anyway.
+  # Requires the deploy role's trust policy to allow the `pull_request` sub
+  # and the bucket patterns broadened to `choiceswebapp*` (docs/iam-policy.json,
+  # docs/feature-deploys.md).
+  deploy-preview:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+    needs: [backend-tests, frontend-build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for OIDC role assumption
+      contents: read
+      pull-requests: write # preview-URL comment
+    concurrency:
+      group: choices-webapp-preview-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/choices-webapp
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.15
+          cache: npm
+          cache-dependency-path: apps/choices-webapp/frontend/package-lock.json
+      - uses: aws-actions/setup-sam@v3
+        with:
+          use-installer: true
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::549883968767:role/choices-webapp-github-deploy
+          aws-region: us-west-2
+      - run: sam build
+      - run: sam deploy --config-env preview --no-confirm-changeset --no-fail-on-empty-changeset
+      - run: npm ci
+        working-directory: apps/choices-webapp/frontend
+      - run: STACK_NAME=ChoicesWebApp-preview ./deploy-frontend.sh
+        env:
+          VITE_TIP_VENMO_URL: ${{ vars.VITE_TIP_VENMO_URL }}
+          VITE_TIP_STRIPE_URL: ${{ vars.VITE_TIP_STRIPE_URL }}
+      # One comment per PR (on open/reopen); pushes just redeploy silently.
+      - name: Comment preview URL
+        if: github.event.action == 'opened' || github.event.action == 'reopened'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          url=$(aws cloudformation describe-stacks --stack-name ChoicesWebApp-preview \
+            --query "Stacks[0].Outputs[?OutputKey=='SiteUrl'].OutputValue" --output text)
+          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" \
+            --body "🔍 Preview deployed: $url — shared stack, updated on every push to any open choices-webapp PR (last deploy wins)."
+
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [backend-tests, frontend-build]

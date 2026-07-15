@@ -72,8 +72,8 @@
         "s3:DeleteObject"
       ],
       "Resource": [
-        "arn:aws:s3:::choiceswebapp-sitebucket-*",
-        "arn:aws:s3:::choiceswebapp-sitebucket-*/*"
+        "arn:aws:s3:::choiceswebapp*sitebucket-*",
+        "arn:aws:s3:::choiceswebapp*sitebucket-*/*"
       ]
     },
     {
@@ -89,7 +89,7 @@
         "s3:ListBucket",
         "s3:Get*"
       ],
-      "Resource": "arn:aws:s3:::choiceswebapp-suggestdatabucket-*"
+      "Resource": "arn:aws:s3:::choiceswebapp*suggestdatabucket-*"
     },
     {
       "Sid": "LambdaManage",
