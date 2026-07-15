@@ -20,8 +20,12 @@ function toolSummary({ tool, input }) {
   return tool;
 }
 
-function ToolRow({ message, userName }) {
+function ToolRow({ message, userName, onOpenFile }) {
   const [open, setOpen] = useState(false);
+  // On mobile, a file-writing tool row doubles as an "open in Files" chip
+  // (the app's "Edited README.md ›" affordance). onOpenFile is undefined on
+  // desktop, so the chip never renders there.
+  const filePath = message.input?.file_path;
   return (
     <div className="msg msg-tool" data-testid="transcript-tool-row">
       <button className="tool-summary" onClick={() => setOpen((o) => !o)}>
@@ -29,6 +33,16 @@ function ToolRow({ message, userName }) {
         <span className="tool-icon">{TOOL_ICONS[message.tool] ?? "⚙"}</span>
         <span>{toolSummary(message)}</span>
       </button>
+      {onOpenFile && filePath && (
+        <button
+          type="button"
+          className="tool-open-file"
+          data-testid="transcript-open-file"
+          onClick={() => onOpenFile(filePath)}
+        >
+          View file ›
+        </button>
+      )}
       {open && message.result && (
         <pre className={`tool-result ${message.result.isError ? "tool-result-error" : ""}`}>
           <span className="tool-result-marker">⎿</span>
@@ -40,9 +54,9 @@ function ToolRow({ message, userName }) {
 }
 
 /**
- * @param {{messages: Array<object>, status?: string, userName?: string|null}} props
+ * @param {{messages: Array<object>, status?: string, userName?: string|null, onOpenFile?: (path: string) => void}} props
  */
-export default function Transcript({ messages, status, userName = null }) {
+export default function Transcript({ messages, status, userName = null, onOpenFile }) {
   // Text-mode interpolation only — React escapes these sinks itself.
   const interp = (text) => interpolateUserName(text, userName);
   const endRef = useRef(null);
@@ -74,7 +88,7 @@ export default function Transcript({ messages, status, userName = null }) {
           );
         }
         if (message.role === "tool") {
-          return <ToolRow message={message} userName={userName} key={message.id ?? i} />;
+          return <ToolRow message={message} userName={userName} onOpenFile={onOpenFile} key={message.id ?? i} />;
         }
         if (message.role === "error") {
           return (
