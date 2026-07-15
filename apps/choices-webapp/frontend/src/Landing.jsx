@@ -1,6 +1,7 @@
 import React from "react";
 import IosInstallHint from "./IosInstallHint.jsx";
 import TipJar from "./support.jsx";
+import NavButton from "./NavButton.jsx";
 import { authEnabled, hasSession } from "./auth.js";
 
 // First screen for a device with no identity yet: start a new pairing, or join
@@ -17,18 +18,18 @@ export default function Landing() {
         no apathy.
       </p>
 
-      <a className="btn primary" href="#/create">
+      <NavButton variant="primary" href="#/create">
         ➕ Start a new game
-      </a>
-      <a className="btn" href="#/join">
+      </NavButton>
+      <NavButton href="#/join">
         🔑 Enter a game code
-      </a>
+      </NavButton>
       {/* Signed-in users reach My games via the corner pill; this ghost
           button stays as the guest conversion CTA. */}
       {authEnabled && !hasSession() && (
-        <a className="btn ghost" href="#/account">
+        <NavButton variant="ghost" href="#/account">
           📜 Sign in for game history
-        </a>
+        </NavButton>
       )}
 
       <IosInstallHint />

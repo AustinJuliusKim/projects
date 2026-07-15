@@ -3,6 +3,7 @@ import { claimSeat, track, trackBeacon } from "./api.js";
 import { saveIdentity } from "./storage.js";
 import { enablePush, pushSupported } from "./push.js";
 import IosInstallHint from "./IosInstallHint.jsx";
+import Button from "./Button.jsx";
 
 export default function JoinView({ prefillCode = "", onReady }) {
   const [code, setCode] = useState(prefillCode);
@@ -67,16 +68,16 @@ export default function JoinView({ prefillCode = "", onReady }) {
 
         <IosInstallHint />
 
-        <button className="btn primary" onClick={() => claim("A")} disabled={busy}>
+        <Button variant="primary" onClick={() => claim("A")} busy={busy}>
           I created this game (Host)
-        </button>
-        <button className="btn primary" onClick={() => claim("B")} disabled={busy}>
+        </Button>
+        <Button variant="primary" onClick={() => claim("B")} busy={busy}>
           I was invited (Guest)
-        </button>
+        </Button>
         {error && <p className="error">{error}</p>}
-        <button className="btn ghost" onClick={() => setStep("code")} disabled={busy}>
+        <Button variant="ghost" onClick={() => setStep("code")} busy={busy}>
           ← Change code
-        </button>
+        </Button>
       </div>
     );
   }
@@ -98,12 +99,9 @@ export default function JoinView({ prefillCode = "", onReady }) {
           autoCorrect="off"
           onChange={(e) => setCode(e.target.value)}
         />
-        <button className="btn primary" type="submit" disabled={!code.trim()}>
+        <Button variant="primary" type="submit" disabled={!code.trim()}>
           Next →
-        </button>
-        <a className="btn ghost" href="#/">
-          ← Back
-        </a>
+        </Button>
       </form>
     </div>
   );

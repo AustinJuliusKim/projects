@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { authEnabled, hasSession, getProfile } from "./auth.js";
 import { readStreak } from "./streakCache.js";
 
@@ -6,12 +6,6 @@ import { readStreak } from "./streakCache.js";
 // synchronous (auth localStorage + streak cache) — it never calls the API.
 // Hidden entirely when accounts are unavailable (includes the iOS shell).
 export default function AccountCorner() {
-  useEffect(() => {
-    if (!authEnabled) return;
-    document.body.classList.add("account-corner-active");
-    return () => document.body.classList.remove("account-corner-active");
-  }, []);
-
   if (!authEnabled) return null;
 
   if (!hasSession()) {

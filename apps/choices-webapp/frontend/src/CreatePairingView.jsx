@@ -8,6 +8,7 @@ import IosInstallHint from "./IosInstallHint.jsx";
 import TipJar, { PremiumTease } from "./support.jsx";
 import ChoiceInput from "./ChoiceInput.jsx";
 import FillMyFour from "./FillMyFour.jsx";
+import Button from "./Button.jsx";
 
 export default function CreatePairingView({ onReady }) {
   const [choices, setChoices] = useState(["", "", "", ""]);
@@ -112,12 +113,12 @@ export default function CreatePairingView({ onReady }) {
 
         <div className="code-display">{created.code}</div>
 
-        <button className="btn" onClick={onShare}>
+        <Button onClick={onShare}>
           📤 Share invite
-        </button>
-        <button className="btn primary" onClick={onContinueAsHost} disabled={busy}>
+        </Button>
+        <Button variant="primary" onClick={onContinueAsHost} busy={busy}>
           {busy ? "Setting up…" : "Continue as Host →"}
-        </button>
+        </Button>
         {error && <p className="error">{error}</p>}
 
         <TipJar />
@@ -155,12 +156,9 @@ export default function CreatePairingView({ onReady }) {
           />
         ))}
         {error && <p className="error">{error}</p>}
-        <button className="btn primary" type="submit" disabled={!ready || busy}>
+        <Button variant="primary" type="submit" disabled={!ready} busy={busy}>
           {busy ? "Creating…" : "Create game"}
-        </button>
-        <a className="btn ghost" href="#/">
-          ← Back
-        </a>
+        </Button>
       </form>
     </div>
   );
