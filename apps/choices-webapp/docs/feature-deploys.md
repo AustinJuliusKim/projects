@@ -52,6 +52,12 @@ admin profile; keep `docs/iam-policy.json` in sync):
    All other patterns (`ChoicesWebApp*`, `choices-games*`, `choices_events*`)
    already match the preview stack's resource names.
 
+The `deploy-preview` step also injects the Stripe **Test-mode** secret key,
+webhook secret, and `AdminSubs` from GitHub secrets/vars via
+`--parameter-overrides` — so preview can fully exercise payment flows. Setup
+(register the test webhook endpoint, add the 3 secrets/vars, find your preview
+Cognito sub): see **[stripe-preview.md](./stripe-preview.md)**.
+
 ## Deploy (local, from any branch)
 
 Also possible with an admin AWS session (`aws login`) when you want a preview

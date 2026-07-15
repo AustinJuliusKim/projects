@@ -1026,8 +1026,27 @@ async function doCancelSubscription(user) {
   if (!billingEnabled()) {
     throw new HttpError(400, "Billing is not enabled here.", "BILLING_DISABLED");
   }
-  const item = await ensureUser(user);
-  const result = await cancelSubscription(item);
+  let item = await ensureUser(user);
+  let result;
+  try {
+    result = await cancelSubscription(item);
+  } catch (err) {
+    // The stored sub id may be absent (NO_SUBSCRIPTION) or belong to a
+    // different Stripe mode/account (SUB_STALE, e.g. a preview stack pointed
+    // at a new test key). Reconcile the real customer/sub by email once and
+    // retry before surfacing an error.
+    if (err instanceof BillingError && ["NO_SUBSCRIPTION", "SUB_STALE"].includes(err.code)) {
+      const patch = await reconcileByEmail(item.email ?? user.email);
+      if (!patch?.stripeSubId) {
+        throw new BillingError(400, "No active subscription found for this account.", "NO_SUBSCRIPTION");
+      }
+      await updateUserPremium(user.sub, patch);
+      item = { ...item, premium: { ...item.premium, ...patch } };
+      result = await cancelSubscription(item);
+    } else {
+      throw err;
+    }
+  }
   await updateUserPremium(user.sub, {
     cancelAtPeriodEnd: true,
     currentPeriodEnd: result.currentPeriodEnd,
