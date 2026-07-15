@@ -101,7 +101,8 @@ export const claimSeat = async (code, seat) =>
 // without ever fetching on its own.
 export const getMe = async () => {
   const data = await post("getMe", {}, await authHeaders());
-  writeStreak(getProfile()?.sub, data.stats);
+  const premium = ["active", "past_due"].includes(data.premium?.status);
+  writeStreak(getProfile()?.sub, data.stats, premium);
   return data;
 };
 // Owner-only activity dashboard. Auth header required; the backend gates on
@@ -112,6 +113,13 @@ export const createCheckoutSession = async (plan) =>
   post("createCheckoutSession", { plan }, await authHeaders());
 export const createPortalSession = async () =>
   post("createPortalSession", {}, await authHeaders());
+// In-app "Cancel subscription" (the Choicey page): cancels at period end.
+export const cancelSubscription = async () =>
+  post("cancelSubscription", {}, await authHeaders());
+// Owner-only premium backfill (AdminView). Defaults to the caller's own
+// account; reconciles the real Stripe customer/sub by email when live.
+export const adminSetPremium = async (payload = {}) =>
+  post("adminSetPremium", payload, await authHeaders());
 // GET so CloudFront can edge-cache game state (POSTs are never cached). No
 // retry loop: the poll itself is the retry.
 export async function getState(pairingId, role, token) {
@@ -137,10 +145,13 @@ export const getPairHistory = (pairingId, role, token) =>
   post("getPairHistory", { pairingId, role, token });
 // geo ({latitude, longitude}, pre-rounded by nearMeStore) rides along only
 // while the 📍 pin is lit; absent = neutral suggestions.
-export const placesSuggest = (input, sessionToken, geo = null) =>
-  post("placesSuggest", { input, sessionToken, ...(geo ? { geo } : {}) });
-export const placeDetails = (placeId, sessionToken) =>
-  post("placeDetails", { placeId, sessionToken });
+// Places is premium-gated server-side (real per-use Google cost), so the auth
+// header rides along to identify the account; guests/free get empty results
+// with premiumRequired: true.
+export const placesSuggest = async (input, sessionToken, geo = null) =>
+  post("placesSuggest", { input, sessionToken, ...(geo ? { geo } : {}) }, await authHeaders());
+export const placeDetails = async (placeId, sessionToken) =>
+  post("placeDetails", { placeId, sessionToken }, await authHeaders());
 // "Fill my 4": with a pairing (rematch) the seat token authorizes and the
 // counter lives on the pairing; without one (create screen) the auth header
 // identifies the account the counter lives on.

@@ -68,6 +68,57 @@ export async function createPortalSession(userItem, siteUrl) {
   return { url: session.url };
 }
 
+// In-app cancel (the cute Choicey page). Cancel at period end, not
+// immediately, so the member keeps what they paid for; the resulting
+// customer.subscription.updated webhook carries the same intent and the
+// final .deleted event flips status to canceled when the period lapses.
+// Returns the period-end so the UI can say "Premium until <date>".
+export async function cancelSubscription(userItem) {
+  const subId = userItem.premium?.stripeSubId;
+  if (!subId) {
+    throw new BillingError(400, "No active subscription to cancel.", "NO_SUBSCRIPTION");
+  }
+  const sub = await getStripe().subscriptions.update(subId, {
+    cancel_at_period_end: true,
+  });
+  return {
+    cancelAtPeriodEnd: true,
+    currentPeriodEnd: sub.current_period_end ? sub.current_period_end * 1000 : undefined,
+  };
+}
+
+// Best-effort backfill: match an existing Stripe customer by email and pull
+// their live subscription, so an account that subscribed outside the app's
+// own Checkout (e.g. created in the dashboard, or before the Live webhook was
+// wired) can be reconciled to real customer/subscription ids — which keeps
+// the in-app cancel flow working. Returns the premium patch or null.
+export async function reconcileByEmail(email) {
+  if (!email) return null;
+  const s = getStripe();
+  const customers = await s.customers.list({ email, limit: 20 });
+  for (const customer of customers.data) {
+    const subs = await s.subscriptions.list({
+      customer: customer.id,
+      status: "all",
+      limit: 20,
+    });
+    const live = subs.data.find((sub) =>
+      ["active", "trialing", "past_due"].includes(sub.status)
+    );
+    if (live) {
+      return {
+        status: normalizeStatus(live.status),
+        stripeCustomerId: customer.id,
+        stripeSubId: live.id,
+        currentPeriodEnd: live.current_period_end
+          ? live.current_period_end * 1000
+          : undefined,
+      };
+    }
+  }
+  return null;
+}
+
 // Verify + normalize a webhook. Returns null for event types we don't act
 // on, else { userId, premium } to merge onto the USER# item.
 export function parseWebhook(rawBody, signature) {

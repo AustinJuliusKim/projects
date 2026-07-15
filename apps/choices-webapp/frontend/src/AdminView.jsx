@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getAdminOverview } from "./api.js";
+import { getAdminOverview, adminSetPremium } from "./api.js";
 import { getProfile, signIn } from "./auth.js";
 import AdminSkeleton from "./AdminSkeleton.jsx";
 
@@ -96,7 +96,59 @@ export default function AdminView() {
       {data && (status === "ok" || status === "error") && (
         <Overview data={data} stale={status === "error"} />
       )}
+
+      {(status === "ok" || status === "error") && <PremiumTools />}
     </div>
+  );
+}
+
+// Owner-only backfill: flip an account to Premium and reconcile its Stripe
+// customer/subscription by email. Blank email/user targets the caller's own
+// account — the one-click unblock for a subscription that never linked through
+// the app's own Checkout (e.g. created in the dashboard).
+function PremiumTools() {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  async function grant() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await adminSetPremium(email.trim() ? { email: email.trim() } : {});
+      setMsg(
+        res.reconciled
+          ? "✓ Premium granted and linked to the live Stripe subscription."
+          : "✓ Premium granted (no live Stripe subscription matched — cancel will be unavailable)."
+      );
+    } catch (err) {
+      setMsg(`✕ ${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="admin-panel">
+      <h2>Premium tools</h2>
+      <p className="admin-hint">
+        Grant Premium to your own account. Add a Stripe customer email to
+        reconcile a specific subscription; leave blank to use your sign-in email.
+      </p>
+      <div className="admin-premium-row">
+        <input
+          type="email"
+          className="choice-input"
+          placeholder="stripe customer email (optional)"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <button type="button" className="btn" disabled={busy} onClick={grant}>
+          {busy ? "Working…" : "Grant Premium"}
+        </button>
+      </div>
+      {msg && <p className="admin-hint">{msg}</p>}
+    </section>
   );
 }
 

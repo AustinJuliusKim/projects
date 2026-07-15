@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
 import { useNearMe, disableNearMe, requestNearMe, initNearMe } from "./nearMeStore.js";
+import { getProfile } from "./auth.js";
+import { readStreak } from "./streakCache.js";
 
 const PLACES_ENABLED = import.meta.env.VITE_PLACES_ENABLED === "true";
 
@@ -21,6 +23,26 @@ export default function NearMeToggle() {
 
   const { enabled, coords } = useNearMe();
   if (!PLACES_ENABLED) return null;
+
+  // Near-me suggestions are premium-gated server-side (Places has real cost).
+  // For non-premium, the pin is a locked upsell: tapping routes to the account
+  // screen instead of firing an unsolicited geolocation prompt.
+  const premium = !!readStreak(getProfile()?.sub)?.premium;
+  if (!premium) {
+    return (
+      <button
+        type="button"
+        className="near-me-pin off locked"
+        aria-label="Near me (Premium)"
+        title="Near me — Premium"
+        onClick={() => {
+          window.location.hash = "#/account";
+        }}
+      >
+        📍
+      </button>
+    );
+  }
 
   const active = enabled && coords != null;
   return (

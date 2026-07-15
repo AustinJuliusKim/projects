@@ -25,16 +25,40 @@ function PremiumSection({ me }) {
   }
 
   if (premiumActive) {
+    const p = me.premium ?? {};
+    const renews = p.currentPeriodEnd
+      ? new Date(p.currentPeriodEnd).toLocaleDateString()
+      : null;
+    const status = p.cancelAtPeriodEnd
+      ? renews
+        ? `Premium until ${renews}`
+        : "Premium — canceling at period end"
+      : renews
+      ? `Renews ${renews}`
+      : "Thanks for the support!";
     return (
-      <div className="premium-box">
-        <p>✨ Premium — thanks for the support!</p>
-        <button
-          className="link-btn"
-          disabled={busy}
-          onClick={() => go(createPortalSession)}
-        >
-          Manage subscription
-        </button>
+      <div className="premium-badge">
+        <span className="premium-badge-crest" aria-hidden="true">
+          ✨
+        </span>
+        <div className="premium-badge-body">
+          <div className="premium-badge-title">Premium</div>
+          <div className="premium-badge-sub">{status}</div>
+        </div>
+        <div className="premium-badge-actions">
+          <button
+            className="link-btn subtle"
+            disabled={busy}
+            onClick={() => go(createPortalSession)}
+          >
+            Manage billing
+          </button>
+          {!p.cancelAtPeriodEnd && (
+            <a className="link-btn subtle" href="#/cancel">
+              Cancel subscription
+            </a>
+          )}
+        </div>
         {error && <p className="error">{error}</p>}
       </div>
     );

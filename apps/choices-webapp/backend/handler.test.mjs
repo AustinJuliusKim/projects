@@ -62,6 +62,15 @@ const getEvent = (queryStringParameters, headers = {}) => ({
   queryStringParameters,
 });
 
+// Signed-in premium caller (token "good-token" -> u-1). Places and Fill-my-4
+// are premium-gated, so most of those tests need u-1 to read back premium.
+const AUTH = { authorization: "Bearer good-token" };
+function mockPremiumUser(status = "active") {
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [], premium: { status } },
+  });
+}
+
 function conditionalCheckError() {
   const err = new Error("The conditional request failed");
   err.name = "ConditionalCheckFailedException";
@@ -757,11 +766,19 @@ function fakeStripe(event) {
         return event ?? JSON.parse(raw);
       },
     },
-    customers: { create: async () => ({ id: "cus_1" }) },
+    customers: {
+      create: async () => ({ id: "cus_1" }),
+      // reconcileByEmail lookup: one matching customer by default.
+      list: async () => ({ data: [{ id: "cus_1" }] }),
+    },
     checkout: {
       sessions: { create: async (params) => ({ url: `https://stripe/checkout/${params.line_items[0].price}` }) },
     },
     billingPortal: { sessions: { create: async () => ({ url: "https://stripe/portal" }) } },
+    subscriptions: {
+      update: async (id, params) => ({ id, ...params, current_period_end: 1893456000 }),
+      list: async () => ({ data: [{ id: "sub_1", status: "active", current_period_end: 1893456000 }] }),
+    },
   };
 }
 
@@ -860,6 +877,70 @@ test("billing actions 400 when Stripe is not configured", async () => {
   assert.equal(JSON.parse(res.body).code, "BILLING_DISABLED");
 });
 
+test("cancelSubscription flags cancel_at_period_end and mirrors it onto the user", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  process.env.SITE_URL = "https://example.test/";
+  _setStripeForTests(fakeStripe());
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: {
+      pk: "USER#u-1", userId: "u-1", version: 2, stats: {}, recentGames: [],
+      premium: { status: "active", stripeCustomerId: "cus_1", stripeSubId: "sub_1" },
+    },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(postEvent({ action: "cancelSubscription" }, AUTH));
+  assert.equal(res.statusCode, 200);
+  const body = JSON.parse(res.body);
+  assert.equal(body.cancelAtPeriodEnd, true);
+  assert.equal(body.currentPeriodEnd, 1893456000 * 1000);
+  // Intent mirrored onto the USER# item (status stays active until period end).
+  const saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input.Item;
+  assert.equal(saved.premium.cancelAtPeriodEnd, true);
+  assert.equal(saved.premium.status, "active");
+});
+
+test("cancelSubscription 400s when there is no subscription id to cancel", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  _setStripeForTests(fakeStripe());
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [], premium: { status: "active" } },
+  });
+  ddbMock.on(PutCommand).resolves({});
+  const res = await handler(postEvent({ action: "cancelSubscription" }, AUTH));
+  assert.equal(res.statusCode, 400);
+  assert.equal(JSON.parse(res.body).code, "NO_SUBSCRIPTION");
+});
+
+test("adminSetPremium backfills the caller and reconciles real Stripe ids", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  process.env.ADMIN_SUBS = "u-1";
+  _setStripeForTests(fakeStripe());
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [], premium: { status: "none" } },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(postEvent({ action: "adminSetPremium" }, AUTH));
+  assert.equal(res.statusCode, 200);
+  const body = JSON.parse(res.body);
+  assert.equal(body.reconciled, true);
+  assert.equal(body.premium.status, "active");
+  const saved = ddbMock.commandCalls(PutCommand).at(-1).args[0].input.Item;
+  assert.equal(saved.premium.status, "active");
+  assert.equal(saved.premium.stripeCustomerId, "cus_1");
+  assert.equal(saved.premium.stripeSubId, "sub_1");
+  delete process.env.ADMIN_SUBS;
+});
+
+test("adminSetPremium is owner-gated", async () => {
+  process.env.ADMIN_SUBS = "someone-else";
+  const res = await handler(postEvent({ action: "adminSetPremium" }, AUTH));
+  assert.equal(res.statusCode, 403);
+  assert.equal(JSON.parse(res.body).code, "NOT_ADMIN");
+  delete process.env.ADMIN_SUBS;
+});
+
 test("getPairHistory requires a valid seat token", async () => {
   ddbMock
     .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
@@ -897,7 +978,37 @@ test("getPairHistory returns entries, empty before any game finishes, and never 
   assert.ok(!res.body.includes("tok-b"));
 });
 
+test("placesSuggest is premium-gated: guest/free callers never reach upstream", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  let called = 0;
+  _setPlacesFetchForTests(async () => {
+    called++;
+    return { ok: true, json: async () => ({ suggestions: [] }) };
+  });
+
+  // Guest (no auth header).
+  const guest = await handler(
+    postEvent({ action: "placesSuggest", input: "pizza", sessionToken: "s-1" })
+  );
+  assert.equal(guest.statusCode, 200);
+  assert.deepEqual(JSON.parse(guest.body), {
+    suggestions: [],
+    enabled: true,
+    premiumRequired: true,
+  });
+
+  // Signed-in free account.
+  mockPremiumUser("none");
+  const free = await handler(
+    postEvent({ action: "placesSuggest", input: "pizza", sessionToken: "s-1" }, AUTH)
+  );
+  assert.equal(JSON.parse(free.body).premiumRequired, true);
+
+  assert.equal(called, 0); // no billable Places call for either
+});
+
 test("placesSuggest without a key reports disabled and never calls upstream", async () => {
+  mockPremiumUser();
   let called = 0;
   _setPlacesFetchForTests(async () => {
     called++;
@@ -905,7 +1016,7 @@ test("placesSuggest without a key reports disabled and never calls upstream", as
   });
 
   const res = await handler(
-    postEvent({ action: "placesSuggest", input: "piz", sessionToken: "s-1" })
+    postEvent({ action: "placesSuggest", input: "piz", sessionToken: "s-1" }, AUTH)
   );
   assert.equal(res.statusCode, 200);
   assert.deepEqual(JSON.parse(res.body), { suggestions: [], enabled: false });
@@ -914,6 +1025,7 @@ test("placesSuggest without a key reports disabled and never calls upstream", as
 
 test("placesSuggest proxies with the session token and clamps results", async () => {
   process.env.PLACES_API_KEY = "places-key";
+  mockPremiumUser();
   let seen;
   _setPlacesFetchForTests(async (url, opts) => {
     seen = { url, opts };
@@ -931,7 +1043,7 @@ test("placesSuggest proxies with the session token and clamps results", async ()
   });
 
   const res = await handler(
-    postEvent({ action: "placesSuggest", input: "pizza", sessionToken: "s-1" })
+    postEvent({ action: "placesSuggest", input: "pizza", sessionToken: "s-1" }, AUTH)
   );
   assert.equal(res.statusCode, 200);
   const data = JSON.parse(res.body);
@@ -959,6 +1071,7 @@ const WORLD_RECT = {
 
 test("placesSuggest biases by body coords and never echoes them", async () => {
   process.env.PLACES_API_KEY = "places-key";
+  mockPremiumUser();
   let seen;
   _setPlacesFetchForTests(async (url, opts) => {
     seen = { url, opts };
@@ -966,12 +1079,15 @@ test("placesSuggest biases by body coords and never echoes them", async () => {
   });
 
   const res = await handler(
-    postEvent({
-      action: "placesSuggest",
-      input: "pizza",
-      sessionToken: "s-1",
-      geo: { latitude: 47.61, longitude: -122.33 },
-    })
+    postEvent(
+      {
+        action: "placesSuggest",
+        input: "pizza",
+        sessionToken: "s-1",
+        geo: { latitude: 47.61, longitude: -122.33 },
+      },
+      AUTH
+    )
   );
   assert.equal(res.statusCode, 200);
   const body = JSON.parse(seen.opts.body);
@@ -984,15 +1100,16 @@ test("placesSuggest biases by body coords and never echoes them", async () => {
 
 test("placesSuggest without coords sends the neutral world rectangle", async () => {
   process.env.PLACES_API_KEY = "places-key";
+  mockPremiumUser();
   const bodies = [];
   _setPlacesFetchForTests(async (url, opts) => {
     bodies.push(JSON.parse(opts.body));
     return { ok: true, json: async () => ({ suggestions: [] }) };
   });
 
-  await handler(postEvent({ action: "placesSuggest", input: "pizza" }));
+  await handler(postEvent({ action: "placesSuggest", input: "pizza" }, AUTH));
   // Old clients may still send the retired nearMe flag — same neutral path.
-  await handler(postEvent({ action: "placesSuggest", input: "pizza", nearMe: false }));
+  await handler(postEvent({ action: "placesSuggest", input: "pizza", nearMe: false }, AUTH));
 
   assert.equal(bodies.length, 2);
   assert.deepEqual(bodies[0].locationBias, WORLD_RECT);
@@ -1001,6 +1118,7 @@ test("placesSuggest without coords sends the neutral world rectangle", async () 
 
 test("placesSuggest treats junk or out-of-range body coords as absent", async () => {
   process.env.PLACES_API_KEY = "places-key";
+  mockPremiumUser();
   const bodies = [];
   _setPlacesFetchForTests(async (url, opts) => {
     bodies.push(JSON.parse(opts.body));
@@ -1013,7 +1131,7 @@ test("placesSuggest treats junk or out-of-range body coords as absent", async ()
     { longitude: -122 }, // latitude missing entirely
     "not-an-object",
   ]) {
-    const res = await handler(postEvent({ action: "placesSuggest", input: "pizza", geo }));
+    const res = await handler(postEvent({ action: "placesSuggest", input: "pizza", geo }, AUTH));
     assert.equal(res.statusCode, 200);
   }
   assert.equal(bodies.length, 4);
@@ -1022,16 +1140,17 @@ test("placesSuggest treats junk or out-of-range body coords as absent", async ()
 
 test("placesSuggest validates input length without calling upstream", async () => {
   process.env.PLACES_API_KEY = "places-key";
+  mockPremiumUser();
   let called = 0;
   _setPlacesFetchForTests(async () => {
     called++;
     return { ok: true, json: async () => ({}) };
   });
 
-  const short = await handler(postEvent({ action: "placesSuggest", input: "p" }));
+  const short = await handler(postEvent({ action: "placesSuggest", input: "p" }, AUTH));
   assert.deepEqual(JSON.parse(short.body), { suggestions: [], enabled: true });
   const long = await handler(
-    postEvent({ action: "placesSuggest", input: "x".repeat(61) })
+    postEvent({ action: "placesSuggest", input: "x".repeat(61) }, AUTH)
   );
   assert.deepEqual(JSON.parse(long.body), { suggestions: [], enabled: true });
   assert.equal(called, 0);
@@ -1039,15 +1158,17 @@ test("placesSuggest validates input length without calling upstream", async () =
 
 test("placesSuggest degrades to empty results when upstream fails", async () => {
   process.env.PLACES_API_KEY = "places-key";
+  mockPremiumUser();
   _setPlacesFetchForTests(async () => ({ ok: false, status: 429, json: async () => ({}) }));
 
-  const res = await handler(postEvent({ action: "placesSuggest", input: "pizza" }));
+  const res = await handler(postEvent({ action: "placesSuggest", input: "pizza" }, AUTH));
   assert.equal(res.statusCode, 200);
   assert.deepEqual(JSON.parse(res.body), { suggestions: [], enabled: true });
 });
 
 test("placeDetails terminates the session with the Essentials field mask", async () => {
   process.env.PLACES_API_KEY = "places-key";
+  mockPremiumUser();
   let seen;
   _setPlacesFetchForTests(async (url, opts) => {
     seen = { url, opts };
@@ -1062,7 +1183,7 @@ test("placeDetails terminates the session with the Essentials field mask", async
   });
 
   const res = await handler(
-    postEvent({ action: "placeDetails", placeId: "place-1", sessionToken: "s-1" })
+    postEvent({ action: "placeDetails", placeId: "place-1", sessionToken: "s-1" }, AUTH)
   );
   assert.equal(res.statusCode, 200);
   assert.deepEqual(JSON.parse(res.body).place, {
@@ -1077,8 +1198,24 @@ test("placeDetails terminates the session with the Essentials field mask", async
     "id,displayName,formattedAddress"
   );
 
-  const missing = await handler(postEvent({ action: "placeDetails" }));
+  const missing = await handler(postEvent({ action: "placeDetails" }, AUTH));
   assert.equal(missing.statusCode, 400);
+});
+
+test("placeDetails is premium-gated: a free caller never reaches upstream", async () => {
+  process.env.PLACES_API_KEY = "places-key";
+  mockPremiumUser("none");
+  let called = 0;
+  _setPlacesFetchForTests(async () => {
+    called++;
+    return { ok: true, json: async () => ({}) };
+  });
+  const res = await handler(
+    postEvent({ action: "placeDetails", placeId: "place-1", sessionToken: "s-1" }, AUTH)
+  );
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(JSON.parse(res.body), { premiumRequired: true });
+  assert.equal(called, 0);
 });
 
 // Fake Bedrock: counts invocations, returns a canned 4-choice reply.
@@ -1109,28 +1246,40 @@ test("fillMyFour on the create screen requires sign-in", async () => {
   assert.equal(JSON.parse(res.body).code, "SIGN_IN_REQUIRED");
 });
 
-test("fillMyFour on the create screen counts uses on the account", async () => {
+test("fillMyFour on the create screen is blocked for a free account (0 free)", async () => {
+  process.env.BEDROCK_MODEL_ID = "model-x";
+  const bedrock = fakeBedrock();
+  _setBedrockForTests(bedrock);
+  mockPremiumUser("none");
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(
+    postEvent({ action: "fillMyFour", occasion: "Date night" }, AUTH)
+  );
+  assert.equal(res.statusCode, 409);
+  assert.equal(JSON.parse(res.body).code, "AI_LIMIT");
+  assert.equal(bedrock.calls.length, 0); // never a billable model call
+});
+
+test("fillMyFour on the create screen runs unlimited for a premium account", async () => {
   process.env.BEDROCK_MODEL_ID = "model-x";
   const bedrock = fakeBedrock();
   _setBedrockForTests(bedrock);
   ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
     Item: {
       pk: "USER#u-1", userId: "u-1", version: 1,
-      stats: {}, recentGames: [], premium: { status: "none" },
+      stats: {}, recentGames: [], premium: { status: "active" },
     },
   });
   ddbMock.on(PutCommand).resolves({});
 
   const res = await handler(
-    postEvent(
-      { action: "fillMyFour", occasion: "Date night" },
-      { authorization: "Bearer good-token" }
-    )
+    postEvent({ action: "fillMyFour", occasion: "Date night" }, AUTH)
   );
   assert.equal(res.statusCode, 200);
   const data = JSON.parse(res.body);
   assert.deepEqual(data.choices, ["Pizza", "Tacos", "Sushi", "Ramen"]);
-  assert.equal(data.usesLeft, 2);
+  assert.equal(data.usesLeft, null); // premium = unlimited
   assert.equal(bedrock.calls.length, 1);
 
   const puts = ddbMock.commandCalls(PutCommand).map((c) => c.args[0].input.Item);
@@ -1142,7 +1291,7 @@ test("fillMyFour on the create screen counts uses on the account", async () => {
   assert.equal(ev.type, "fill4_used");
   assert.equal(ev.pairing_ref, null);
   assert.equal(ev.actor_role, "system");
-  assert.deepEqual(ev.payload, { context: "create", premium: false, uses_left: 2 });
+  assert.deepEqual(ev.payload, { context: "create", premium: true, uses_left: null });
   assert.ok(!JSON.stringify(ev).includes("u-1")); // never a user id
 });
 
@@ -1153,7 +1302,7 @@ test("fillMyFour on the create screen feeds the user's own history to the prompt
   ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
     Item: {
       pk: "USER#u-1", userId: "u-1", version: 1,
-      stats: {}, premium: { status: "none" },
+      stats: {}, premium: { status: "active" },
       recentGames: [
         {
           choices: ["Ramen", "Pizza", "Sushi", "Tacos"],
@@ -1178,7 +1327,7 @@ test("fillMyFour on the create screen feeds the user's own history to the prompt
   assert.ok(prompt.includes("Occasion: Date night"));
 });
 
-test("fillMyFour enforces the monthly cap and resets on rollover", async () => {
+test("fillMyFour gives a free account zero fills regardless of prior-month usage", async () => {
   process.env.BEDROCK_MODEL_ID = "model-x";
   const bedrock = fakeBedrock();
   _setBedrockForTests(bedrock);
@@ -1188,26 +1337,14 @@ test("fillMyFour enforces the monthly cap and resets on rollover", async () => {
   });
   ddbMock.on(PutCommand).resolves({});
 
-  // At the cap this month -> blocked before any Bedrock call.
+  // No usage this month, yet a free account still has 0 allowance.
   ddbMock
     .on(GetCommand, { Key: { pk: "USER#u-1" } })
-    .resolves({ Item: userItem({ month: CURRENT_MONTH, uses: 3 }) });
-  const blocked = await handler(
-    postEvent({ action: "fillMyFour" }, { authorization: "Bearer good-token" })
-  );
-  assert.equal(blocked.statusCode, 409);
-  assert.equal(JSON.parse(blocked.body).code, "AI_LIMIT");
+    .resolves({ Item: userItem({ month: "2020-01", uses: 0 }) });
+  const fresh = await handler(postEvent({ action: "fillMyFour" }, AUTH));
+  assert.equal(fresh.statusCode, 409);
+  assert.equal(JSON.parse(fresh.body).code, "AI_LIMIT");
   assert.equal(bedrock.calls.length, 0);
-
-  // Same uses recorded against an old month -> fresh allowance.
-  ddbMock
-    .on(GetCommand, { Key: { pk: "USER#u-1" } })
-    .resolves({ Item: userItem({ month: "2020-01", uses: 3 }) });
-  const rolled = await handler(
-    postEvent({ action: "fillMyFour" }, { authorization: "Bearer good-token" })
-  );
-  assert.equal(rolled.statusCode, 200);
-  assert.equal(JSON.parse(rolled.body).usesLeft, 2);
 });
 
 test("fillMyFour is unlimited for premium accounts", async () => {
@@ -1234,9 +1371,13 @@ test("fillMyFour on a pairing counts on the pairing and feeds pair history to th
   const bedrock = fakeBedrock();
   _setBedrockForTests(bedrock);
   ddbMock.on(GetCommand).resolves({});
+  // A premium-linked seat unlocks the pairing's AI fills.
   ddbMock
     .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
-    .resolves({ Item: pairingItem() });
+    .resolves({ Item: pairingItem({ userA: "u-1" }) });
+  ddbMock
+    .on(GetCommand, { Key: { pk: "USER#u-1" } })
+    .resolves({ Item: { pk: "USER#u-1", userId: "u-1", premium: { status: "active" } } });
   ddbMock.on(GetCommand, { Key: { pk: "HIST#abc123" } }).resolves({
     Item: {
       pk: "HIST#abc123",
@@ -1257,7 +1398,7 @@ test("fillMyFour on a pairing counts on the pairing and feeds pair history to th
   );
   assert.equal(res.statusCode, 200);
   const data = JSON.parse(res.body);
-  assert.equal(data.usesLeft, 2);
+  assert.equal(data.usesLeft, null); // premium seat = unlimited
 
   const prompt = bedrock.calls[0].input.messages[0].content[0].text;
   assert.ok(prompt.includes("Ramen (won 1x)"));
@@ -1275,7 +1416,7 @@ test("fillMyFour on a pairing counts on the pairing and feeds pair history to th
   assert.equal(ev.type, "fill4_used");
   assert.equal(ev.pairing_ref, "abc123");
   assert.equal(ev.actor_role, "A");
-  assert.deepEqual(ev.payload, { context: "pairing", premium: false, uses_left: 2 });
+  assert.deepEqual(ev.payload, { context: "pairing", premium: true, uses_left: null });
 });
 
 test("fillMyFour on a pairing blocks at the cap without calling Bedrock", async () => {
@@ -1334,12 +1475,12 @@ test("fillMyFour surfaces an unparseable model reply as AI_FAILED", async () => 
   ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
     Item: {
       pk: "USER#u-1", userId: "u-1", version: 1,
-      stats: {}, recentGames: [], premium: { status: "none" },
+      stats: {}, recentGames: [], premium: { status: "active" },
     },
   });
 
   const res = await handler(
-    postEvent({ action: "fillMyFour" }, { authorization: "Bearer good-token" })
+    postEvent({ action: "fillMyFour" }, AUTH)
   );
   assert.equal(res.statusCode, 502);
   assert.equal(JSON.parse(res.body).code, "AI_FAILED");
