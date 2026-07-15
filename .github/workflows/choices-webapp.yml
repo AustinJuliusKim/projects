@@ -78,34 +78,37 @@ jobs:
           aws-region: us-west-2
       - run: sam build
       # Inject the Stripe Test-mode secrets + AdminSubs (from GitHub Actions
-      # secrets) so the preview stack can fully exercise payment flows.
-      # NOTE: `--parameter-overrides` on the CLI REPLACES samconfig's list (it
-      # does not merge per-key), so this must repeat the [preview] non-secret
-      # params — keep this block in sync with samconfig.toml [preview]. Empty
-      # secret/var (not yet set) simply leaves billing/admin disabled on
-      # preview — no failure.
+      # secrets/variables) so the preview stack can fully exercise payment
+      # flows. NOTE: `--parameter-overrides` on the CLI REPLACES samconfig's
+      # list (it does not merge per-key), so this repeats the [preview]
+      # non-secret params — keep in sync with samconfig.toml [preview]. Each
+      # secret is appended only when set: SAM rejects an empty "Key=" value,
+      # and an omitted param keeps its retained stack value.
       - name: Deploy preview stack (with Stripe test secrets)
         env:
           PREVIEW_STRIPE_SECRET_KEY: ${{ secrets.PREVIEW_STRIPE_SECRET_KEY }}
           PREVIEW_STRIPE_WEBHOOK_SECRET: ${{ secrets.PREVIEW_STRIPE_WEBHOOK_SECRET }}
-          PREVIEW_ADMIN_SUBS: ${{ secrets.PREVIEW_ADMIN_SUBS }}
+          # AdminSubs may live as a repo variable or secret — accept either.
+          PREVIEW_ADMIN_SUBS: ${{ vars.PREVIEW_ADMIN_SUBS || secrets.PREVIEW_ADMIN_SUBS }}
         run: |
+          params=(
+            TableName=choices-games-preview
+            GlueDatabaseName=choices_events_preview
+            VapidPublicKey=BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M
+            VapidSubject=mailto:austinjuliuskim@gmail.com
+            'CorsAllowOrigin=*'
+            GoogleClientId=240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com
+            CognitoDomainPrefix=choices-auth-preview
+            CognitoCallbackUrl=https://d3r33durbg7s1k.cloudfront.net/
+            StripePriceMonthly=price_1TpzGYIVveMhKb5YH2DIAGcr
+            StripePriceAnnual=price_1TpzGjIVveMhKb5YRATUAc1o
+            BedrockModelId=us.anthropic.claude-haiku-4-5-20251001-v1:0
+          )
+          if [ -n "$PREVIEW_STRIPE_SECRET_KEY" ]; then params+=("StripeSecretKey=$PREVIEW_STRIPE_SECRET_KEY"); fi
+          if [ -n "$PREVIEW_STRIPE_WEBHOOK_SECRET" ]; then params+=("StripeWebhookSecret=$PREVIEW_STRIPE_WEBHOOK_SECRET"); fi
+          if [ -n "$PREVIEW_ADMIN_SUBS" ]; then params+=("AdminSubs=$PREVIEW_ADMIN_SUBS"); fi
           sam deploy --config-env preview --no-confirm-changeset --no-fail-on-empty-changeset \
-            --parameter-overrides \
-              TableName=choices-games-preview \
-              GlueDatabaseName=choices_events_preview \
-              VapidPublicKey=BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M \
-              VapidSubject=mailto:austinjuliuskim@gmail.com \
-              CorsAllowOrigin='*' \
-              GoogleClientId=240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com \
-              CognitoDomainPrefix=choices-auth-preview \
-              CognitoCallbackUrl=https://d3r33durbg7s1k.cloudfront.net/ \
-              StripePriceMonthly=price_1TpzGYIVveMhKb5YH2DIAGcr \
-              StripePriceAnnual=price_1TpzGjIVveMhKb5YRATUAc1o \
-              BedrockModelId=us.anthropic.claude-haiku-4-5-20251001-v1:0 \
-              StripeSecretKey="$PREVIEW_STRIPE_SECRET_KEY" \
-              StripeWebhookSecret="$PREVIEW_STRIPE_WEBHOOK_SECRET" \
-              AdminSubs="$PREVIEW_ADMIN_SUBS"
+            --parameter-overrides "${params[@]}"
       - run: npm ci
         working-directory: apps/choices-webapp/frontend
       - run: STACK_NAME=ChoicesWebApp-preview ./deploy-frontend.sh
