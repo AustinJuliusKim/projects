@@ -959,6 +959,24 @@ test("cancelSubscription reconciles a stale (wrong-mode) sub id and retries", as
   assert.ok(savedSubIds.includes("sub_good")); // reconciled id persisted
 });
 
+test("cancelSubscription reads period end from subscription items (newer Stripe API)", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  // Recent Stripe API versions omit the top-level current_period_end and put
+  // it on each item — an undefined result here previously crashed the write.
+  _setStripeForTests({
+    subscriptions: {
+      update: async (id) => ({ id, items: { data: [{ current_period_end: 1893456000 }] } }),
+    },
+  });
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [], premium: { status: "active", stripeSubId: "sub_1" } },
+  });
+  ddbMock.on(PutCommand).resolves({});
+  const res = await handler(postEvent({ action: "cancelSubscription" }, AUTH));
+  assert.equal(res.statusCode, 200);
+  assert.equal(JSON.parse(res.body).currentPeriodEnd, 1893456000 * 1000);
+});
+
 test("cancelSubscription maps a Stripe auth error to a clean 502 (not a 500)", async () => {
   process.env.STRIPE_SECRET_KEY = "sk_test_bad";
   _setStripeForTests({

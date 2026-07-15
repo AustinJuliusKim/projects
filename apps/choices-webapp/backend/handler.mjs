@@ -52,7 +52,12 @@ import { buildEvent, eventItem, EVENT_TYPES, CLIENT_EVENT_TYPES } from "./events
 
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
-const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+// removeUndefinedValues so an optional field left undefined (e.g. a Stripe
+// currentPeriodEnd that isn't present) is dropped from the item rather than
+// throwing a marshalling error mid-write.
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
+  marshallOptions: { removeUndefinedValues: true },
+});
 const s3 = new S3Client({});
 
 const pairPk = (id) => `PAIR#${id}`;
