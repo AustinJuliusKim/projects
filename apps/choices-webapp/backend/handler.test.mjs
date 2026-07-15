@@ -900,9 +900,22 @@ test("cancelSubscription flags cancel_at_period_end and mirrors it onto the user
   assert.equal(saved.premium.status, "active");
 });
 
-test("cancelSubscription 400s when there is no subscription id to cancel", async () => {
+// A thrown Stripe SDK error is duck-typed by its `type` string (real errors
+// and these fakes alike).
+function stripeError(type, code) {
+  const e = new Error(`${type} ${code ?? ""}`.trim());
+  e.type = type;
+  if (code) e.code = code;
+  return e;
+}
+
+test("cancelSubscription 400s when there is no sub id and nothing to reconcile", async () => {
   process.env.STRIPE_SECRET_KEY = "sk_test_x";
-  _setStripeForTests(fakeStripe());
+  // No Stripe customer/sub matches by email -> reconcile finds nothing.
+  _setStripeForTests({
+    subscriptions: { update: async () => ({}), list: async () => ({ data: [] }) },
+    customers: { list: async () => ({ data: [] }) },
+  });
   ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
     Item: { pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [], premium: { status: "active" } },
   });
@@ -910,6 +923,54 @@ test("cancelSubscription 400s when there is no subscription id to cancel", async
   const res = await handler(postEvent({ action: "cancelSubscription" }, AUTH));
   assert.equal(res.statusCode, 400);
   assert.equal(JSON.parse(res.body).code, "NO_SUBSCRIPTION");
+});
+
+test("cancelSubscription reconciles a stale (wrong-mode) sub id and retries", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_x";
+  const updateCalls = [];
+  _setStripeForTests({
+    subscriptions: {
+      update: async (id) => {
+        updateCalls.push(id);
+        if (id === "sub_stale") throw stripeError("StripeInvalidRequestError", "resource_missing");
+        return { id, current_period_end: 1893456000 };
+      },
+      list: async () => ({ data: [{ id: "sub_good", status: "active", current_period_end: 1893456000 }] }),
+    },
+    customers: { list: async () => ({ data: [{ id: "cus_good" }] }) },
+  });
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: {
+      pk: "USER#u-1", userId: "u-1", version: 2, stats: {}, recentGames: [], email: "u1@example.com",
+      premium: { status: "active", stripeCustomerId: "cus_old", stripeSubId: "sub_stale" },
+    },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(postEvent({ action: "cancelSubscription" }, AUTH));
+  assert.equal(res.statusCode, 200);
+  assert.equal(JSON.parse(res.body).cancelAtPeriodEnd, true);
+  assert.deepEqual(updateCalls, ["sub_stale", "sub_good"]); // retried with the reconciled id
+  const savedSubIds = ddbMock
+    .commandCalls(PutCommand)
+    .map((c) => c.args[0].input.Item)
+    .filter((i) => i.pk === "USER#u-1")
+    .map((i) => i.premium?.stripeSubId);
+  assert.ok(savedSubIds.includes("sub_good")); // reconciled id persisted
+});
+
+test("cancelSubscription maps a Stripe auth error to a clean 502 (not a 500)", async () => {
+  process.env.STRIPE_SECRET_KEY = "sk_test_bad";
+  _setStripeForTests({
+    subscriptions: { update: async () => { throw stripeError("StripeAuthenticationError"); } },
+  });
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 1, stats: {}, recentGames: [], premium: { status: "active", stripeSubId: "sub_1" } },
+  });
+  ddbMock.on(PutCommand).resolves({});
+  const res = await handler(postEvent({ action: "cancelSubscription" }, AUTH));
+  assert.equal(res.statusCode, 502);
+  assert.equal(JSON.parse(res.body).code, "STRIPE_AUTH");
 });
 
 test("adminSetPremium backfills the caller and reconciles real Stripe ids", async () => {
