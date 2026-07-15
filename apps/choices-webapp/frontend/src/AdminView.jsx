@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getAdminOverview } from "./api.js";
 import { getProfile, signIn } from "./auth.js";
+import AdminSkeleton from "./AdminSkeleton.jsx";
 
 // Owner-only activity dashboard (anonymous aggregates). Polls every 30s using
 // the same self-scheduling / visibility-aware loop as PlayView, at a slow fixed
@@ -71,7 +72,7 @@ export default function AdminView() {
   }, []);
 
   return (
-    <div className="admin-view">
+    <div className="admin-view" aria-busy={status === "loading"}>
       <header className="admin-head">
         <a className="admin-back" href="#/">← back</a>
         <h1>Activity</h1>
@@ -87,7 +88,7 @@ export default function AdminView() {
       {status === "forbidden" && (
         <div className="admin-empty"><p>This dashboard is owner-only.</p></div>
       )}
-      {status === "loading" && <div className="admin-empty"><p>Loading…</p></div>}
+      {status === "loading" && <AdminSkeleton />}
       {status === "error" && !data && (
         <div className="admin-empty"><p>Couldn't load activity. Retrying…</p></div>
       )}

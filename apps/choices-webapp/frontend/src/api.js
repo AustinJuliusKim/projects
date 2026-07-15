@@ -5,8 +5,8 @@ import { writeStreak } from "./streakCache.js";
 const API_URL = import.meta.env.VITE_API_URL;
 
 // Optional account identity: {} for guests, authorization header when a
-// session exists. Only attached where the backend uses it (claimSeat, getMe)
-// so game polling never grows an auth dependency.
+// session exists. Only attached where the backend uses it (claimSeat, getMe,
+// rematch's premium bypass) so game polling never grows an auth dependency.
 async function authHeaders() {
   const idToken = await getIdToken();
   return idToken ? { authorization: `Bearer ${idToken}` } : {};
@@ -124,8 +124,9 @@ export async function getState(pairingId, role, token) {
 }
 export const eliminate = (pairingId, role, token, gameNumber, index) =>
   mutate("eliminate", { pairingId, role, token, gameNumber, index });
-export const rematch = (pairingId, role, token, choices, source) =>
-  mutate("rematch", { pairingId, role, token, choices, ...(source ? { source } : {}) });
+// Auth header rides along so a signed-in premium player can start out of turn.
+export const rematch = async (pairingId, role, token, choices, source) =>
+  mutate("rematch", { pairingId, role, token, choices, ...(source ? { source } : {}) }, await authHeaders());
 export const subscribe = (pairingId, role, token, subscription) =>
   post("subscribe", { pairingId, role, token, subscription });
 export const linkClick = (pairingId, role, token, gameNumber, platform) =>
