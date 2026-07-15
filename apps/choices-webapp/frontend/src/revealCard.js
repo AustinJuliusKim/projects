@@ -7,7 +7,7 @@ const W = 1080;
 const H = 1350;
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
-export function drawRevealCard(canvas, { winner, losers }) {
+export async function drawRevealCard(canvas, { winner, losers }) {
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
@@ -62,6 +62,18 @@ export function drawRevealCard(canvas, { winner, losers }) {
   ctx.fillStyle = "#22c55e";
   ctx.font = `600 46px ${FONT}`;
   ctx.fillText("🏆 survived", W / 2, chipY + 130);
+
+  // App logo above the footer. Best-effort: a failed load must never block
+  // the share, the card just renders without it.
+  try {
+    const logo = new Image();
+    logo.src = "/icon-192.png";
+    await logo.decode();
+    const size = 96;
+    ctx.drawImage(logo, (W - size) / 2, H - 300, size, size);
+  } catch {
+    /* card ships logo-less */
+  }
 
   // Footer
   ctx.fillStyle = "#94a3b8";
