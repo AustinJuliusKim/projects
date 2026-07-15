@@ -26,9 +26,10 @@ function normalize(text) {
  *   freeText?: boolean,
  *   placeholder?: string,
  *   userName?: string|null,
+ *   compact?: boolean,
  * }} props
  */
-export default function PromptComposer({ suggestions, status, hint, onSubmit, freeText = false, placeholder, userName = null }) {
+export default function PromptComposer({ suggestions, status, hint, onSubmit, freeText = false, placeholder, userName = null, compact = false }) {
   const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -132,7 +133,7 @@ export default function PromptComposer({ suggestions, status, hint, onSubmit, fr
   const listboxId = "composer-listbox";
 
   return (
-    <div className="prompt-composer" data-testid="prompt-composer">
+    <div className={`prompt-composer ${compact ? "prompt-composer-compact" : ""}`} data-testid="prompt-composer">
       <div className="cli-input-box">
         <div className="composer-row">
           <span className="cli-prompt-marker">&gt;</span>
@@ -159,6 +160,18 @@ export default function PromptComposer({ suggestions, status, hint, onSubmit, fr
             onFocus={() => !freeText && setMenuOpen(true)}
             onKeyDown={onKeyDown}
           />
+          {compact && (
+            <button
+              type="button"
+              className="send-button"
+              data-testid="run-button"
+              aria-label="Run"
+              disabled={running || !canRun}
+              onClick={submit}
+            >
+              ↑
+            </button>
+          )}
         </div>
 
         {!freeText && menuOpen && filtered.length > 0 && (
@@ -190,15 +203,17 @@ export default function PromptComposer({ suggestions, status, hint, onSubmit, fr
           </div>
         )}
 
-        <button
-          type="button"
-          className="run-button"
-          data-testid="run-button"
-          disabled={running || !canRun}
-          onClick={submit}
-        >
-          Run
-        </button>
+        {!compact && (
+          <button
+            type="button"
+            className="run-button"
+            data-testid="run-button"
+            disabled={running || !canRun}
+            onClick={submit}
+          >
+            Run
+          </button>
+        )}
       </div>
     </div>
   );

@@ -26,6 +26,8 @@ import PermissionModal from "./components/PermissionModal.jsx";
 import AnnotationCard from "./components/AnnotationCard.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
 import AuthCallback from "./components/AuthCallback.jsx";
+import MobileShell from "./components/mobile/MobileShell.jsx";
+import { useIsMobile } from "./hooks/useIsMobile.js";
 
 /** @returns {number} */
 function readSpeedParam() {
@@ -48,6 +50,7 @@ export default function App() {
   const [loaded, setLoaded] = useState(null);
   const [error, setError] = useState(null);
   const speedMultiplier = readSpeedParam();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     let cancelled = false;
@@ -206,6 +209,48 @@ export default function App() {
     engine.dispatch({ type: "retry" });
   }
 
+  const activeLessonMeta = lessons.find((l) => l.lessonId === selectedLessonId);
+  const lessonTitle = activeLessonMeta?.title ?? loaded?.lesson?.title ?? "Lesson";
+  const capturedEmail =
+    Object.values(engine.state.results).find((r) => r?.values?.email)?.values.email ?? null;
+
+  if (isMobile) {
+    return (
+      <div className="app-shell app-shell-mobile">
+        <MobileShell
+          lessons={lessons}
+          activeLessonId={selectedLessonId}
+          onSelectLesson={setSelectedLessonId}
+          lessonTitle={lessonTitle}
+          ready={ready}
+          rail={rail}
+          completionNext={ready ? loaded.lesson.completion?.next : null}
+          onContinue={() => engine.dispatch({ type: "advance" })}
+          onQuizAnswer={(stepId, answerIdx) => engine.dispatch({ type: "quiz_answered", stepId, answerIdx })}
+          onRetry={onRetry}
+          onCapture={onCapture}
+          onCaptureSkip={onCaptureSkip}
+          capturedEmail={capturedEmail}
+          messages={state.messages}
+          status={state.status}
+          hint={state.hint}
+          suggestions={ready ? loaded.lesson.suggestions : []}
+          onSubmit={onComposerSubmit}
+          freeText={isDrill}
+          annotation={state.annotation}
+          onNext={next}
+          files={state.files}
+          openFile={state.openFile}
+          onOpenFile={openFile}
+          userName={userName}
+        />
+        {ready && state.status === "awaiting_permission" && state.permission && (
+          <PermissionModal permission={state.permission} onApprove={approve} onDeny={deny} asSheet />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -225,9 +270,7 @@ export default function App() {
           onCapture={onCapture}
           onCaptureSkip={onCaptureSkip}
           userName={userName}
-          capturedEmail={
-            Object.values(engine.state.results).find((r) => r?.values?.email)?.values.email ?? null
-          }
+          capturedEmail={capturedEmail}
         />
         <section className="pane pane-stage">
           {error && <div className="load-error">Failed to load lesson: {error}</div>}
