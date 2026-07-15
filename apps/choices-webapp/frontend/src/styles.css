@@ -760,6 +760,141 @@ body.account-corner-active .container {
   margin-top: 0;
 }
 
+/* Premium status badge (replaces the buy buttons once subscribed) */
+.premium-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  background: linear-gradient(135deg, var(--card), #23304a);
+  border: 1px solid var(--indigo);
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.premium-badge-crest {
+  font-size: 1.6rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 6px rgba(79, 70, 229, 0.55));
+}
+
+.premium-badge-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.premium-badge-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.premium-badge-sub {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 2px;
+}
+
+.premium-badge-actions {
+  flex-basis: 100%;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* Secondary text action with a comfortable tap target */
+.link-btn.subtle {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-decoration: none;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+}
+
+.link-btn.subtle:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* Cancel-subscription page (Choicey) */
+.cancel-view {
+  text-align: center;
+}
+
+.cancel-view h1 {
+  margin-top: 8px;
+}
+
+.choicey {
+  width: 200px;
+  max-width: 62%;
+  height: auto;
+  margin: 8px auto 4px;
+  border-radius: 24px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
+}
+
+.cancel-quote {
+  font-style: italic;
+  color: var(--text);
+  background: var(--card);
+  border-left: 3px solid var(--indigo);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 14px 0;
+  text-align: left;
+}
+
+.cancel-sign {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-style: normal;
+  font-size: 0.82rem;
+}
+
+.cancel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.btn.danger {
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+}
+
+.btn.danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Premium crest on the corner pill */
+.account-corner.is-premium {
+  border-color: var(--indigo);
+}
+
+.account-corner-crest {
+  font-size: 0.9rem;
+}
+
+/* Fill-my-4 premium lock (0 free uses) */
+.fill-btn.locked {
+  opacity: 0.85;
+}
+
+.fill-lock {
+  margin-left: 6px;
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
 /* Rematch form on winner screen */
 .rematch {
   margin-top: 24px;
@@ -1127,6 +1262,22 @@ body.account-corner-active .container {
 .admin-empty .btn {
   max-width: 220px;
   margin: 16px auto 0;
+}
+.admin-premium-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: stretch;
+}
+.admin-premium-row .choice-input {
+  flex: 1;
+  min-width: 0;
+}
+.admin-premium-row .btn {
+  width: auto;
+  margin-top: 0;
+  white-space: nowrap;
+  padding: 0 16px;
 }
 .admin-foot {
   margin-top: 18px;

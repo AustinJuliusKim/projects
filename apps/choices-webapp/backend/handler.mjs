@@ -37,6 +37,8 @@ import {
   billingEnabled,
   createCheckoutSession,
   createPortalSession,
+  cancelSubscription,
+  reconcileByEmail,
   parseWebhook,
   BillingError,
 } from "./billing.mjs";
@@ -50,7 +52,12 @@ import { buildEvent, eventItem, EVENT_TYPES, CLIENT_EVENT_TYPES } from "./events
 
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
-const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+// removeUndefinedValues so an optional field left undefined (e.g. a Stripe
+// currentPeriodEnd that isn't present) is dropped from the item rather than
+// throwing a marshalling error mid-write.
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
+  marshallOptions: { removeUndefinedValues: true },
+});
 const s3 = new S3Client({});
 
 const pairPk = (id) => `PAIR#${id}`;
@@ -159,9 +166,9 @@ export async function handler(event) {
       case "getPairHistory":
         return reply(200, await doGetPairHistory(body));
       case "placesSuggest":
-        return reply(200, await doPlacesSuggest(body));
+        return reply(200, await doPlacesSuggest(body, user));
       case "placeDetails":
-        return reply(200, await doPlaceDetails(body));
+        return reply(200, await doPlaceDetails(body, user));
       case "fillMyFour":
         return reply(200, await doFillMyFour(body, user));
       case "getMe":
@@ -170,8 +177,12 @@ export async function handler(event) {
         return reply(200, await doCreateCheckoutSession(user, body));
       case "createPortalSession":
         return reply(200, await doCreatePortalSession(user));
+      case "cancelSubscription":
+        return reply(200, await doCancelSubscription(user));
       case "getAdminOverview":
         return reply(200, await doGetAdminOverview(user));
+      case "adminSetPremium":
+        return reply(200, await doAdminSetPremium(user, body));
       default:
         return reply(400, { error: "Unknown action" });
     }
@@ -680,10 +691,20 @@ async function doGetPairHistory(body) {
   return { entries: Object.values(hist?.entries ?? {}) };
 }
 
-// L3 Places proxy. Unauthenticated by design — the create screen has no
-// pairing yet. Backstops: WAF per-IP rate cap, input validation here, and a
-// Places-API-restricted key that can be pulled (blanked) at any time.
-async function doPlacesSuggest(body) {
+// L3 Places proxy. Premium-gated (the Google Places call has real per-use
+// cost): only a signed-in premium account reaches the upstream API; everyone
+// else gets an empty, premiumRequired result and the plain text input. This
+// is the cost gate — guests/free never trigger a billable Places request.
+// Backstops still apply: WAF per-IP rate cap, input validation, restrictable
+// Places key.
+async function isPremiumUser(user) {
+  return user ? isPremium((await loadUser(user.sub)) ?? {}) : false;
+}
+
+async function doPlacesSuggest(body, user) {
+  if (!(await isPremiumUser(user))) {
+    return { suggestions: [], enabled: placesEnabled(), premiumRequired: true };
+  }
   const input = typeof body.input === "string" ? body.input.trim() : "";
   if (input.length < 2 || input.length > 60) {
     return { suggestions: [], enabled: placesEnabled() };
@@ -706,7 +727,10 @@ function clientGeo(body) {
   return { latitude, longitude };
 }
 
-async function doPlaceDetails(body) {
+async function doPlaceDetails(body, user) {
+  if (!(await isPremiumUser(user))) {
+    return { premiumRequired: true };
+  }
   const { placeId } = body;
   if (typeof placeId !== "string" || !placeId || placeId.length > 300) {
     throw new HttpError(400, "Missing placeId");
@@ -730,9 +754,12 @@ function sessionToken(body) {
 //  - create screen (no pairing exists yet, so "counter on the pairing" is
 //    impossible there): requires sign-in; counter on the USER# item. The
 //    join flow and manual creation stay untouched and free.
-const AI_FREE_USES = 3;
+// 0 free uses: Fill-my-4 is a premium-only feature (the LLM call has real
+// per-use cost). The affordance still renders for free/guest users, but
+// disabled with a premium lock — the upsell surface, not a usable action.
+const AI_FREE_USES = 0;
 const utcMonth = () => new Date().toISOString().slice(0, 7);
-const AI_LIMIT_MSG = "You're out of free fills this month. Premium never runs out. 😏";
+const AI_LIMIT_MSG = "Fill my 4 is a Premium feature. Unlock unlimited AI fills. ✨";
 
 async function doFillMyFour(body, user) {
   if (!aiEnabled()) {
@@ -947,6 +974,25 @@ async function doGetAdminOverview(user) {
   return { ...aggregateActive(pairings), generatedAt: Date.now() };
 }
 
+// Owner-only premium backfill. Targets the caller's own account by default
+// (there's no email->user index, so an arbitrary user is addressed by its
+// Cognito sub via body.userId). Reconciles the real Stripe customer/sub by
+// email when billing is live, else flags status only. The unblock path for a
+// subscription that never linked through the app's own Checkout.
+async function doAdminSetPremium(user, body) {
+  assertAdmin(user);
+  const targetSub = typeof body.userId === "string" && body.userId ? body.userId : user.sub;
+  const item =
+    targetSub === user.sub ? await ensureUser(user) : (await loadUser(targetSub)) ?? emptyUser(targetSub);
+  const lookupEmail =
+    (typeof body.email === "string" && body.email) || item.email || user.email;
+
+  const reconciled = billingEnabled() ? await reconcileByEmail(lookupEmail) : null;
+  const patch = reconciled ?? { status: "active" };
+  await updateUserPremium(targetSub, patch);
+  return { premium: { ...item.premium, ...patch }, reconciled: Boolean(reconciled) };
+}
+
 // --- Billing (premium subscription) ---
 
 async function doCreateCheckoutSession(user, body) {
@@ -975,6 +1021,42 @@ async function doCreatePortalSession(user) {
   }
   const item = await ensureUser(user);
   return createPortalSession(item, process.env.SITE_URL);
+}
+
+// In-app "Cancel subscription" (the Choicey page). Flags cancel_at_period_end
+// at Stripe and mirrors the intent onto the USER# item so the badge can show
+// "Premium until <date>" before the webhook's final .deleted event lands.
+async function doCancelSubscription(user) {
+  if (!user) throw new HttpError(401, "Sign in required.", "SIGN_IN_REQUIRED");
+  if (!billingEnabled()) {
+    throw new HttpError(400, "Billing is not enabled here.", "BILLING_DISABLED");
+  }
+  let item = await ensureUser(user);
+  let result;
+  try {
+    result = await cancelSubscription(item);
+  } catch (err) {
+    // The stored sub id may be absent (NO_SUBSCRIPTION) or belong to a
+    // different Stripe mode/account (SUB_STALE, e.g. a preview stack pointed
+    // at a new test key). Reconcile the real customer/sub by email once and
+    // retry before surfacing an error.
+    if (err instanceof BillingError && ["NO_SUBSCRIPTION", "SUB_STALE"].includes(err.code)) {
+      const patch = await reconcileByEmail(item.email ?? user.email);
+      if (!patch?.stripeSubId) {
+        throw new BillingError(400, "No active subscription found for this account.", "NO_SUBSCRIPTION");
+      }
+      await updateUserPremium(user.sub, patch);
+      item = { ...item, premium: { ...item.premium, ...patch } };
+      result = await cancelSubscription(item);
+    } else {
+      throw err;
+    }
+  }
+  await updateUserPremium(user.sub, {
+    cancelAtPeriodEnd: true,
+    currentPeriodEnd: result.currentPeriodEnd,
+  });
+  return result;
 }
 
 async function doStripeWebhook(event) {
