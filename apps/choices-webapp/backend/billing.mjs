@@ -116,7 +116,7 @@ export async function cancelSubscription(userItem) {
     });
     return {
       cancelAtPeriodEnd: true,
-      currentPeriodEnd: sub.current_period_end ? sub.current_period_end * 1000 : undefined,
+      currentPeriodEnd: subPeriodEnd(sub),
     };
   } catch (err) {
     // A stored sub id from a different Stripe mode/account surfaces as
@@ -149,9 +149,7 @@ export async function reconcileByEmail(email) {
           status: normalizeStatus(live.status),
           stripeCustomerId: customer.id,
           stripeSubId: live.id,
-          currentPeriodEnd: live.current_period_end
-            ? live.current_period_end * 1000
-            : undefined,
+          currentPeriodEnd: subPeriodEnd(live),
         };
       }
     }
@@ -200,15 +198,21 @@ export function parseWebhook(rawBody, signature) {
           status,
           stripeCustomerId: obj.customer,
           stripeSubId: obj.id,
-          currentPeriodEnd: obj.current_period_end
-            ? obj.current_period_end * 1000
-            : undefined,
+          currentPeriodEnd: subPeriodEnd(obj),
         },
       };
     }
     default:
       return null;
   }
+}
+
+// Period end in ms, or undefined. Newer Stripe API versions moved
+// current_period_end off the subscription object onto each subscription item,
+// so fall back to the first item.
+function subPeriodEnd(sub) {
+  const secs = sub?.current_period_end ?? sub?.items?.data?.[0]?.current_period_end;
+  return secs ? secs * 1000 : undefined;
 }
 
 function normalizeStatus(stripeStatus) {
