@@ -9,6 +9,8 @@ import FillMyFour from "./FillMyFour.jsx";
 import { drawRevealCard } from "./revealCard.js";
 import { PLATFORMS } from "./affiliates.js";
 import TipJar from "./support.jsx";
+import Button from "./Button.jsx";
+import NavButton from "./NavButton.jsx";
 import { WinnerAccountLine } from "./AccountView.jsx";
 import { clearIdentity } from "./storage.js";
 import { enablePush, pushSupported, isIosSafari, isStandalone } from "./push.js";
@@ -330,9 +332,9 @@ export default function PlayView({ identity, onLeave }) {
           This player seat was claimed on another device. Re-enter the code to
           take it back, or join as the other player.
         </p>
-        <button className="btn primary" onClick={leaveGame}>
+        <Button variant="primary" onClick={leaveGame}>
           Back to start
-        </button>
+        </Button>
       </div>
     );
   }
@@ -342,9 +344,9 @@ export default function PlayView({ identity, onLeave }) {
       <div className="container">
         <h1>Hmm…</h1>
         <p className="error">{error}</p>
-        <button className="btn ghost" onClick={leaveGame}>
+        <Button variant="ghost" onClick={leaveGame}>
           Leave game
-        </button>
+        </Button>
       </div>
     );
   }
@@ -437,9 +439,9 @@ export default function PlayView({ identity, onLeave }) {
                 </h2>
                 <div className="platform-btns reveal" style={{ "--d": "650ms" }}>
                   {PLATFORMS.map((p) => (
-                    <a
+                    <NavButton
                       key={p.id}
-                      className="btn platform"
+                      className="platform"
                       style={{ "--brand": p.brandColor }}
                       href={p.buildUrl(winnerName)}
                       target="_blank"
@@ -461,7 +463,7 @@ export default function PlayView({ identity, onLeave }) {
                         </span>
                       )}
                       <span className="platform-label">{p.label}</span>
-                    </a>
+                    </NavButton>
                   ))}
                 </div>
                 <p className="disclosure muted reveal" style={{ "--d": "750ms" }}>
@@ -470,9 +472,9 @@ export default function PlayView({ identity, onLeave }) {
                   Not affiliated with or endorsed by these platforms.
                 </p>
                 <div className="reveal" style={{ "--d": "850ms" }}>
-                  <button className="btn" onClick={onShareReveal}>
+                  <Button onClick={onShareReveal}>
                     📸 Share the reveal
-                  </button>
+                  </Button>
                   <TipJar compact onTip={reportLinkClick} />
                   {complete && <WinnerAccountLine />}
                 </div>
@@ -511,13 +513,14 @@ export default function PlayView({ identity, onLeave }) {
               }
             />
           ))}
-          <button
-            className="btn primary"
+          <Button
+            variant="primary"
             type="submit"
-            disabled={busy || rematchChoices.some((c) => !c.trim())}
+            busy={busy}
+            disabled={rematchChoices.some((c) => !c.trim())}
           >
             {busy ? "Starting…" : "🎲 Start new game"}
-          </button>
+          </Button>
         </form>
       )}
 
@@ -543,9 +546,9 @@ export default function PlayView({ identity, onLeave }) {
 
       <div className="footer">
         <span className="muted">You are Player {role}</span>
-        <button className="link-btn" onClick={leaveGame}>
+        <Button variant="ghost" onClick={leaveGame}>
           Leave / switch player
-        </button>
+        </Button>
       </div>
     </div>
   );

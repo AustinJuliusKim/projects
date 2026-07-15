@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { getAdminOverview, adminSetPremium } from "./api.js";
 import { getProfile, signIn } from "./auth.js";
 import AdminSkeleton from "./AdminSkeleton.jsx";
+import Button from "./Button.jsx";
 
 // Owner-only activity dashboard (anonymous aggregates). Polls every 30s using
 // the same self-scheduling / visibility-aware loop as PlayView, at a slow fixed
@@ -74,7 +75,6 @@ export default function AdminView() {
   return (
     <div className="admin-view" aria-busy={status === "loading"}>
       <header className="admin-head">
-        <a className="admin-back" href="#/">← back</a>
         <h1>Activity</h1>
         <p className="admin-sub">owner-only · anonymous aggregates · live</p>
       </header>
@@ -82,7 +82,7 @@ export default function AdminView() {
       {status === "signedout" && (
         <div className="admin-empty">
           <p>Sign in as the owner to view activity.</p>
-          <button type="button" className="btn" onClick={() => signIn()}>Sign in</button>
+          <Button type="button" onClick={() => signIn()}>Sign in</Button>
         </div>
       )}
       {status === "forbidden" && (
@@ -143,9 +143,9 @@ function PremiumTools() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <button type="button" className="btn" disabled={busy} onClick={grant}>
+        <Button type="button" busy={busy} onClick={grant}>
           {busy ? "Working…" : "Grant Premium"}
-        </button>
+        </Button>
       </div>
       {msg && <p className="admin-hint">{msg}</p>}
     </section>

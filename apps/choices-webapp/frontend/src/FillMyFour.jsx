@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { track } from "./api.js";
 import { getProfile } from "./auth.js";
 import { readStreak } from "./streakCache.js";
+import Button from "./Button.jsx";
 
 // "✨ Fill my 4" (suggestion engine Phase 3). Renders occasion chips + the
 // fill button above a set of choice inputs; the returned 4 land in the
@@ -83,15 +84,15 @@ export default function FillMyFour({ request, onFill, signedIn = true, context =
           </button>
         ))}
       </div>
-      <button
+      <Button
         type="button"
-        className={`btn fill-btn${premium ? "" : " locked"}`}
+        className={`fill-btn${premium ? "" : " locked"}`}
         onClick={onClick}
-        disabled={busy}
+        busy={busy}
       >
         {busy ? "Thinking…" : "✨ Fill my 4"}
         {!premium && <span className="fill-lock" aria-hidden="true">🔒</span>}
-      </button>
+      </Button>
       {!premium && !note && (
         <p className="muted fill-note">Premium feature — unlimited AI fills.</p>
       )}
