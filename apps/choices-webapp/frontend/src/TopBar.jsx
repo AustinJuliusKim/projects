@@ -2,15 +2,17 @@ import React from "react";
 import NearMeToggle from "./NearMeToggle.jsx";
 import AccountCorner from "./AccountCorner.jsx";
 
-// Contextual back target — a pure function of the hash, no identity coupling.
-// "#/" already renders PlayView when an identity exists (mid-game) and Landing
-// otherwise, so a single "#/" target returns the player to the game *or* the
-// landing without the bar knowing anything about identity. Cancel's parent is
-// the account screen it's opened from. Landing / PlayView-home are roots.
-export function backTarget(hash) {
+// Contextual back target. account / cancel / admin render above the identity
+// gate (main.jsx), so they always get a back (→ their parent; mid-game "#/"
+// resolves back to PlayView). Below that gate, an existing identity means
+// renderView shows PlayView for ANY remaining hash (#/create, #/join, #/, …) —
+// PlayView is a root whose only nav is its own "Leave / switch player", so
+// there is no back. Without an identity, create/join can go back to Landing.
+export function backTarget(hash, hasIdentity) {
   if (hash.startsWith("#/cancel")) return "#/account";
   if (hash.startsWith("#/account")) return "#/";
   if (hash.startsWith("#/admin")) return "#/";
+  if (hasIdentity) return null;
   if (hash.startsWith("#/create")) return "#/";
   if (hash.startsWith("#/join")) return "#/";
   return null;
@@ -30,8 +32,8 @@ function showsTools(hash) {
 // + account pill on the right. Replaces the floating corner pills. When both
 // tools are hidden (iOS shell: accounts + places off) and there's no back, the
 // bar is a transparent spacer over the page bg — visually identical to before.
-export default function TopBar({ hash }) {
-  const back = backTarget(hash);
+export default function TopBar({ hash, hasIdentity }) {
+  const back = backTarget(hash, hasIdentity);
   return (
     <div className="topbar">
       <div className="topbar-left">
