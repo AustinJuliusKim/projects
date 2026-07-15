@@ -160,6 +160,68 @@ test("rematch commits its outbox event with the new game", async () => {
   assert.deepEqual(ev.payload, { game_number: 2, choice_count: 4, source: "manual" });
 });
 
+// Premium perk: only a signed-in premium caller may rematch out of turn.
+// (completedPairing helper is declared with the link-click tests below.)
+const outOfTurnRematch = {
+  action: "rematch",
+  pairingId: "abc123",
+  role: "A", // nextStarter is "B"
+  token: "tok-a",
+  choices: ["Thai", "Pho", "BBQ", "Deli"],
+};
+
+test("out-of-turn rematch is rejected for guests and free accounts", async () => {
+  ddbMock.on(GetCommand).resolves({});
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({ Item: completedPairing() });
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", premium: { status: "none" } },
+  });
+  ddbMock.on(TransactWriteCommand).resolves({});
+
+  const guest = await handler(postEvent(outOfTurnRematch));
+  assert.equal(guest.statusCode, 409);
+  assert.equal(JSON.parse(guest.body).code, "NOT_YOUR_TURN_TO_START");
+
+  const free = await handler(
+    postEvent(outOfTurnRematch, { authorization: "Bearer good-token" })
+  );
+  assert.equal(free.statusCode, 409);
+  assert.equal(JSON.parse(free.body).code, "NOT_YOUR_TURN_TO_START");
+});
+
+test("out-of-turn rematch succeeds for a signed-in premium caller", async () => {
+  ddbMock.on(GetCommand).resolves({});
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({ Item: completedPairing() });
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", premium: { status: "active" } },
+  });
+  ddbMock.on(TransactWriteCommand).resolves({});
+
+  const res = await handler(
+    postEvent(outOfTurnRematch, { authorization: "Bearer good-token" })
+  );
+  assert.equal(res.statusCode, 200);
+  const state = JSON.parse(res.body).state;
+  assert.equal(state.gameNumber, 2);
+  // Starter logic is unchanged: the restarter deals, the opponent is next.
+  assert.equal(state.game.startedBy, "A");
+  assert.equal(state.nextStarter, "B");
+});
+
+test("premium never bypasses the game-must-be-complete check", async () => {
+  ddbMock.on(GetCommand).resolves({});
+  ddbMock.on(GetCommand, { Key: { pk: "PAIR#abc123" } }).resolves({ Item: pairingItem() });
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", premium: { status: "active" } },
+  });
+
+  const res = await handler(
+    postEvent(outOfTurnRematch, { authorization: "Bearer good-token" })
+  );
+  assert.equal(res.statusCode, 409);
+  assert.equal(JSON.parse(res.body).code, "GAME_IN_PROGRESS");
+});
+
 test("GET getState works and never exposes the code", async () => {
   ddbMock.on(GetCommand).resolves({ Item: pairingItem() });
 
