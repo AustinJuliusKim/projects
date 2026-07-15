@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg5b" x1="0.5" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#1a1d3a"></stop>
+      <stop offset="100%" stop-color="#141630"></stop>
+    </linearGradient>
+    <clipPath id="squircle5b">
+      <rect width="512" height="512" rx="115" ry="115"></rect>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle5b)">
+    <rect width="512" height="512" fill="url(#bg5b)"></rect>
+    
+    <rect x="92" y="92" width="155" height="155" rx="28" fill="#1e2140" stroke="#6c4de6" stroke-width="11"></rect>
+    
+    <rect x="265" y="92" width="155" height="155" rx="28" fill="#1e2140" stroke="#6c4de6" stroke-width="11"></rect>
+    
+    <rect x="92" y="265" width="155" height="155" rx="28" fill="#1e2140" stroke="#6c4de6" stroke-width="11"></rect>
+    
+    <rect x="265" y="265" width="155" height="155" rx="28" fill="#171a38" stroke="#2dd882" stroke-width="14"></rect>
+    
+    <g transform="translate(302, 302) scale(3.4)">
+      <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-6v-3.1c1.63-.33 2.98-1.46 3.61-2.96C17.08 12.63 19 10.55 19 8V7c0-1.1-.9-2-2-2zm-2 3c0 1.77-1.02 3.29-2.5 4.03V5h2v3zM5 8V7h2v5.03C5.52 11.29 5 9.77 5 8z" fill="#2dd882"></path>
+    </g>
+  </g>
+</svg>
