@@ -32,3 +32,21 @@ below.
 See [`docs/monorepo-conventions.md`](docs/monorepo-conventions.md) for the full
 conventions and [`docs/adding-a-project.md`](docs/adding-a-project.md) for the
 checklist to add a new project.
+
+## ObsidianVault submodule
+
+The personal knowledge base ([`AustinJuliusKim/ObsidianVault`](https://github.com/AustinJuliusKim/ObsidianVault))
+is linked at `ObsidianVault/` as a git submodule. It holds project plans,
+decisions, and roadmaps that inform work in this repo.
+
+```bash
+# Clone the repo with the vault already populated
+git clone --recurse-submodules git@github.com:AustinJuliusKim/projects.git
+
+# Already cloned? Initialize / fetch the submodule
+git submodule update --init ObsidianVault
+
+# Update the pin to the latest vault main (then commit the moved gitlink)
+git submodule update --remote ObsidianVault
+git add ObsidianVault && git commit -m "Bump ObsidianVault submodule"
+```
