@@ -49,15 +49,14 @@ function PremiumSection({ me }) {
         </div>
         <div className="premium-badge-actions">
           <Button
-            variant="link"
-            className="subtle"
+            variant="ghost"
             busy={busy}
             onClick={() => go(createPortalSession)}
           >
             Manage billing
           </Button>
           {!p.cancelAtPeriodEnd && (
-            <NavButton variant="link" className="subtle" href="#/cancel">
+            <NavButton variant="ghost" href="#/cancel">
               Cancel subscription
             </NavButton>
           )}
@@ -264,7 +263,7 @@ export default function AccountView() {
       )}
 
       <div className="footer">
-        <Button variant="link" onClick={signOut}>
+        <Button variant="ghost" onClick={signOut}>
           Sign out
         </Button>
       </div>

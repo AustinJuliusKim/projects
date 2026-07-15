@@ -854,24 +854,17 @@ h1 {
   flex-basis: 100%;
   display: flex;
   gap: 8px;
-  justify-content: flex-end;
   flex-wrap: wrap;
 }
 
-/* Secondary text action with a comfortable tap target */
-.link-btn.subtle {
-  color: var(--muted);
-  font-size: 0.78rem;
-  text-decoration: none;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-}
-
-.link-btn.subtle:hover {
-  color: var(--text);
-  text-decoration: underline;
+/* Manage billing / Cancel are real ghost buttons (not text links) so they're
+   an easy tap target; they share the action row at equal width. */
+.premium-badge-actions .btn {
+  flex: 1;
+  width: auto;
+  min-width: 8rem;
+  margin-top: 0;
+  font-size: 0.9rem;
 }
 
 /* Cancel-subscription page (Choicey) */
@@ -965,6 +958,12 @@ h1 {
   align-items: center;
   justify-content: space-between;
   font-size: 0.85rem;
+}
+
+/* Sign out is a full-width ghost button in its footer — drop the .btn top
+   margin so it sits snug under the divider. */
+.footer .btn {
+  margin-top: 0;
 }
 
 .link-btn {
