@@ -44,10 +44,25 @@ button,
   touch-action: manipulation;
 }
 
+/* Visible keyboard / switch-control focus ring (none existed before). Uses
+   :focus-visible so pointer taps don't show a ring, only keyboard focus. */
+button:focus-visible,
+a:focus-visible,
+.btn:focus-visible,
+.chip:focus-visible,
+.link-btn:focus-visible,
+.choice-btn:focus-visible,
+.near-me-pin:focus-visible,
+.account-corner:focus-visible,
+.tip-btn:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+}
+
 .container {
   max-width: 480px;
   margin: 0 auto;
-  padding: max(24px, calc(env(safe-area-inset-top) + 8px)) 20px
+  padding: calc(52px + env(safe-area-inset-top) + 8px) 20px
     max(40px, calc(env(safe-area-inset-bottom) + 16px));
 }
 
@@ -84,7 +99,7 @@ h1 {
   padding: 14px 16px;
   margin-bottom: 12px;
   font-size: 1rem;
-  border: 1px solid #334155;
+  border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: var(--card);
   color: var(--text);
@@ -123,6 +138,7 @@ h1 {
   justify-content: space-between;
   gap: 8px;
   width: 100%;
+  min-height: 44px;
   padding: 10px 12px;
   font-size: 1rem;
   text-align: left;
@@ -156,6 +172,9 @@ h1 {
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: 8px 14px;
   font-size: 0.9rem;
   color: var(--text);
@@ -177,15 +196,53 @@ h1 {
 
 /* Corner tools row: 📍 near-me pin + account pill share the fixed slot
    (positioning moved up from .account-corner, which now lays out inside). */
-.corner-tools {
+/* Persistent top nav bar (replaces the old floating .corner-tools). Fixed to
+   the top, spanning the safe-area inset; back control left, tools right. */
+.topbar {
   position: fixed;
-  top: max(10px, calc(env(safe-area-inset-top) + 6px));
-  right: max(16px, calc((100vw - 480px) / 2 + 20px));
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
+  box-sizing: border-box;
+  height: calc(52px + env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 4px)
+    max(16px, calc((100vw - 480px) / 2 + 20px)) 4px;
+  background: var(--bg);
+}
+
+.topbar-left,
+.topbar-right {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
 }
+
+/* Back control — same corner-pill footprint as .near-me-pin / .account-corner. */
+.topbar-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 1.25rem;
+  line-height: 1;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s var(--ease-out-back), border-color 0.15s ease;
+}
+.topbar-back:hover { border-color: var(--indigo); }
+.topbar-back:active { transform: scale(0.94); }
 
 .near-me-pin {
   min-height: 44px;
@@ -218,6 +275,7 @@ h1 {
 .btn {
   display: block;
   width: 100%;
+  min-height: 44px;
   padding: 14px 16px;
   margin-top: 12px;
   font-size: 1rem;
@@ -240,19 +298,19 @@ h1 {
   background: var(--indigo);
 }
 
-.btn.primary:disabled {
+.btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 .btn.ghost {
   background: transparent;
-  border: 1px solid #334155;
+  border: 1px solid var(--border);
 }
 
 .link-box {
   background: var(--card);
-  border: 1px dashed #334155;
+  border: 1px dashed var(--border);
   border-radius: var(--radius-card);
   padding: 14px;
   font-size: 0.85rem;
@@ -308,9 +366,10 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: 44px;
   padding: 18px 18px;
   font-size: 1.1rem;
-  border: 1px solid #334155;
+  border: 1px solid var(--border);
   border-radius: var(--radius-choice);
   background: var(--card);
   color: var(--text);
@@ -594,6 +653,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 44px;
   padding: 8px 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -635,8 +695,8 @@ h1 {
   color: var(--muted);
 }
 
-/* Persistent corner pill to My games (AccountCorner.jsx). Lays out inside
-   .corner-tools, which owns the fixed corner positioning. */
+/* Persistent pill to My games (AccountCorner.jsx). Lays out inside
+   .topbar-right, which owns the fixed positioning. */
 .account-corner {
   display: inline-flex;
   align-items: center;
@@ -670,12 +730,6 @@ h1 {
 
 .account-corner-streak {
   font-variant-numeric: tabular-nums;
-}
-
-/* Clear the pill on every view while it's mounted — set via body class from
-   AccountCorner so no per-view edits are needed. */
-body.account-corner-active .container {
-  padding-top: max(64px, calc(env(safe-area-inset-top) + 52px));
 }
 
 /* Account view: stats + history */
@@ -800,24 +854,17 @@ body.account-corner-active .container {
   flex-basis: 100%;
   display: flex;
   gap: 8px;
-  justify-content: flex-end;
   flex-wrap: wrap;
 }
 
-/* Secondary text action with a comfortable tap target */
-.link-btn.subtle {
-  color: var(--muted);
-  font-size: 0.78rem;
-  text-decoration: none;
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-}
-
-.link-btn.subtle:hover {
-  color: var(--text);
-  text-decoration: underline;
+/* Manage billing / Cancel are real ghost buttons (not text links) so they're
+   an easy tap target; they share the action row at equal width. */
+.premium-badge-actions .btn {
+  flex: 1;
+  width: auto;
+  min-width: 8rem;
+  margin-top: 0;
+  font-size: 0.9rem;
 }
 
 /* Cancel-subscription page (Choicey) */
@@ -870,11 +917,6 @@ body.account-corner-active .container {
   color: var(--red);
 }
 
-.btn.danger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* Premium crest on the corner pill */
 .account-corner.is-premium {
   border-color: var(--indigo);
@@ -899,7 +941,7 @@ body.account-corner-active .container {
 .rematch {
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #334155;
+  border-top: 1px solid var(--border);
 }
 
 .rematch h2 {
@@ -911,14 +953,31 @@ body.account-corner-active .container {
 .footer {
   margin-top: 28px;
   padding-top: 16px;
-  border-top: 1px solid #334155;
+  border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   font-size: 0.85rem;
 }
 
+/* Footer ghost buttons drop the .btn top margin so they sit snug under the
+   divider. A lone footer button (AccountView "Sign out") stays full width;
+   when it shares the row with a label (PlayView "Leave / switch player") it
+   goes auto-width so the label + action read as one line. */
+.footer .btn {
+  margin-top: 0;
+}
+.footer span ~ .btn {
+  width: auto;
+}
+
 .link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
   background: none;
   border: none;
   color: var(--indigo);
@@ -1149,16 +1208,11 @@ body.account-corner-active .container {
 .admin-view {
   max-width: 640px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: calc(52px + env(safe-area-inset-top) + 8px) 16px 48px;
 }
 .admin-head h1 {
   margin: 4px 0 0;
   font-size: 1.6rem;
-}
-.admin-back {
-  color: var(--muted);
-  font-size: 0.9rem;
-  text-decoration: none;
 }
 .admin-sub {
   margin: 2px 0 0;
@@ -1284,4 +1338,33 @@ body.account-corner-active .container {
   color: var(--muted);
   font-size: 0.78rem;
   text-align: right;
+}
+
+/* Tablet / iPad: frame the single column as an intentional floating panel so
+   large screens read as considered, not a stretched phone. Breakpoint 768px is
+   above every phone width, so the phone layout is untouched. Panel stays
+   transparent (page bg) so inner --card elements keep their phone contrast. */
+@media (min-width: 768px) {
+  .container {
+    max-width: 540px;
+    margin: calc(52px + env(safe-area-inset-top) + 24px) auto 32px;
+    padding: 32px;
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  }
+
+  .admin-view {
+    max-width: 720px;
+    margin: calc(52px + env(safe-area-inset-top) + 24px) auto 32px;
+    padding: 32px;
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Keep the bar's right-hand tools aligned to the widened panel edge. */
+  .topbar {
+    padding-right: max(24px, calc((100vw - 540px) / 2 + 24px));
+  }
 }

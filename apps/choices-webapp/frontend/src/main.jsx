@@ -7,8 +7,7 @@ import Landing from "./Landing.jsx";
 import AccountView from "./AccountView.jsx";
 import CancelView from "./CancelView.jsx";
 import AdminView from "./AdminView.jsx";
-import AccountCorner from "./AccountCorner.jsx";
-import NearMeToggle from "./NearMeToggle.jsx";
+import TopBar from "./TopBar.jsx";
 import { registerServiceWorker } from "./push.js";
 import { track } from "./api.js";
 import { loadIdentity } from "./storage.js";
@@ -72,18 +71,11 @@ function App() {
     return <Landing />;
   }
 
-  // The corner tools float over every view except the account view itself:
-  // the 📍 near-me pin (hidden when Places is dormant) + the account pill.
+  // Persistent top bar: contextual back (left) + the 📍 near-me pin and account
+  // pill (right). Visibility of each is a pure function of the hash inside TopBar.
   return (
     <>
-      {!hash.startsWith("#/account") &&
-        !hash.startsWith("#/admin") &&
-        !hash.startsWith("#/cancel") && (
-        <div className="corner-tools">
-          <NearMeToggle />
-          <AccountCorner />
-        </div>
-      )}
+      <TopBar hash={hash} hasIdentity={!!identity} />
       {renderView()}
     </>
   );
