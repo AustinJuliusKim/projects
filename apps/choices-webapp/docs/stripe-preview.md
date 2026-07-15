@@ -37,9 +37,10 @@ your `sk_test_` key. If not, create test prices and update `samconfig.toml`
 Repo → Settings → Secrets and variables → **Actions**:
 - Secret **`PREVIEW_STRIPE_SECRET_KEY`** = your `sk_test_…` key
 - Secret **`PREVIEW_STRIPE_WEBHOOK_SECRET`** = the `whsec_…` from step 1
-- Secret **`PREVIEW_ADMIN_SUBS`** = your **preview-pool** Cognito `sub`
-  (see below) — enables the owner-only `adminSetPremium` on preview. (A sub
-  isn't sensitive; it lives in Actions secrets only to keep the trio together.)
+- Variable (or secret) **`PREVIEW_ADMIN_SUBS`** = your **preview-pool** Cognito
+  `sub` (see below) — enables the owner-only `adminSetPremium` on preview. A
+  sub isn't sensitive, so a repo **variable** is fine; the workflow reads
+  `vars.PREVIEW_ADMIN_SUBS` with a `secrets.` fallback, so either works.
 
 ### 4. Find your preview Cognito `sub`
 The preview user pool is separate from prod, so your `sub` differs. Sign in on
