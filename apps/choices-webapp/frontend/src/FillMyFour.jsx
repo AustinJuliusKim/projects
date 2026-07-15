@@ -1,10 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
 import { track } from "./api.js";
+import { getProfile } from "./auth.js";
+import { readStreak } from "./streakCache.js";
 
 // "✨ Fill my 4" (suggestion engine Phase 3). Renders occasion chips + the
 // fill button above a set of choice inputs; the returned 4 land in the
 // inputs and stay fully editable — that IS the swap-any-of-4 UX. Hidden
 // entirely when the stack has no Bedrock model configured.
+//
+// AI fills are a Premium feature (0 free uses — the LLM call has real cost).
+// The affordance still renders for everyone as a premium teaser: a locked
+// visual + upsell. The server stays authoritative (an actual premium account
+// with a cold streak cache still fills on click; a free click returns
+// AI_LIMIT and we show the upsell).
 const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === "true";
 const OCCASIONS = ["Date night", "Quick bite", "Cozy night in"];
 
@@ -17,6 +25,9 @@ export default function FillMyFour({ request, onFill, signedIn = true, context =
   const [note, setNote] = useState(null);
   const [upsell, setUpsell] = useState(false);
   const fillCountRef = useRef(0);
+  // Best-effort premium hint from the streak cache (no API call). Only used
+  // to style the affordance as locked/unlocked — the server decides for real.
+  const premium = !!readStreak(getProfile()?.sub)?.premium;
 
   // fill4_shown: once per render of the affordance (mount), enum context only.
   useEffect(() => {
@@ -29,7 +40,7 @@ export default function FillMyFour({ request, onFill, signedIn = true, context =
     setNote(null);
     setUpsell(false);
     if (!signedIn) {
-      setNote("Sign in to fill your 4 — 3 free fills a month.");
+      setNote("Fill my 4 with AI is a Premium feature — sign in to unlock.");
       setUpsell(true);
       return;
     }
@@ -48,7 +59,7 @@ export default function FillMyFour({ request, onFill, signedIn = true, context =
         setNote(err.message);
         setUpsell(true);
       } else if (err.code === "SIGN_IN_REQUIRED") {
-        setNote("Sign in to fill your 4 — 3 free fills a month.");
+        setNote("Fill my 4 with AI is a Premium feature — sign in to unlock.");
         setUpsell(true);
       } else {
         setNote(err.message);
@@ -72,10 +83,19 @@ export default function FillMyFour({ request, onFill, signedIn = true, context =
           </button>
         ))}
       </div>
-      <button type="button" className="btn" onClick={onClick} disabled={busy}>
+      <button
+        type="button"
+        className={`btn fill-btn${premium ? "" : " locked"}`}
+        onClick={onClick}
+        disabled={busy}
+      >
         {busy ? "Thinking…" : "✨ Fill my 4"}
+        {!premium && <span className="fill-lock" aria-hidden="true">🔒</span>}
       </button>
-      {usesLeft != null && !note && (
+      {!premium && !note && (
+        <p className="muted fill-note">Premium feature — unlimited AI fills.</p>
+      )}
+      {premium && usesLeft != null && !note && (
         <p className="muted fill-note">
           {usesLeft} free {usesLeft === 1 ? "fill" : "fills"} left this month.
         </p>

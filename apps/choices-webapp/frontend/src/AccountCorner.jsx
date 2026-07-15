@@ -27,9 +27,15 @@ export default function AccountCorner() {
     cached && !cached.streakLocked && cached.currentStreak >= 1
       ? cached.currentStreak
       : null;
+  const premium = !!cached?.premium;
 
   return (
-    <a className="account-corner" href="#/account" aria-label="My games">
+    <a
+      className={`account-corner${premium ? " is-premium" : ""}`}
+      href="#/account"
+      aria-label={premium ? "My games (Premium)" : "My games"}
+    >
+      {premium && <span className="account-corner-crest" aria-hidden="true">✨</span>}
       📜
       {streak != null && <span className="account-corner-streak">🔥{streak}</span>}
     </a>

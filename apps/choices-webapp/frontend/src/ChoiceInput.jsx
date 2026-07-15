@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { placesSuggest, placeDetails, track } from "./api.js";
 import { rankSuggestions, suggestionLayersToReport } from "./suggest.js";
 import { useNearMe } from "./nearMeStore.js";
+import { getProfile } from "./auth.js";
+import { readStreak } from "./streakCache.js";
 
 // Places layer (L3) is stack-config-gated: blank means the client never
 // calls the proxy at all and this renders exactly like the plain input.
@@ -25,6 +27,10 @@ export default function ChoiceInput({ value, onChange, placeholder, pairEntries 
   // Corner 📍 pin state: coords ride along only while the pin is lit.
   const { enabled: nearMe, coords } = useNearMe();
   const geo = nearMe ? coords : null;
+  // Places (L3) is premium-gated server-side; skip the proxy call for
+  // non-premium so we never spend a Lambda round-trip on an empty result.
+  // Pair-memory (L1) suggestions below stay available to everyone.
+  const premium = !!readStreak(getProfile()?.sub)?.premium;
 
   const suggestions = open
     ? rankSuggestions(value, pairEntries, placesResults)
@@ -39,7 +45,7 @@ export default function ChoiceInput({ value, onChange, placeholder, pairEntries 
   }, [suggestions, trackOpts]);
 
   useEffect(() => {
-    if (!PLACES_ENABLED || !open) return;
+    if (!PLACES_ENABLED || !open || !premium) return;
     const q = value.trim();
     if (q.length < MIN_QUERY) {
       setPlacesResults([]);
