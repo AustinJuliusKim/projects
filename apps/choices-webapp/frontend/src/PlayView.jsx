@@ -265,7 +265,7 @@ export default function PlayView({ identity, onLeave }) {
   async function onShareReveal() {
     reportLinkClick("share-reveal");
     const canvas = document.createElement("canvas");
-    drawRevealCard(canvas, {
+    await drawRevealCard(canvas, {
       winner: winnerName,
       losers: game.choices.filter((_, i) => i !== game.winnerIndex),
     });

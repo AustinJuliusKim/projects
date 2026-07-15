@@ -56,6 +56,22 @@ h1 {
   margin: 0 0 8px;
 }
 
+/* Landing brand lockup: logo + wordmark */
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.brand-row h1 {
+  margin: 0;
+}
+
+.brand-logo {
+  display: block;
+}
+
 .muted {
   color: var(--muted);
   font-size: 0.95rem;
