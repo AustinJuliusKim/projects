@@ -77,8 +77,8 @@ jobs:
           role-to-assume: arn:aws:iam::549883968767:role/choices-webapp-github-deploy
           aws-region: us-west-2
       - run: sam build
-      # Inject the Stripe Test-mode secrets + AdminSubs (from GitHub
-      # secrets/vars) so the preview stack can fully exercise payment flows.
+      # Inject the Stripe Test-mode secrets + AdminSubs (from GitHub Actions
+      # secrets) so the preview stack can fully exercise payment flows.
       # NOTE: `--parameter-overrides` on the CLI REPLACES samconfig's list (it
       # does not merge per-key), so this must repeat the [preview] non-secret
       # params — keep this block in sync with samconfig.toml [preview]. Empty
@@ -88,7 +88,7 @@ jobs:
         env:
           PREVIEW_STRIPE_SECRET_KEY: ${{ secrets.PREVIEW_STRIPE_SECRET_KEY }}
           PREVIEW_STRIPE_WEBHOOK_SECRET: ${{ secrets.PREVIEW_STRIPE_WEBHOOK_SECRET }}
-          PREVIEW_ADMIN_SUBS: ${{ vars.PREVIEW_ADMIN_SUBS }}
+          PREVIEW_ADMIN_SUBS: ${{ secrets.PREVIEW_ADMIN_SUBS }}
         run: |
           sam deploy --config-env preview --no-confirm-changeset --no-fail-on-empty-changeset \
             --parameter-overrides \
