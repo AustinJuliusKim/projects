@@ -59,7 +59,7 @@ export default function CancelView() {
               : "Your Premium is set to cancel at the end of your billing period."}
           </p>
           <p className="muted">Change your mind? You can resubscribe anytime.</p>
-          <NavButton variant="primary" href="#/account">
+          <NavButton variant="primary" href="#/premium">
             Back to my games
           </NavButton>
         </>
@@ -69,7 +69,7 @@ export default function CancelView() {
         <>
           <h1>Nothing to cancel</h1>
           <p className="muted">You're not on Premium right now.</p>
-          <NavButton variant="primary" href="#/account">
+          <NavButton variant="primary" href="#/premium">
             Back to my games
           </NavButton>
         </>
@@ -81,7 +81,7 @@ export default function CancelView() {
               ? `Your Premium is already ending on ${fmt(me.premium.currentPeriodEnd)}.`
               : "Your Premium is already set to cancel at period end."}
           </p>
-          <NavButton variant="primary" href="#/account">
+          <NavButton variant="primary" href="#/premium">
             Back to my games
           </NavButton>
         </>
@@ -99,7 +99,7 @@ export default function CancelView() {
           </p>
           {error && <p className="error">{error}</p>}
           <div className="cancel-actions">
-            <NavButton variant="primary" href="#/account">
+            <NavButton variant="primary" href="#/premium">
               Never mind, keep Premium
             </NavButton>
             <Button

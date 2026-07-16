@@ -32,7 +32,7 @@ export default function NearMeToggle() {
         aria-label="Near me (Premium)"
         title="Near me — Premium"
         onClick={() => {
-          window.location.hash = "#/account";
+          window.location.hash = "#/premium";
         }}
       >
         📍

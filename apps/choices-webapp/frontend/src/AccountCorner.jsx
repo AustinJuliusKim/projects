@@ -2,15 +2,16 @@ import React from "react";
 import { authEnabled, hasSession, getProfile } from "./auth.js";
 import { readStreak } from "./streakCache.js";
 
-// Persistent top-right pill to My games (#/account) on every view. Reads are
+// Persistent top-right pill to History (#/history) on every view. Reads are
 // synchronous (auth localStorage + streak cache) — it never calls the API.
 // Hidden entirely when accounts are unavailable (includes the iOS shell).
+// Retired in favor of the BottomNav History tab once that lands (commit 4).
 export default function AccountCorner() {
   if (!authEnabled) return null;
 
   if (!hasSession()) {
     return (
-      <a className="account-corner muted-chip" href="#/account">
+      <a className="account-corner muted-chip" href="#/history">
         Sign in
       </a>
     );
@@ -26,7 +27,7 @@ export default function AccountCorner() {
   return (
     <a
       className={`account-corner${premium ? " is-premium" : ""}`}
-      href="#/account"
+      href="#/history"
       aria-label={premium ? "My games (Premium)" : "My games"}
     >
       {premium && <span className="account-corner-crest" aria-hidden="true">✨</span>}

@@ -4,7 +4,9 @@ import CreatePairingView from "./CreatePairingView.jsx";
 import JoinView from "./JoinView.jsx";
 import PlayView from "./PlayView.jsx";
 import Landing from "./Landing.jsx";
-import AccountView from "./AccountView.jsx";
+import HistoryView from "./HistoryView.jsx";
+import PremiumView from "./PremiumView.jsx";
+import SettingsView from "./SettingsView.jsx";
 import CancelView from "./CancelView.jsx";
 import AdminView from "./AdminView.jsx";
 import TopBar from "./TopBar.jsx";
@@ -12,7 +14,7 @@ import { registerServiceWorker } from "./push.js";
 import { track } from "./api.js";
 import { loadIdentity } from "./storage.js";
 import { isNative } from "./platform.js";
-import { handleRedirect } from "./auth.js";
+import { handleRedirect, authEnabled } from "./auth.js";
 import "./styles.css";
 
 // Routing is driven by stored identity, NOT the URL — on iOS an installed PWA
@@ -32,15 +34,34 @@ function App() {
   const hash = useHash();
   const [identity, setIdentity] = useState(() => loadIdentity());
 
-  function renderView() {
-    // Account view is reachable even mid-game (it has its own back link), so
-    // it's checked ahead of the identity gate.
+  // Legacy #/account links (Stripe's checkout/portal return URLs are baked
+  // in as #/account and #/account?upgraded=1 — backend/billing.mjs) now
+  // resolve to the Premium tab. `replace` (not a hash assignment) so Back
+  // never loops through the alias.
+  useEffect(() => {
     if (hash.startsWith("#/account")) {
-      return <AccountView />;
+      window.location.replace("#/premium" + hash.slice("#/account".length));
+    }
+  }, [hash]);
+
+  function renderView() {
+    // History/Premium/Settings are reachable even mid-game (each has its own
+    // way out), so they're checked ahead of the identity gate.
+    if (hash.startsWith("#/history")) {
+      return <HistoryView />;
+    }
+    // Native shell (and any web build without Cognito configured) never
+    // shows the Premium tab — an unmatched hash falls through to the rows
+    // below (the identity gate, then Landing).
+    if (authEnabled && hash.startsWith("#/premium")) {
+      return <PremiumView />;
+    }
+    if (hash.startsWith("#/settings")) {
+      return <SettingsView />;
     }
 
     // Cancel-subscription page (the Choicey plea), reached from the Premium
-    // badge. Above the identity gate so it's reachable mid-game like account.
+    // badge. Above the identity gate so it's reachable mid-game like above.
     if (hash.startsWith("#/cancel")) {
       return <CancelView />;
     }
@@ -49,6 +70,12 @@ function App() {
     // reachable mid-game. The real access boundary is the backend assertAdmin.
     if (hash.startsWith("#/admin")) {
       return <AdminView />;
+    }
+
+    // Alias resolves via the effect above — render nothing for the one frame
+    // before the hash flips to #/premium.
+    if (hash.startsWith("#/account")) {
+      return null;
     }
 
     // If we already have an identity, we're in the game — ignore entry hashes.
@@ -100,10 +127,10 @@ window.addEventListener("unhandledrejection", () => {
 });
 
 // Complete an in-flight OAuth redirect (no-op for guests) before first
-// render; a fresh sign-in lands on the account view.
+// render; a fresh sign-in lands on the History tab.
 handleRedirect()
   .then((signedIn) => {
-    if (signedIn && !window.location.hash) window.location.hash = "#/account";
+    if (signedIn && !window.location.hash) window.location.hash = "#/history";
   })
   .catch(() => {})
   .finally(() => {
