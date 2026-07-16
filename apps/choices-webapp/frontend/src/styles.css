@@ -53,7 +53,6 @@ a:focus-visible,
 .link-btn:focus-visible,
 .choice-btn:focus-visible,
 .near-me-pin:focus-visible,
-.account-corner:focus-visible,
 .tip-btn:focus-visible,
 .plan-card:focus-visible,
 .settings-row:focus-visible,
@@ -198,8 +197,6 @@ h1 {
   font-size: 0.85rem;
 }
 
-/* Corner tools row: 📍 near-me pin + account pill share the fixed slot
-   (positioning moved up from .account-corner, which now lays out inside). */
 /* Persistent top nav bar (replaces the old floating .corner-tools). Fixed to
    the top, spanning the safe-area inset; back control left, tools right. */
 .topbar {
@@ -227,7 +224,7 @@ h1 {
   min-height: 44px;
 }
 
-/* Back control — same corner-pill footprint as .near-me-pin / .account-corner. */
+/* Back control — same corner-pill footprint as .near-me-pin. */
 .topbar-back {
   display: inline-flex;
   align-items: center;
@@ -699,43 +696,6 @@ h1 {
   color: var(--muted);
 }
 
-/* Persistent pill to My games (AccountCorner.jsx). Lays out inside
-   .topbar-right, which owns the fixed positioning. */
-.account-corner {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--text);
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition:
-    transform 0.15s var(--ease-out-back),
-    border-color 0.15s ease;
-}
-
-.account-corner:hover {
-  border-color: var(--indigo);
-}
-
-.account-corner:active {
-  transform: scale(0.94);
-}
-
-.account-corner.muted-chip {
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.account-corner-streak {
-  font-variant-numeric: tabular-nums;
-}
-
 /* Account view: stats + history */
 .stats-row {
   display: grid;
@@ -919,15 +879,6 @@ h1 {
   background: transparent;
   border: 1px solid var(--red);
   color: var(--red);
-}
-
-/* Premium crest on the corner pill */
-.account-corner.is-premium {
-  border-color: var(--indigo);
-}
-
-.account-corner-crest {
-  font-size: 0.9rem;
 }
 
 /* Fill-my-4 premium lock (0 free uses) */
