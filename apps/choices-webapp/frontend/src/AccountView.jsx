@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { getMe, createCheckoutSession, createPortalSession, track } from "./api.js";
+import { createCheckoutSession, createPortalSession, track } from "./api.js";
 import { authEnabled, hasSession, getProfile, signIn, signOut } from "./auth.js";
+import { useMe } from "./useMe.js";
 import AccountSkeleton from "./AccountSkeleton.jsx";
 import Button from "./Button.jsx";
 import NavButton from "./NavButton.jsx";
@@ -106,11 +107,7 @@ function PremiumSection({ me }) {
 // teaser, premium the live streak. Renders nothing when accounts are off.
 export function WinnerAccountLine() {
   const signedIn = hasSession();
-  const [me, setMe] = useState(null);
-
-  useEffect(() => {
-    if (authEnabled && signedIn) getMe().then(setMe).catch(() => {});
-  }, [signedIn]);
+  const { me } = useMe();
 
   if (!authEnabled) return null;
   if (!signedIn) {
@@ -139,15 +136,7 @@ export function WinnerAccountLine() {
 // the native shell).
 export default function AccountView() {
   const signedIn = hasSession();
-  const [me, setMe] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!signedIn) return;
-    getMe()
-      .then(setMe)
-      .catch((err) => setError(err.message));
-  }, [signedIn]);
+  const { me, error } = useMe();
 
   // paywall_viewed (bundle C): one beacon per upsell surface actually
   // rendered this visit — enum surfaces only, nothing about the account.

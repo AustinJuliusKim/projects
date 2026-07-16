@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
-import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour, getMe, track } from "./api.js";
-import { authEnabled, hasSession } from "./auth.js";
+import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour, track } from "./api.js";
+import { authEnabled } from "./auth.js";
+import { useMe } from "./useMe.js";
 import ChoiceInput from "./ChoiceInput.jsx";
 import PlayViewSkeleton from "./PlayViewSkeleton.jsx";
 import FillMyFour from "./FillMyFour.jsx";
@@ -36,15 +37,10 @@ export default function PlayView({ identity, onLeave }) {
   const [rematchChoices, setRematchChoices] = useState(["", "", "", ""]);
 
   // Premium perk: signed-in premium players may start the next game out of
-  // turn, so the rematch form needs the account's premium status. One getMe
-  // per mount, signed-in sessions only — guests never grow an auth call.
-  const [premium, setPremium] = useState(false);
-  useEffect(() => {
-    if (!authEnabled || !hasSession()) return;
-    getMe()
-      .then((me) => setPremium(["active", "past_due"].includes(me.premium?.status)))
-      .catch(() => {});
-  }, []);
+  // turn, so the rematch form needs the account's premium status. Shares the
+  // getMe cache with every other view — guests never grow an auth call.
+  const { me: meForPremium } = useMe();
+  const premium = ["active", "past_due"].includes(meForPremium?.premium?.status);
 
   // Winner-reveal card flip. `complete` (and `iCanRematch`, which hooks also
   // depend on) is computed before the early returns (hooks rule).
