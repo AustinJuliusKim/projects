@@ -103,7 +103,7 @@ export default function FillMyFour({ request, onFill, signedIn = true, context =
       )}
       {note && (
         <p className="muted fill-note">
-          {note} <a href="#/account">{upsell ? "Go premium →" : ""}</a>
+          {note} <a href="#/premium">{upsell ? "Go premium →" : ""}</a>
         </p>
       )}
     </div>

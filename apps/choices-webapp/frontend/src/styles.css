@@ -53,8 +53,10 @@ a:focus-visible,
 .link-btn:focus-visible,
 .choice-btn:focus-visible,
 .near-me-pin:focus-visible,
-.account-corner:focus-visible,
-.tip-btn:focus-visible {
+.tip-btn:focus-visible,
+.plan-card:focus-visible,
+.settings-row:focus-visible,
+.bottom-nav-tab:focus-visible {
   outline: 2px solid var(--indigo);
   outline-offset: 2px;
 }
@@ -62,8 +64,9 @@ a:focus-visible,
 .container {
   max-width: 480px;
   margin: 0 auto;
+  /* Bottom padding clears the floating pill nav (its own height + offset). */
   padding: calc(52px + env(safe-area-inset-top) + 8px) 20px
-    max(40px, calc(env(safe-area-inset-bottom) + 16px));
+    max(40px, calc(env(safe-area-inset-bottom) + 96px));
 }
 
 h1 {
@@ -194,8 +197,6 @@ h1 {
   font-size: 0.85rem;
 }
 
-/* Corner tools row: 📍 near-me pin + account pill share the fixed slot
-   (positioning moved up from .account-corner, which now lays out inside). */
 /* Persistent top nav bar (replaces the old floating .corner-tools). Fixed to
    the top, spanning the safe-area inset; back control left, tools right. */
 .topbar {
@@ -223,7 +224,7 @@ h1 {
   min-height: 44px;
 }
 
-/* Back control — same corner-pill footprint as .near-me-pin / .account-corner. */
+/* Back control — same corner-pill footprint as .near-me-pin. */
 .topbar-back {
   display: inline-flex;
   align-items: center;
@@ -695,43 +696,6 @@ h1 {
   color: var(--muted);
 }
 
-/* Persistent pill to My games (AccountCorner.jsx). Lays out inside
-   .topbar-right, which owns the fixed positioning. */
-.account-corner {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--text);
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition:
-    transform 0.15s var(--ease-out-back),
-    border-color 0.15s ease;
-}
-
-.account-corner:hover {
-  border-color: var(--indigo);
-}
-
-.account-corner:active {
-  transform: scale(0.94);
-}
-
-.account-corner.muted-chip {
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.account-corner-streak {
-  font-variant-numeric: tabular-nums;
-}
-
 /* Account view: stats + history */
 .stats-row {
   display: grid;
@@ -917,15 +881,6 @@ h1 {
   color: var(--red);
 }
 
-/* Premium crest on the corner pill */
-.account-corner.is-premium {
-  border-color: var(--indigo);
-}
-
-.account-corner-crest {
-  font-size: 0.9rem;
-}
-
 /* Fill-my-4 premium lock (0 free uses) */
 .fill-btn.locked {
   opacity: 0.85;
@@ -963,9 +918,9 @@ h1 {
 }
 
 /* Footer ghost buttons drop the .btn top margin so they sit snug under the
-   divider. A lone footer button (AccountView "Sign out") stays full width;
-   when it shares the row with a label (PlayView "Leave / switch player") it
-   goes auto-width so the label + action read as one line. */
+   divider. A lone footer button stays full width (the .btn default); when
+   it shares the row with a label (PlayView "Leave / switch player") it goes
+   auto-width so the label + action read as one line. */
 .footer .btn {
   margin-top: 0;
 }
@@ -1208,7 +1163,8 @@ h1 {
 .admin-view {
   max-width: 640px;
   margin: 0 auto;
-  padding: calc(52px + env(safe-area-inset-top) + 8px) 16px 48px;
+  padding: calc(52px + env(safe-area-inset-top) + 8px) 16px
+    max(48px, calc(env(safe-area-inset-bottom) + 96px));
 }
 .admin-head h1 {
   margin: 4px 0 0;
@@ -1347,7 +1303,10 @@ h1 {
 @media (min-width: 768px) {
   .container {
     max-width: 540px;
-    margin: calc(52px + env(safe-area-inset-top) + 24px) auto 32px;
+    /* Bottom margin clears the floating pill nav, which floats over the
+       page bg below the panel at this breakpoint. */
+    margin: calc(52px + env(safe-area-inset-top) + 24px) auto
+      calc(env(safe-area-inset-bottom) + 92px);
     padding: 32px;
     border: 1px solid var(--border);
     border-radius: 24px;
@@ -1356,7 +1315,8 @@ h1 {
 
   .admin-view {
     max-width: 720px;
-    margin: calc(52px + env(safe-area-inset-top) + 24px) auto 32px;
+    margin: calc(52px + env(safe-area-inset-top) + 24px) auto
+      calc(env(safe-area-inset-bottom) + 92px);
     padding: 32px;
     border: 1px solid var(--border);
     border-radius: 24px;
@@ -1367,4 +1327,154 @@ h1 {
   .topbar {
     padding-right: max(24px, calc((100vw - 540px) / 2 + 24px));
   }
+}
+
+/* --- Premium tab: plan toggle cards (PremiumView.jsx) --- */
+.plan-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 16px 0 12px;
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+}
+
+.plan-card.selected {
+  border-color: var(--indigo);
+  background: rgba(79, 70, 229, 0.25);
+}
+
+.plan-price {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.plan-note {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* --- Settings tab: grouped rows (SettingsView.jsx) --- */
+.settings-group {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  margin: 14px 0;
+  overflow: hidden;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  color: var(--text);
+  text-decoration: none;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-chevron {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.settings-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--indigo);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  flex: none;
+}
+
+/* --- Floating pill bottom nav (BottomNav.jsx) --- */
+.bottom-nav {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  z-index: 60; /* above .topbar 50 */
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.bottom-nav-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+  min-height: 44px;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.bottom-nav-tab.active {
+  background: rgba(79, 70, 229, 0.25);
+  color: var(--text);
+}
+
+.bottom-nav-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.bottom-nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* History tab FAB: quick path to a new game, floats above the pill bar. */
+.fab {
+  position: fixed;
+  right: max(16px, calc((100vw - 480px) / 2 + 20px));
+  bottom: calc(env(safe-area-inset-bottom) + 84px);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--indigo);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  text-decoration: none;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  z-index: 59;
 }
