@@ -5,8 +5,8 @@ import { readStreak } from "./streakCache.js";
 
 const PLACES_ENABLED = import.meta.env.VITE_PLACES_ENABLED === "true";
 
-// Icon-only 📍 pin in the top corner (rendered next to AccountCorner by
-// main.jsx). Lit = suggestions bias to the player's browser location;
+// Icon-only 📍 pin in the top bar, shown on game screens only (TopBar.jsx).
+// Lit = suggestions bias to the player's browser location;
 // dimmed = neutral (pin off, or location not granted yet). Tapping a dimmed
 // pin requests browser geolocation — the tap IS the consent, so the
 // permission prompt is never unsolicited. "Near me" arrives as a hover
