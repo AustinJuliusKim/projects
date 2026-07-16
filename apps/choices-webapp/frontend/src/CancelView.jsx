@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { getMe, cancelSubscription } from "./api.js";
+import React, { useState } from "react";
+import { cancelSubscription } from "./api.js";
 import { authEnabled, hasSession } from "./auth.js";
+import { useMe, invalidateMe } from "./useMe.js";
 import Button from "./Button.jsx";
 import NavButton from "./NavButton.jsx";
 
@@ -10,27 +11,25 @@ import NavButton from "./NavButton.jsx";
 // the billing surface.
 export default function CancelView() {
   const signedIn = hasSession();
-  const [me, setMe] = useState(null);
+  const { me, loading: meLoading } = useMe();
   const [phase, setPhase] = useState("confirm"); // confirm | busy | done
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (authEnabled && signedIn) getMe().then(setMe).catch(() => {});
-  }, [signedIn]);
 
   const premiumActive =
     me && ["active", "past_due"].includes(me.premium?.status);
   const alreadyCanceling = me?.premium?.cancelAtPeriodEnd;
   // Only "loading" while we're genuinely fetching (signed in). A guest never
-  // fetches, so it falls straight through to the not-premium state.
-  const loading = authEnabled && signedIn && !me;
+  // fetches (useMe hard-returns), so it falls straight through to the
+  // not-premium state.
+  const loading = authEnabled && signedIn && meLoading;
 
   async function confirmCancel() {
     setPhase("busy");
     setError(null);
     try {
       const res = await cancelSubscription();
+      invalidateMe();
       setResult(res);
       setPhase("done");
     } catch (err) {
@@ -60,7 +59,7 @@ export default function CancelView() {
               : "Your Premium is set to cancel at the end of your billing period."}
           </p>
           <p className="muted">Change your mind? You can resubscribe anytime.</p>
-          <NavButton variant="primary" href="#/account">
+          <NavButton variant="primary" href="#/premium">
             Back to my games
           </NavButton>
         </>
@@ -70,7 +69,7 @@ export default function CancelView() {
         <>
           <h1>Nothing to cancel</h1>
           <p className="muted">You're not on Premium right now.</p>
-          <NavButton variant="primary" href="#/account">
+          <NavButton variant="primary" href="#/premium">
             Back to my games
           </NavButton>
         </>
@@ -82,7 +81,7 @@ export default function CancelView() {
               ? `Your Premium is already ending on ${fmt(me.premium.currentPeriodEnd)}.`
               : "Your Premium is already set to cancel at period end."}
           </p>
-          <NavButton variant="primary" href="#/account">
+          <NavButton variant="primary" href="#/premium">
             Back to my games
           </NavButton>
         </>
@@ -100,7 +99,7 @@ export default function CancelView() {
           </p>
           {error && <p className="error">{error}</p>}
           <div className="cancel-actions">
-            <NavButton variant="primary" href="#/account">
+            <NavButton variant="primary" href="#/premium">
               Never mind, keep Premium
             </NavButton>
             <Button

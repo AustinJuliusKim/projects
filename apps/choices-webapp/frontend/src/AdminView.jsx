@@ -10,6 +10,7 @@ import Button from "./Button.jsx";
 // bar list; no identifiable per-user data ever crosses the wire.
 const POLL_MS = 30_000;
 const POLL_ERROR_MAX_MS = 120_000;
+const ADMIN_FLAG = "choices:admin";
 
 export default function AdminView() {
   const [data, setData] = useState(null);
@@ -31,9 +32,14 @@ export default function AdminView() {
         errorStreak = 0;
         setData(res);
         setStatus("ok");
+        // Owner confirmed by the backend — unlock the Settings admin row so
+        // there's a way back in without retyping #/admin. The real boundary
+        // stays assertAdmin; this flag only toggles a link's visibility.
+        localStorage.setItem(ADMIN_FLAG, "1");
       } catch (err) {
         if (!alive) return;
         if (err.code === "NOT_ADMIN") {
+          localStorage.removeItem(ADMIN_FLAG);
           setStatus("forbidden");
           return; // not the owner — stop polling
         }
