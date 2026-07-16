@@ -71,6 +71,7 @@ export default function BottomNav({ hash }) {
           className={`bottom-nav-tab${active === t.id ? " active" : ""}`}
           href={t.href}
           aria-label={t.label}
+          aria-current={active === t.id ? "page" : undefined}
         >
           <svg
             className="bottom-nav-icon"
