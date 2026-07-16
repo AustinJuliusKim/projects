@@ -1460,3 +1460,21 @@ h1 {
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
+
+/* History tab FAB: quick path to a new game, floats above the pill bar. */
+.fab {
+  position: fixed;
+  right: max(16px, calc((100vw - 480px) / 2 + 20px));
+  bottom: calc(env(safe-area-inset-bottom) + 84px);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--indigo);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  text-decoration: none;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  z-index: 59;
+}

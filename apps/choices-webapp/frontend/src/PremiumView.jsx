@@ -17,7 +17,7 @@ const PLANS = {
 // entitlements bought here still work there (3.1.3).
 export default function PremiumView() {
   const signedIn = hasSession();
-  const { me, refresh } = useMe();
+  const { me, refresh, loading } = useMe();
   const [plan, setPlan] = useState("annual");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -52,6 +52,17 @@ export default function PremiumView() {
       setError(err.message);
       setBusy(false);
     }
+  }
+
+  // Wait for the fetch before deciding pitch vs. badge — otherwise a premium
+  // member would flash the upsell for a beat before flipping to their badge.
+  if (signedIn && loading && !me) {
+    return (
+      <div className="container" aria-busy="true">
+        <h1>Premium</h1>
+        <p className="muted">Loading…</p>
+      </div>
+    );
   }
 
   if (premiumActive) {

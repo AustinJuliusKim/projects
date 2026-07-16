@@ -52,7 +52,10 @@ export default function HistoryView() {
     return (
       <div className="container">
         <h1>History</h1>
-        <p className="muted">Accounts aren't available here yet.</p>
+        <p className="muted">
+          Your history lives on the web for now — sign-in here is coming
+          soon.
+        </p>
       </div>
     );
   }
@@ -75,6 +78,12 @@ export default function HistoryView() {
   return (
     <div className="container" aria-busy={!me && !error}>
       <h1>History</h1>
+
+      {/* Quick path back to a new game while browsing — floats above the
+          bottom nav, doesn't compete with any in-content action. */}
+      <a className="fab" href="#/" aria-label="New game">
+        +
+      </a>
 
       {error && <p className="error">{error}</p>}
       {!me && !error && <AccountSkeleton />}
