@@ -24,10 +24,10 @@ export default function Landing() {
       <NavButton href="#/join">
         🔑 Enter a game code
       </NavButton>
-      {/* Signed-in users reach My games via the corner pill; this ghost
+      {/* Signed-in users reach History via the bottom nav; this ghost
           button stays as the guest conversion CTA. */}
       {authEnabled && !hasSession() && (
-        <NavButton variant="ghost" href="#/account">
+        <NavButton variant="ghost" href="#/history">
           📜 Sign in for game history
         </NavButton>
       )}

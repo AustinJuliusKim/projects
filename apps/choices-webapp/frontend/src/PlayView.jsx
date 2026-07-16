@@ -12,7 +12,7 @@ import { PLATFORMS } from "./affiliates.js";
 import TipJar from "./support.jsx";
 import Button from "./Button.jsx";
 import NavButton from "./NavButton.jsx";
-import { WinnerAccountLine } from "./AccountView.jsx";
+import { WinnerAccountLine } from "./HistoryView.jsx";
 import { clearIdentity } from "./storage.js";
 import { enablePush, pushSupported, isIosSafari, isStandalone } from "./push.js";
 import { isNative } from "./platform.js";
@@ -525,7 +525,7 @@ export default function PlayView({ identity, onLeave }) {
           Waiting for player {state.nextStarter} to start the next game…
           {authEnabled && (
             <p className="upsell-line">
-              <a href="#/account" onClick={() => reportLinkClick("premium-interest")}>
+              <a href="#/premium" onClick={() => reportLinkClick("premium-interest")}>
                 Or skip the wait — premium players deal the next 4 ⚡
               </a>
             </p>

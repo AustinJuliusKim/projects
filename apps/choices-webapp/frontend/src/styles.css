@@ -54,7 +54,9 @@ a:focus-visible,
 .choice-btn:focus-visible,
 .near-me-pin:focus-visible,
 .account-corner:focus-visible,
-.tip-btn:focus-visible {
+.tip-btn:focus-visible,
+.plan-card:focus-visible,
+.settings-row:focus-visible {
   outline: 2px solid var(--indigo);
   outline-offset: 2px;
 }
@@ -963,9 +965,9 @@ h1 {
 }
 
 /* Footer ghost buttons drop the .btn top margin so they sit snug under the
-   divider. A lone footer button (AccountView "Sign out") stays full width;
-   when it shares the row with a label (PlayView "Leave / switch player") it
-   goes auto-width so the label + action read as one line. */
+   divider. A lone footer button stays full width (the .btn default); when
+   it shares the row with a label (PlayView "Leave / switch player") it goes
+   auto-width so the label + action read as one line. */
 .footer .btn {
   margin-top: 0;
 }
@@ -1367,4 +1369,86 @@ h1 {
   .topbar {
     padding-right: max(24px, calc((100vw - 540px) / 2 + 24px));
   }
+}
+
+/* --- Premium tab: plan toggle cards (PremiumView.jsx) --- */
+.plan-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 16px 0 12px;
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+}
+
+.plan-card.selected {
+  border-color: var(--indigo);
+  background: rgba(79, 70, 229, 0.25);
+}
+
+.plan-price {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.plan-note {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* --- Settings tab: grouped rows (SettingsView.jsx) --- */
+.settings-group {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  margin: 14px 0;
+  overflow: hidden;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  color: var(--text);
+  text-decoration: none;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-chevron {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.settings-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--indigo);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  flex: none;
 }

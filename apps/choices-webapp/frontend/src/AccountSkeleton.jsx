@@ -1,6 +1,6 @@
 import React from "react";
 
-// Loading placeholder for AccountView, mirroring the loaded layout exactly
+// Loading placeholder for HistoryView, mirroring the loaded layout exactly
 // (same .stats-row/.stat-card/.history containers) so content pops in with
 // zero layout shift. Best-practice notes baked in:
 //  - appears only after ~200ms (CSS fade-in delay) so fast loads never flash
