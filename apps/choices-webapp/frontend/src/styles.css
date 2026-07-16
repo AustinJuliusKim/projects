@@ -56,7 +56,8 @@ a:focus-visible,
 .account-corner:focus-visible,
 .tip-btn:focus-visible,
 .plan-card:focus-visible,
-.settings-row:focus-visible {
+.settings-row:focus-visible,
+.bottom-nav-tab:focus-visible {
   outline: 2px solid var(--indigo);
   outline-offset: 2px;
 }
@@ -64,8 +65,9 @@ a:focus-visible,
 .container {
   max-width: 480px;
   margin: 0 auto;
+  /* Bottom padding clears the floating pill nav (its own height + offset). */
   padding: calc(52px + env(safe-area-inset-top) + 8px) 20px
-    max(40px, calc(env(safe-area-inset-bottom) + 16px));
+    max(40px, calc(env(safe-area-inset-bottom) + 96px));
 }
 
 h1 {
@@ -1210,7 +1212,8 @@ h1 {
 .admin-view {
   max-width: 640px;
   margin: 0 auto;
-  padding: calc(52px + env(safe-area-inset-top) + 8px) 16px 48px;
+  padding: calc(52px + env(safe-area-inset-top) + 8px) 16px
+    max(48px, calc(env(safe-area-inset-bottom) + 96px));
 }
 .admin-head h1 {
   margin: 4px 0 0;
@@ -1349,7 +1352,10 @@ h1 {
 @media (min-width: 768px) {
   .container {
     max-width: 540px;
-    margin: calc(52px + env(safe-area-inset-top) + 24px) auto 32px;
+    /* Bottom margin clears the floating pill nav, which floats over the
+       page bg below the panel at this breakpoint. */
+    margin: calc(52px + env(safe-area-inset-top) + 24px) auto
+      calc(env(safe-area-inset-bottom) + 92px);
     padding: 32px;
     border: 1px solid var(--border);
     border-radius: 24px;
@@ -1358,7 +1364,8 @@ h1 {
 
   .admin-view {
     max-width: 720px;
-    margin: calc(52px + env(safe-area-inset-top) + 24px) auto 32px;
+    margin: calc(52px + env(safe-area-inset-top) + 24px) auto
+      calc(env(safe-area-inset-bottom) + 92px);
     padding: 32px;
     border: 1px solid var(--border);
     border-radius: 24px;
@@ -1451,4 +1458,54 @@ h1 {
   place-items: center;
   font-weight: 700;
   flex: none;
+}
+
+/* --- Floating pill bottom nav (BottomNav.jsx) --- */
+.bottom-nav {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  z-index: 60; /* above .topbar 50 */
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.bottom-nav-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+  min-height: 44px;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.bottom-nav-tab.active {
+  background: rgba(79, 70, 229, 0.25);
+  color: var(--text);
+}
+
+.bottom-nav-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.bottom-nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
 }

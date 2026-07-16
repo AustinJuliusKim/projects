@@ -10,6 +10,7 @@ import SettingsView from "./SettingsView.jsx";
 import CancelView from "./CancelView.jsx";
 import AdminView from "./AdminView.jsx";
 import TopBar from "./TopBar.jsx";
+import BottomNav from "./BottomNav.jsx";
 import { registerServiceWorker } from "./push.js";
 import { track } from "./api.js";
 import { loadIdentity } from "./storage.js";
@@ -100,10 +101,12 @@ function App() {
 
   // Persistent top bar: contextual back (left) + the 📍 near-me pin and account
   // pill (right). Visibility of each is a pure function of the hash inside TopBar.
+  // Floating pill bottom nav sits above everything (four destinations).
   return (
     <>
       <TopBar hash={hash} hasIdentity={!!identity} />
       {renderView()}
+      <BottomNav hash={hash} />
     </>
   );
 }
