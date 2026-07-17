@@ -43,10 +43,10 @@ export default function TopBar({ hash, hasIdentity }) {
             ←
           </a>
         )}
-      </div>
-      <div className="topbar-brand">
-        <img className="topbar-logo" src="/icon-512.png" alt="" width="30" height="30" />
-        <span>Choices</span>
+        <div className="topbar-brand">
+          <img className="topbar-logo" src="/icon-512.png" alt="" width="30" height="30" />
+          <span>Choices</span>
+        </div>
       </div>
       <div className="topbar-right">{showsTools(hash) && <NearMeToggle />}</div>
     </div>

@@ -64,7 +64,7 @@ a:focus-visible,
 .container {
   max-width: 480px;
   margin: 0 auto;
-  /* Bottom padding clears the pinned bottom nav bar (its height + safe area). */
+  /* Bottom padding clears the floating pill nav (its own height + offset). */
   padding: calc(52px + env(safe-area-inset-top) + 8px) 20px
     max(40px, calc(env(safe-area-inset-bottom) + 96px));
 }
@@ -208,17 +208,13 @@ h1 {
   min-height: 44px;
 }
 
-/* Persistent Choices brand lockup, centered in the bar. Decorative — sits
-   between the back control (left) and tools (right) without intercepting taps. */
+/* Persistent Choices brand lockup, left-aligned in the bar (sits after the
+   back control when one is present; the near-me pin stays right). Decorative —
+   non-interactive so it never covers the back tap target. */
 .topbar-brand {
-  position: absolute;
-  left: 50%;
-  top: calc(env(safe-area-inset-top) + 4px);
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 44px;
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--text);
@@ -773,6 +769,55 @@ h1 {
 .seg-tab.active {
   background: var(--indigo);
   color: var(--text);
+}
+
+/* Recent-games prev/next pager — rounded pill matching the segmented switcher. */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: max-content;
+  margin: 14px auto 4px;
+  padding: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.pager-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.pager-btn:not(:disabled):active {
+  background: rgba(79, 70, 229, 0.25);
+}
+
+.pager-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pager-status {
+  min-width: 84px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .top-winners ul,
@@ -1455,23 +1500,20 @@ h1 {
   flex: none;
 }
 
-/* --- Pinned bottom nav bar (BottomNav.jsx) --- */
+/* --- Floating pill bottom nav (BottomNav.jsx) --- */
 .bottom-nav {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + 12px);
   z-index: 60; /* above .topbar 50 */
   display: flex;
-  justify-content: space-around;
   gap: 4px;
-  /* Full-width bar; the tab cluster is inset to the 480px column on wide
-     screens (same math as .topbar) and spreads edge-to-edge on mobile. */
-  padding: 8px max(16px, calc((100vw - 480px) / 2 + 16px));
-  padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
+  padding: 6px;
   background: var(--card);
-  border-top: 1px solid var(--border);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
 .bottom-nav-tab {
