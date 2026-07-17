@@ -64,9 +64,10 @@ a:focus-visible,
 .container {
   max-width: 480px;
   margin: 0 auto;
-  /* Bottom padding clears the floating pill nav (its own height + offset). */
+  /* Bottom padding clears the floating pill nav (its own height + offset)
+     with a comfortable gap so content never sits under the pill. */
   padding: calc(52px + env(safe-area-inset-top) + 8px) 20px
-    max(40px, calc(env(safe-area-inset-bottom) + 96px));
+    calc(env(safe-area-inset-bottom) + 116px);
 }
 
 h1 {
@@ -979,20 +980,6 @@ h1 {
   opacity: 0.7;
 }
 
-/* Next-game form — the front card face revealed when the winner card flips
-   back (see PlayView). Carded to match .get-winner so the flip is card→card. */
-.rematch {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 20px;
-}
-
-.rematch h2 {
-  font-size: 1.15rem;
-  margin: 0 0 4px;
-}
-
 /* Footer with player identity + leave/switch */
 .footer {
   margin-top: 28px;
@@ -1424,7 +1411,7 @@ h1 {
     /* Bottom margin clears the floating pill nav, which floats over the
        page bg below the panel at this breakpoint. */
     margin: calc(52px + env(safe-area-inset-top) + 24px) auto
-      calc(env(safe-area-inset-bottom) + 92px);
+      calc(env(safe-area-inset-bottom) + 112px);
     padding: 32px;
     border: 1px solid var(--border);
     border-radius: 24px;
