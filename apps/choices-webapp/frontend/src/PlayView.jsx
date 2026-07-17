@@ -372,10 +372,57 @@ export default function PlayView({ identity, onLeave }) {
   if (complete) lastWinnerRef.current = game.choices[game.winnerIndex];
   const winnerName = complete ? game.choices[game.winnerIndex] : lastWinnerRef.current;
 
-  // The winner card (back face) is the visible face only until the player taps
-  // "Start a new game", which flips back to the front — now hosting the
-  // next-game form instead of the finished board.
-  const showBack = complete && !rematchRevealed;
+  // Tapping "Start a new game" on the winner card swaps the whole view to a
+  // dedicated next-game screen (mirrors the create flow) instead of flipping
+  // the winner card — no leftover winner header, no card-in-card.
+  if (complete && rematchRevealed) {
+    return (
+      <div className="container">
+        <h1>New game 🎲</h1>
+        <p className="muted">Pick 4 new choices. Player {other} cuts first.</p>
+        <form onSubmit={onRematch}>
+          <FillMyFour
+            context="pairing"
+            trackOpts={{ pairingId, role, token }}
+            request={(occasion) => fillMyFour({ pairingId, role, token, occasion })}
+            onFill={(cs) => {
+              rematchFilledRef.current = true;
+              setRematchChoices(cs);
+            }}
+          />
+          {rematchChoices.map((c, i) => (
+            <ChoiceInput
+              key={i}
+              placeholder={`Choice ${i + 1}`}
+              value={c}
+              pairEntries={pairEntries}
+              trackOpts={{ pairingId, role, token }}
+              onChange={(v) =>
+                setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
+              }
+            />
+          ))}
+          {error && <p className="error">{error}</p>}
+          <Button
+            variant="primary"
+            type="submit"
+            busy={busy}
+            disabled={rematchChoices.some((c) => !c.trim())}
+          >
+            {busy ? "Starting…" : "🎲 Start new game"}
+          </Button>
+        </form>
+        <div className="footer">
+          <Button variant="ghost" onClick={() => setRematchRevealed(false)}>
+            ← Back to results
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // The winner card (back face) is the visible face once the game completes.
+  const showBack = complete;
 
   return (
     <div className="container">
@@ -409,73 +456,35 @@ export default function PlayView({ identity, onLeave }) {
         <div
           className={`flip-card ${showBack ? "flipped" : ""} ${
             animateFlip ? "" : "no-anim"
-          } ${settled && !rematchRevealed ? "flip-settled" : ""}`}
+          } ${settled ? "flip-settled" : ""}`}
         >
           <div
             className="flip-face flip-front"
             aria-hidden={showBack}
             inert={showBack ? "" : undefined}
           >
-            {complete && rematchRevealed ? (
-              <form className="rematch" onSubmit={onRematch}>
-                <h2>Give them Choices</h2>
-                <p className="muted">
-                  Pick 4 new choices. Player {other} cuts first.
-                </p>
-                <FillMyFour
-                  context="pairing"
-                  trackOpts={{ pairingId, role, token }}
-                  request={(occasion) => fillMyFour({ pairingId, role, token, occasion })}
-                  onFill={(cs) => {
-                    rematchFilledRef.current = true;
-                    setRematchChoices(cs);
-                  }}
-                />
-                {rematchChoices.map((c, i) => (
-                  <ChoiceInput
+            <ul className="choices">
+              {game.choices.map((label, i) => {
+                const dead = eliminatedSet.has(i);
+                const isWinner = complete && game.winnerIndex === i;
+                return (
+                  <li
                     key={i}
-                    placeholder={`Choice ${i + 1}`}
-                    value={c}
-                    pairEntries={pairEntries}
-                    trackOpts={{ pairingId, role, token }}
-                    onChange={(v) =>
-                      setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
-                    }
-                  />
-                ))}
-                <Button
-                  variant="primary"
-                  type="submit"
-                  busy={busy}
-                  disabled={rematchChoices.some((c) => !c.trim())}
-                >
-                  {busy ? "Starting…" : "🎲 Start new game"}
-                </Button>
-              </form>
-            ) : (
-              <ul className="choices">
-                {game.choices.map((label, i) => {
-                  const dead = eliminatedSet.has(i);
-                  const isWinner = complete && game.winnerIndex === i;
-                  return (
-                    <li
-                      key={i}
-                      className={`choice ${dead ? "dead" : ""} ${isWinner ? "winner" : ""}`}
+                    className={`choice ${dead ? "dead" : ""} ${isWinner ? "winner" : ""}`}
+                  >
+                    <button
+                      className="choice-btn"
+                      disabled={!myTurn || dead || busy}
+                      onClick={() => onEliminate(i)}
                     >
-                      <button
-                        className="choice-btn"
-                        disabled={!myTurn || dead || busy}
-                        onClick={() => onEliminate(i)}
-                      >
-                        <span className="label">{label}</span>
-                        {dead && <span className="tag">cut</span>}
-                        {isWinner && <span className="tag win">winner</span>}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+                      <span className="label">{label}</span>
+                      {dead && <span className="tag">cut</span>}
+                      {isWinner && <span className="tag win">winner</span>}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
           <div
             className="flip-face flip-back"
