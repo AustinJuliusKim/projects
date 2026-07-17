@@ -27,10 +27,9 @@ function showsTools(hash) {
   return activeTab(hash) === "home";
 }
 
-// Persistent native-style top bar: contextual back on the left, the near-me
-// pin on the right. The account pill has moved to the bottom nav's History
-// tab. When both are hidden and there's no back, the bar is a transparent
-// spacer over the page bg.
+// Persistent native-style top bar: contextual back on the left, the branded
+// Choices lockup centered, the near-me pin on the right. The account pill has
+// moved to the bottom nav's History tab.
 export default function TopBar({ hash, hasIdentity }) {
   const back = backTarget(hash, hasIdentity);
   return (
@@ -44,6 +43,10 @@ export default function TopBar({ hash, hasIdentity }) {
             ←
           </a>
         )}
+        <div className="topbar-brand">
+          <img className="topbar-logo" src="/icon-512.png" alt="" width="30" height="30" />
+          <span>Choices</span>
+        </div>
       </div>
       <div className="topbar-right">{showsTools(hash) && <NearMeToggle />}</div>
     </div>

@@ -51,6 +51,7 @@ export default function PlayView({ identity, onLeave }) {
   const lastWinnerRef = useRef(null); // keeps back face populated during flip-back
   const [animateFlip, setAnimateFlip] = useState(false); // stays false when loading into an already-complete game
   const [settled, setSettled] = useState(false); // post-flip: drop front face from layout
+  const [rematchRevealed, setRematchRevealed] = useState(false); // 2nd flip: winner card -> next-game form on the front face
 
   useEffect(() => {
     if (state?.game?.status === "active") setAnimateFlip(true);
@@ -97,6 +98,12 @@ export default function PlayView({ identity, onLeave }) {
     const t = setTimeout(() => setSettled(true), 900);
     return () => clearTimeout(t);
   }, [complete, animateFlip]);
+
+  // Reset the 2nd-flip state whenever we're not on a completed game (e.g. the
+  // next game just started), so the card returns to the board cleanly.
+  useEffect(() => {
+    if (!complete) setRematchRevealed(false);
+  }, [complete]);
 
   // If this device's token was taken over by another device, sign out cleanly.
   function isBumped(err) {
@@ -365,6 +372,11 @@ export default function PlayView({ identity, onLeave }) {
   if (complete) lastWinnerRef.current = game.choices[game.winnerIndex];
   const winnerName = complete ? game.choices[game.winnerIndex] : lastWinnerRef.current;
 
+  // The winner card (back face) is the visible face only until the player taps
+  // "Start a new game", which flips back to the front — now hosting the
+  // next-game form instead of the finished board.
+  const showBack = complete && !rematchRevealed;
+
   return (
     <div className="container">
       <h1 key={complete ? "won" : "play"} className="fade-swap">
@@ -395,38 +407,80 @@ export default function PlayView({ identity, onLeave }) {
 
       <div className="flip-scene" ref={sceneRef}>
         <div
-          className={`flip-card ${complete ? "flipped" : ""} ${
+          className={`flip-card ${showBack ? "flipped" : ""} ${
             animateFlip ? "" : "no-anim"
-          } ${settled ? "flip-settled" : ""}`}
+          } ${settled && !rematchRevealed ? "flip-settled" : ""}`}
         >
-          <div className="flip-face flip-front" aria-hidden={complete}>
-            <ul className="choices">
-              {game.choices.map((label, i) => {
-                const dead = eliminatedSet.has(i);
-                const isWinner = complete && game.winnerIndex === i;
-                return (
-                  <li
+          <div
+            className="flip-face flip-front"
+            aria-hidden={showBack}
+            inert={showBack ? "" : undefined}
+          >
+            {complete && rematchRevealed ? (
+              <form className="rematch" onSubmit={onRematch}>
+                <h2>Give them Choices</h2>
+                <p className="muted">
+                  Pick 4 new choices. Player {other} cuts first.
+                </p>
+                <FillMyFour
+                  context="pairing"
+                  trackOpts={{ pairingId, role, token }}
+                  request={(occasion) => fillMyFour({ pairingId, role, token, occasion })}
+                  onFill={(cs) => {
+                    rematchFilledRef.current = true;
+                    setRematchChoices(cs);
+                  }}
+                />
+                {rematchChoices.map((c, i) => (
+                  <ChoiceInput
                     key={i}
-                    className={`choice ${dead ? "dead" : ""} ${isWinner ? "winner" : ""}`}
-                  >
-                    <button
-                      className="choice-btn"
-                      disabled={!myTurn || dead || busy}
-                      onClick={() => onEliminate(i)}
+                    placeholder={`Choice ${i + 1}`}
+                    value={c}
+                    pairEntries={pairEntries}
+                    trackOpts={{ pairingId, role, token }}
+                    onChange={(v) =>
+                      setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
+                    }
+                  />
+                ))}
+                <Button
+                  variant="primary"
+                  type="submit"
+                  busy={busy}
+                  disabled={rematchChoices.some((c) => !c.trim())}
+                >
+                  {busy ? "Starting…" : "🎲 Start new game"}
+                </Button>
+              </form>
+            ) : (
+              <ul className="choices">
+                {game.choices.map((label, i) => {
+                  const dead = eliminatedSet.has(i);
+                  const isWinner = complete && game.winnerIndex === i;
+                  return (
+                    <li
+                      key={i}
+                      className={`choice ${dead ? "dead" : ""} ${isWinner ? "winner" : ""}`}
                     >
-                      <span className="label">{label}</span>
-                      {dead && <span className="tag">cut</span>}
-                      {isWinner && <span className="tag win">winner</span>}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+                      <button
+                        className="choice-btn"
+                        disabled={!myTurn || dead || busy}
+                        onClick={() => onEliminate(i)}
+                      >
+                        <span className="label">{label}</span>
+                        {dead && <span className="tag">cut</span>}
+                        {isWinner && <span className="tag win">winner</span>}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
           <div
             className="flip-face flip-back"
-            aria-hidden={!complete}
-            inert={!complete ? "" : undefined}
+            aria-hidden={!showBack}
+            inert={!showBack ? "" : undefined}
           >
             {winnerName != null && (
               <div className="get-winner">
@@ -468,9 +522,19 @@ export default function PlayView({ identity, onLeave }) {
                   Not affiliated with or endorsed by these platforms.
                 </p>
                 <div className="reveal" style={{ "--d": "850ms" }}>
-                  <Button onClick={onShareReveal}>
-                    📸 Share the reveal
-                  </Button>
+                  <div className="reveal-actions">
+                    <Button onClick={onShareReveal}>
+                      📸 Share the reveal
+                    </Button>
+                    {iCanRematch && (
+                      <Button
+                        variant="primary"
+                        onClick={() => setRematchRevealed(true)}
+                      >
+                        🔄 Start a new game
+                      </Button>
+                    )}
+                  </div>
                   <TipJar compact onTip={reportLinkClick} />
                   {complete && <WinnerAccountLine />}
                 </div>
@@ -481,44 +545,6 @@ export default function PlayView({ identity, onLeave }) {
       </div>
 
       {error && <p className="error">{error}</p>}
-
-      {complete && iCanRematch && (
-        <form className="rematch" onSubmit={onRematch}>
-          <h2>Give them Choices</h2>
-          <p className="muted">
-            Pick 4 new choices. Player {other} cuts first.
-          </p>
-          <FillMyFour
-            context="pairing"
-            trackOpts={{ pairingId, role, token }}
-            request={(occasion) => fillMyFour({ pairingId, role, token, occasion })}
-            onFill={(cs) => {
-              rematchFilledRef.current = true;
-              setRematchChoices(cs);
-            }}
-          />
-          {rematchChoices.map((c, i) => (
-            <ChoiceInput
-              key={i}
-              placeholder={`Choice ${i + 1}`}
-              value={c}
-              pairEntries={pairEntries}
-              trackOpts={{ pairingId, role, token }}
-                onChange={(v) =>
-                setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
-              }
-            />
-          ))}
-          <Button
-            variant="primary"
-            type="submit"
-            busy={busy}
-            disabled={rematchChoices.some((c) => !c.trim())}
-          >
-            {busy ? "Starting…" : "🎲 Start new game"}
-          </Button>
-        </form>
-      )}
 
       {complete && !iCanRematch && (
         <div className="banner waiting">
