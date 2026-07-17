@@ -4,7 +4,6 @@ import { hasSession, signIn } from "./auth.js";
 import { useMe } from "./useMe.js";
 import Button from "./Button.jsx";
 import NavButton from "./NavButton.jsx";
-import TipJar from "./support.jsx";
 
 const PLANS = {
   monthly: { label: "Monthly", price: "$2.99/mo" },
@@ -104,7 +103,6 @@ export default function PremiumView() {
           </div>
           {error && <p className="error">{error}</p>}
         </div>
-        <TipJar />
       </div>
     );
   }
@@ -158,8 +156,6 @@ export default function PremiumView() {
         </Button>
       )}
       {error && <p className="error">{error}</p>}
-
-      <TipJar />
     </div>
   );
 }

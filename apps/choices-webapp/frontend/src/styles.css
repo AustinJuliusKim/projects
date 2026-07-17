@@ -64,7 +64,7 @@ a:focus-visible,
 .container {
   max-width: 480px;
   margin: 0 auto;
-  /* Bottom padding clears the floating pill nav (its own height + offset). */
+  /* Bottom padding clears the pinned bottom nav bar (its height + safe area). */
   padding: calc(52px + env(safe-area-inset-top) + 8px) 20px
     max(40px, calc(env(safe-area-inset-bottom) + 96px));
 }
@@ -72,22 +72,6 @@ a:focus-visible,
 h1 {
   font-size: 1.6rem;
   margin: 0 0 8px;
-}
-
-/* Landing brand lockup: logo + wordmark */
-.brand-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.brand-row h1 {
-  margin: 0;
-}
-
-.brand-logo {
-  display: block;
 }
 
 .muted {
@@ -222,6 +206,28 @@ h1 {
   align-items: center;
   gap: 8px;
   min-height: 44px;
+}
+
+/* Persistent Choices brand lockup, centered in the bar. Decorative — sits
+   between the back control (left) and tools (right) without intercepting taps. */
+.topbar-brand {
+  position: absolute;
+  left: 50%;
+  top: calc(env(safe-area-inset-top) + 4px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.topbar-logo {
+  display: block;
+  border-radius: 7px;
 }
 
 /* Back control — same corner-pill footprint as .near-me-pin. */
@@ -571,6 +577,17 @@ h1 {
   text-align: center;
 }
 
+/* Winner-card actions: Share + Start-a-new-game side by side (wrap if tight). */
+.reveal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reveal-actions .btn {
+  flex: 1 1 140px;
+}
+
 .platform-btns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -727,10 +744,35 @@ h1 {
   margin-top: 4px;
 }
 
-.top-winners h2,
-.history h2 {
-  font-size: 1.05rem;
-  margin: 18px 0 6px;
+/* Segmented pill switcher (HistoryView) — modeled on the inspo's
+   Activity/Alerts tabs; toggles between the Winners and Recent lists. */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 18px 0 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.seg-tab {
+  flex: 1;
+  min-height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.seg-tab.active {
+  background: var(--indigo);
+  color: var(--text);
 }
 
 .top-winners ul,
@@ -892,11 +934,13 @@ h1 {
   opacity: 0.7;
 }
 
-/* Rematch form on winner screen */
+/* Next-game form — the front card face revealed when the winner card flips
+   back (see PlayView). Carded to match .get-winner so the flip is card→card. */
 .rematch {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
 }
 
 .rematch h2 {
@@ -1044,10 +1088,10 @@ h1 {
   margin-top: 12px;
 }
 
-/* "Recent games" heading: 1.05rem with 18px/6px margins */
-.sk-heading {
-  height: 17px;
-  width: 120px;
+/* Stand-in for the .segmented pill switcher (40px tab + 4px padding each side). */
+.sk-segmented {
+  height: 48px;
+  border-radius: 999px;
   margin: 18px 0 10px;
 }
 
@@ -1411,20 +1455,23 @@ h1 {
   flex: none;
 }
 
-/* --- Floating pill bottom nav (BottomNav.jsx) --- */
+/* --- Pinned bottom nav bar (BottomNav.jsx) --- */
 .bottom-nav {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 60; /* above .topbar 50 */
   display: flex;
+  justify-content: space-around;
   gap: 4px;
-  padding: 6px;
+  /* Full-width bar; the tab cluster is inset to the 480px column on wide
+     screens (same math as .topbar) and spreads edge-to-edge on mobile. */
+  padding: 8px max(16px, calc((100vw - 480px) / 2 + 16px));
+  padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .bottom-nav-tab {
