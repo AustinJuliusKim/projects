@@ -74,22 +74,6 @@ h1 {
   margin: 0 0 8px;
 }
 
-/* Landing brand lockup: logo + wordmark */
-.brand-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.brand-row h1 {
-  margin: 0;
-}
-
-.brand-logo {
-  display: block;
-}
-
 .muted {
   color: var(--muted);
   font-size: 0.95rem;
@@ -222,6 +206,24 @@ h1 {
   align-items: center;
   gap: 8px;
   min-height: 44px;
+}
+
+/* Persistent Choices brand lockup, left-aligned in the bar (sits after the
+   back control when one is present; the near-me pin stays right). Decorative —
+   non-interactive so it never covers the back tap target. */
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.topbar-logo {
+  display: block;
+  border-radius: 7px;
 }
 
 /* Back control — same corner-pill footprint as .near-me-pin. */
@@ -571,6 +573,17 @@ h1 {
   text-align: center;
 }
 
+/* Winner-card actions: Share + Start-a-new-game side by side (wrap if tight). */
+.reveal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reveal-actions .btn {
+  flex: 1 1 140px;
+}
+
 .platform-btns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -727,10 +740,84 @@ h1 {
   margin-top: 4px;
 }
 
-.top-winners h2,
-.history h2 {
-  font-size: 1.05rem;
-  margin: 18px 0 6px;
+/* Segmented pill switcher (HistoryView) — modeled on the inspo's
+   Activity/Alerts tabs; toggles between the Winners and Recent lists. */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 18px 0 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.seg-tab {
+  flex: 1;
+  min-height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.seg-tab.active {
+  background: var(--indigo);
+  color: var(--text);
+}
+
+/* Recent-games prev/next pager — rounded pill matching the segmented switcher. */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: max-content;
+  margin: 14px auto 4px;
+  padding: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.pager-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.pager-btn:not(:disabled):active {
+  background: rgba(79, 70, 229, 0.25);
+}
+
+.pager-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pager-status {
+  min-width: 84px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .top-winners ul,
@@ -892,11 +979,13 @@ h1 {
   opacity: 0.7;
 }
 
-/* Rematch form on winner screen */
+/* Next-game form — the front card face revealed when the winner card flips
+   back (see PlayView). Carded to match .get-winner so the flip is card→card. */
 .rematch {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
 }
 
 .rematch h2 {
@@ -1044,10 +1133,10 @@ h1 {
   margin-top: 12px;
 }
 
-/* "Recent games" heading: 1.05rem with 18px/6px margins */
-.sk-heading {
-  height: 17px;
-  width: 120px;
+/* Stand-in for the .segmented pill switcher (40px tab + 4px padding each side). */
+.sk-segmented {
+  height: 48px;
+  border-radius: 999px;
   margin: 18px 0 10px;
 }
 
@@ -1093,6 +1182,35 @@ h1 {
 .sk-choice {
   height: 62px;
   border-radius: var(--radius-choice);
+}
+
+/* --- Premium tab skeleton (PremiumSkeleton.jsx) ---
+   Sized to the paywall: the pitch is ~two 0.95rem lines, each .plan-card is
+   14px padding + label + 1.15rem price (~70px), the CTA .btn is 14px padding +
+   1rem line (~48px, 12px above). */
+.premium-skeleton {
+  opacity: 0;
+  animation: sk-appear 0.2s ease 0.2s forwards;
+}
+
+.sk-line {
+  height: 15px;
+  margin: 0 0 8px;
+}
+
+.sk-line.short {
+  width: 60%;
+}
+
+.sk-plan-card {
+  height: 70px;
+  border-radius: var(--radius-card);
+}
+
+.sk-cta {
+  height: 48px;
+  border-radius: var(--radius-card);
+  margin-top: 12px;
 }
 
 /* --- Admin dashboard skeleton (AdminSkeleton.jsx) ---
