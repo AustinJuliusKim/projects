@@ -2,7 +2,6 @@ import React from "react";
 import { authEnabled, hasSession, getProfile, signIn, signOut } from "./auth.js";
 import { invalidateMe } from "./useMe.js";
 import Button from "./Button.jsx";
-import TipJar from "./support.jsx";
 
 const ADMIN_FLAG = "choices:admin";
 
@@ -28,8 +27,8 @@ function ProfileRow() {
   );
 }
 
-// Settings tab: account (sign in/out), Premium link, tip jar, and the
-// owner-only admin link (unlocked by a #/admin visit, see AdminView.jsx).
+// Settings tab: account (sign in/out), Premium link, and the owner-only admin
+// link (unlocked by a #/admin visit, see AdminView.jsx).
 export default function SettingsView() {
   const signedIn = hasSession();
   const isAdmin = authEnabled && localStorage.getItem(ADMIN_FLAG) === "1";
@@ -67,11 +66,6 @@ export default function SettingsView() {
                 ›
               </span>
             </a>
-          </div>
-          <div className="settings-group">
-            <div className="settings-row">
-              <TipJar compact />
-            </div>
           </div>
           {isAdmin && (
             <div className="settings-group">

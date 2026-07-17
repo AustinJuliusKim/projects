@@ -26,8 +26,9 @@ export default function AccountSkeleton() {
 
         <div className="sk sk-premium" />
 
+        <div className="sk sk-segmented" />
+
         <div className="history">
-          <div className="sk sk-heading" />
           {[0, 1, 2, 3].map((i) => (
             <div className="sk-row" key={i}>
               <div className="sk sk-row-main" style={{ width: `${62 - i * 7}%` }} />
