@@ -103,6 +103,7 @@ jobs:
             StripePriceMonthly=price_1TpzGYIVveMhKb5YH2DIAGcr
             StripePriceAnnual=price_1TpzGjIVveMhKb5YRATUAc1o
             BedrockModelId=us.anthropic.claude-haiku-4-5-20251001-v1:0
+            WebAclArn=arn:aws:wafv2:us-east-1:549883968767:global/webacl/CreatedByCloudFront-a3fa5526/6168ffbf-1701-42f0-a96b-1a8d5aadf4bf
           )
           if [ -n "$PREVIEW_STRIPE_SECRET_KEY" ]; then params+=("StripeSecretKey=$PREVIEW_STRIPE_SECRET_KEY"); fi
           if [ -n "$PREVIEW_STRIPE_WEBHOOK_SECRET" ]; then params+=("StripeWebhookSecret=$PREVIEW_STRIPE_WEBHOOK_SECRET"); fi
