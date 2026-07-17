@@ -1184,6 +1184,35 @@ h1 {
   border-radius: var(--radius-choice);
 }
 
+/* --- Premium tab skeleton (PremiumSkeleton.jsx) ---
+   Sized to the paywall: the pitch is ~two 0.95rem lines, each .plan-card is
+   14px padding + label + 1.15rem price (~70px), the CTA .btn is 14px padding +
+   1rem line (~48px, 12px above). */
+.premium-skeleton {
+  opacity: 0;
+  animation: sk-appear 0.2s ease 0.2s forwards;
+}
+
+.sk-line {
+  height: 15px;
+  margin: 0 0 8px;
+}
+
+.sk-line.short {
+  width: 60%;
+}
+
+.sk-plan-card {
+  height: 70px;
+  border-radius: var(--radius-card);
+}
+
+.sk-cta {
+  height: 48px;
+  border-radius: var(--radius-card);
+  margin-top: 12px;
+}
+
 /* --- Admin dashboard skeleton (AdminSkeleton.jsx) ---
    Sized to the real elements: .stat-num is 2.2rem/700 (~35px line),
    .stat-label 0.82rem (~13px) with 6px above, panel h2 is 0.95rem with
