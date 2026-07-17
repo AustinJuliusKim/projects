@@ -5,6 +5,10 @@ import { useMe } from "./useMe.js";
 import AccountSkeleton from "./AccountSkeleton.jsx";
 import Button from "./Button.jsx";
 
+// Recent games arrive fully in one getMe call (hard-capped ≤10 free / ≤50
+// premium), so pagination is pure client-side slicing — no cursor/fetch.
+const RECENT_PAGE_SIZE = 10;
+
 // One-line account hook for the winner screen (post-value placement, like
 // the tip jar): guests get the sign-in pitch, free accounts the locked-streak
 // teaser, premium the live streak. Renders nothing when accounts are off.
@@ -40,6 +44,7 @@ export default function HistoryView() {
   const signedIn = hasSession();
   const { me, error } = useMe();
   const [tab, setTab] = useState("winners");
+  const [recentPage, setRecentPage] = useState(0);
 
   // paywall_viewed (bundle C): one beacon per upsell surface actually
   // rendered this visit — enum surfaces only, nothing about the account.
@@ -48,6 +53,16 @@ export default function HistoryView() {
     if (me.stats?.streakLocked) track("paywall_viewed", { surface: "streak-lock" });
     if (me.historyLocked) track("paywall_viewed", { surface: "history-lock" });
   }, [me]);
+
+  // Client-side pagination for Recent games (10/page). safePage clamps in case
+  // a background useMe refresh shrinks the list under the current page.
+  const recentGames = me?.recentGames ?? [];
+  const recentPageCount = Math.max(1, Math.ceil(recentGames.length / RECENT_PAGE_SIZE));
+  const recentSafePage = Math.min(recentPage, recentPageCount - 1);
+  const recentPageItems = recentGames.slice(
+    recentSafePage * RECENT_PAGE_SIZE,
+    recentSafePage * RECENT_PAGE_SIZE + RECENT_PAGE_SIZE
+  );
 
   if (!authEnabled) {
     return (
@@ -162,7 +177,7 @@ export default function HistoryView() {
                 </p>
               )}
               <ul>
-                {me.recentGames.map((g) => (
+                {recentPageItems.map((g) => (
                   <li key={`${g.pairingId}#${g.number}`}>
                     <span>🏆 {g.winnerLabel}</span>
                     <span className="muted">
@@ -171,6 +186,33 @@ export default function HistoryView() {
                   </li>
                 ))}
               </ul>
+              {recentPageCount > 1 && (
+                <div className="pager">
+                  <button
+                    type="button"
+                    className="pager-btn"
+                    aria-label="Previous page"
+                    disabled={recentSafePage === 0}
+                    onClick={() => setRecentPage((p) => Math.max(0, p - 1))}
+                  >
+                    ‹
+                  </button>
+                  <span className="pager-status">
+                    Page {recentSafePage + 1} / {recentPageCount}
+                  </span>
+                  <button
+                    type="button"
+                    className="pager-btn"
+                    aria-label="Next page"
+                    disabled={recentSafePage === recentPageCount - 1}
+                    onClick={() =>
+                      setRecentPage((p) => Math.min(recentPageCount - 1, p + 1))
+                    }
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
               {me.historyLocked && (
                 <p className="muted locked-note">
                   Older games are in your archive —{" "}
