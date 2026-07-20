@@ -130,7 +130,7 @@ export default function ChoiceInput({ value, onChange, placeholder, pairEntries 
             setPlacesResults([]);
           }}
         >
-          ✕
+          <span className="choice-clear-glyph" aria-hidden="true">✕</span>
         </button>
       )}
       {suggestions.length > 0 && (

@@ -103,28 +103,20 @@ h1 {
   position: relative;
 }
 
-/* Section-header row above the 4 choice inputs: muted label + chip-sized
-   "Clear all" (always rendered, disabled when empty — no layout shift) */
-.choices-header {
+/* Bottom action row: content-sized ghost "Clear all" (always rendered,
+   disabled when empty — no layout shift) beside the stretching primary */
+.form-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
+  gap: 10px;
+  align-items: stretch;
 }
 
-.choices-header-label {
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-
-.choices-header .btn {
+.form-actions .btn.ghost {
   width: auto;
-  padding: 8px 14px;
-  margin: 0;
-  font-size: 0.9rem;
+}
+
+.form-actions .btn.primary {
+  flex: 1;
 }
 
 /* clearButtonMode-style ⓧ: full input height for a 44pt target (the input's
@@ -140,13 +132,26 @@ h1 {
   justify-content: center;
   border: 0;
   background: transparent;
-  color: var(--muted);
-  font-size: 0.95rem;
   cursor: pointer;
 }
 
-.choice-clear:active {
-  color: var(--text);
+/* iOS-system filled circle: solid muted disc, dark knocked-out ✕ */
+.choice-clear-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--card);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.choice-clear:active .choice-clear-glyph {
+  background: var(--text);
 }
 
 .suggestions {

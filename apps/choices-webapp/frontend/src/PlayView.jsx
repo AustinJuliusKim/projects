@@ -392,21 +392,6 @@ export default function PlayView({ identity, onLeave }) {
               setRematchChoices(cs);
             }}
           />
-          {/* Always rendered so enabling it never shifts the inputs. */}
-          <div className="choices-header">
-            <span className="choices-header-label">Your 4</span>
-            <Button
-              variant="ghost"
-              type="button"
-              disabled={!rematchChoices.some((c) => c.trim())}
-              onClick={() => {
-                rematchFilledRef.current = false;
-                setRematchChoices(["", "", "", ""]);
-              }}
-            >
-              Clear all
-            </Button>
-          </div>
           {rematchChoices.map((c, i) => (
             <ChoiceInput
               key={i}
@@ -420,14 +405,28 @@ export default function PlayView({ identity, onLeave }) {
             />
           ))}
           {error && <p className="error">{error}</p>}
-          <Button
-            variant="primary"
-            type="submit"
-            busy={busy}
-            disabled={rematchChoices.some((c) => !c.trim())}
-          >
-            {busy ? "Starting…" : "🎲 Start new game"}
-          </Button>
+          {/* Clear all is always rendered (disabled when empty) — no layout shift. */}
+          <div className="form-actions">
+            <Button
+              variant="ghost"
+              type="button"
+              disabled={!rematchChoices.some((c) => c.trim())}
+              onClick={() => {
+                rematchFilledRef.current = false;
+                setRematchChoices(["", "", "", ""]);
+              }}
+            >
+              Clear all
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              busy={busy}
+              disabled={rematchChoices.some((c) => !c.trim())}
+            >
+              {busy ? "Starting…" : "🎲 Start new game"}
+            </Button>
+          </div>
         </form>
         <div className="footer">
           <Button variant="ghost" onClick={() => setRematchRevealed(false)}>
