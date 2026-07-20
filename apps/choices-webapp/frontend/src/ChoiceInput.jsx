@@ -117,6 +117,22 @@ export default function ChoiceInput({ value, onChange, placeholder, pairEntries 
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={onKeyDown}
       />
+      {value !== "" && (
+        // UITextField clearButtonMode-style ⓧ, shown only when there's text.
+        <button
+          type="button"
+          className="choice-clear"
+          aria-label="Clear choice"
+          onMouseDown={(e) => e.preventDefault() /* keep input focus */}
+          onClick={() => {
+            onChange("");
+            setHighlight(-1);
+            setPlacesResults([]);
+          }}
+        >
+          <span className="choice-clear-glyph" aria-hidden="true">✕</span>
+        </button>
+      )}
       {suggestions.length > 0 && (
         <ul className="suggestions" role="listbox">
           {suggestions.map((s, i) => (

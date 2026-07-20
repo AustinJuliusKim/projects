@@ -14,6 +14,7 @@ import Button from "./Button.jsx";
 import NavButton from "./NavButton.jsx";
 import { WinnerAccountLine } from "./HistoryView.jsx";
 import { clearIdentity } from "./storage.js";
+import { shareInvite } from "./invite.js";
 import { enablePush, pushSupported, isIosSafari, isStandalone } from "./push.js";
 import { isNative } from "./platform.js";
 
@@ -52,6 +53,7 @@ export default function PlayView({ identity, onLeave }) {
   const [animateFlip, setAnimateFlip] = useState(false); // stays false when loading into an already-complete game
   const [settled, setSettled] = useState(false); // post-flip: drop front face from layout
   const [rematchRevealed, setRematchRevealed] = useState(false); // 2nd flip: winner card -> next-game form on the front face
+  const [codeCopied, setCodeCopied] = useState(false); // pinned-code tap feedback
 
   useEffect(() => {
     if (state?.game?.status === "active") setAnimateFlip(true);
@@ -403,14 +405,28 @@ export default function PlayView({ identity, onLeave }) {
             />
           ))}
           {error && <p className="error">{error}</p>}
-          <Button
-            variant="primary"
-            type="submit"
-            busy={busy}
-            disabled={rematchChoices.some((c) => !c.trim())}
-          >
-            {busy ? "Starting…" : "🎲 Start new game"}
-          </Button>
+          {/* Clear all is always rendered (disabled when empty) — no layout shift. */}
+          <div className="form-actions">
+            <Button
+              variant="ghost"
+              type="button"
+              disabled={!rematchChoices.some((c) => c.trim())}
+              onClick={() => {
+                rematchFilledRef.current = false;
+                setRematchChoices(["", "", "", ""]);
+              }}
+            >
+              Clear all
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              busy={busy}
+              disabled={rematchChoices.some((c) => !c.trim())}
+            >
+              {busy ? "Starting…" : "🎲 Start new game"}
+            </Button>
+          </div>
         </form>
         <div className="footer">
           <Button variant="ghost" onClick={() => setRematchRevealed(false)}>
@@ -434,9 +450,32 @@ export default function PlayView({ identity, onLeave }) {
         // getState no longer carries the code (cache safety) — it lives in
         // the stored identity; state.code covers pre-migration identities.
         ((identity.code ?? state.code) ? (
-          <div className="banner waiting">
-            Share code <strong>{identity.code ?? state.code}</strong> with your
-            opponent to begin.
+          <div className="pinned-invite">
+            <div className="banner waiting">
+              Share this code with your opponent to begin.
+            </div>
+            <button
+              type="button"
+              className="code-display pinned"
+              aria-label="Copy game code"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(identity.code ?? state.code);
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 1500);
+                } catch {
+                  /* selection fallback: the text stays selectable */
+                }
+              }}
+            >
+              {identity.code ?? state.code}
+              <span className="copy-hint muted">
+                {codeCopied ? "Copied!" : "Tap to copy"}
+              </span>
+            </button>
+            <Button onClick={() => shareInvite(identity.code ?? state.code)}>
+              📤 Share invite
+            </Button>
           </div>
         ) : (
           <div className="banner waiting">
