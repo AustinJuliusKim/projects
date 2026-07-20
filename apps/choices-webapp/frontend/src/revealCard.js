@@ -1,7 +1,8 @@
-// Shareable reveal card (growth plan §8, channel #1: users generate the
-// marketing). Pure canvas drawing — zero infra, only the two players' own
-// text. 1080×1350 (4:5 portrait, the friendliest size for iMessage and
-// Instagram-shaped surfaces).
+// Shareable reveal "cut card" (growth plan §8, channel #1: users generate the
+// marketing; brand book "Final Cut" signature asset). Pure canvas drawing —
+// zero infra, only the two players' own text. Wordle-style result grid:
+// three struck rows, one gold crowned row. 1080×1350 (4:5 portrait, the
+// friendliest size for iMessage and Instagram-shaped surfaces).
 
 const W = 1080;
 const H = 1350;
@@ -12,56 +13,63 @@ export async function drawRevealCard(canvas, { winner, losers }) {
   canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#0f172a");
-  bg.addColorStop(0.55, "#1e1b4b");
-  bg.addColorStop(1, "#312e81");
-  ctx.fillStyle = bg;
+  ctx.fillStyle = "#0b1020";
   ctx.fillRect(0, 0, W, H);
 
   ctx.textAlign = "center";
 
-  // Headline
-  ctx.fillStyle = "#a5b4fc";
-  ctx.font = `600 52px ${FONT}`;
-  ctx.fillText("Nobody picked this.", W / 2, 170);
-  ctx.fillText("Everybody picked this.", W / 2, 240);
+  // Headline (locked brand voice)
+  ctx.fillStyle = "#b3b3fc";
+  ctx.font = `600 48px ${FONT}`;
+  ctx.fillText("Nobody picked this.", W / 2, 150);
+  ctx.fillText("Everybody picked this.", W / 2, 215);
 
-  // The three cuts, struck through
-  ctx.font = `600 56px ${FONT}`;
-  let y = 420;
+  // Result grid: losers struck in red, winner crowned in gold.
+  const tileX = 120;
+  const tileW = W - tileX * 2;
+  const tileH = 140;
+  const gap = 24;
+  let y = 300;
   for (const label of losers) {
-    const text = fit(ctx, label, `600 56px ${FONT}`, W - 240);
-    ctx.fillStyle = "#64748b";
-    ctx.fillText(text, W / 2, y);
+    ctx.fillStyle = "rgba(244, 244, 240, 0.05)";
+    ctx.strokeStyle = "rgba(244, 244, 240, 0.1)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(tileX, y, tileW, tileH, 24);
+    ctx.fill();
+    ctx.stroke();
+
+    const text = fit(ctx, label, `600 54px ${FONT}`, tileW - 80);
+    const midY = y + tileH / 2;
+    ctx.fillStyle = "#8b93a8";
+    ctx.fillText(text, W / 2, midY + 19);
     const w = ctx.measureText(text).width;
-    ctx.strokeStyle = "#ef4444";
+    ctx.strokeStyle = "#ff4d5e";
     ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.moveTo(W / 2 - w / 2 - 16, y - 20);
-    ctx.lineTo(W / 2 + w / 2 + 16, y - 20);
+    ctx.moveTo(W / 2 - w / 2 - 16, midY);
+    ctx.lineTo(W / 2 + w / 2 + 16, midY);
     ctx.stroke();
-    y += 130;
+
+    y += tileH + gap;
   }
 
-  // Winner chip
-  const winnerText = fit(ctx, winner, `800 84px ${FONT}`, W - 280);
-  ctx.font = `800 84px ${FONT}`;
-  const chipW = ctx.measureText(winnerText).width + 160;
-  const chipY = y + 20;
-  ctx.strokeStyle = "#22c55e";
-  ctx.lineWidth = 8;
-  ctx.fillStyle = "rgba(34, 197, 94, 0.15)";
+  ctx.fillStyle = "rgba(255, 197, 61, 0.15)";
+  ctx.strokeStyle = "#ffc53d";
+  ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.roundRect((W - chipW) / 2, chipY - 90, chipW, 150, 75);
+  ctx.roundRect(tileX, y, tileW, tileH, 24);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = "#f1f5f9";
-  ctx.fillText(winnerText, W / 2, chipY + 8);
+  const winnerText = fit(ctx, `👑 ${winner}`, `800 64px ${FONT}`, tileW - 80);
+  ctx.fillStyle = "#f4f4f0";
+  ctx.fillText(winnerText, W / 2, y + tileH / 2 + 22);
 
-  ctx.fillStyle = "#22c55e";
+  // Verdict line (locked brand voice)
+  ctx.fillStyle = "#ffc53d";
   ctx.font = `600 46px ${FONT}`;
-  ctx.fillText("🏆 survived", W / 2, chipY + 130);
+  const verdict = fit(ctx, `${winner} survived · nobody's fault`, `600 46px ${FONT}`, W - 160);
+  ctx.fillText(verdict, W / 2, 1010);
 
   // App logo above the footer. Best-effort: a failed load must never block
   // the share, the card just renders without it.
@@ -76,12 +84,9 @@ export async function drawRevealCard(canvas, { winner, losers }) {
   }
 
   // Footer
-  ctx.fillStyle = "#94a3b8";
-  ctx.font = `600 40px ${FONT}`;
-  ctx.fillText("Dinner's served.", W / 2, H - 160);
-  ctx.fillStyle = "#a5b4fc";
+  ctx.fillStyle = "#b3b3fc";
   ctx.font = `700 40px ${FONT}`;
-  ctx.fillText("choices.austinjuliuskim.com", W / 2, H - 90);
+  ctx.fillText("choices.austinjuliuskim.com", W / 2, H - 100);
 }
 
 // Ellipsize a label to fit maxWidth at the given font.
