@@ -103,11 +103,28 @@ h1 {
   position: relative;
 }
 
-/* Right-aligned "Clear all" above the 4 choice inputs */
-.clear-all-row {
+/* Section-header row above the 4 choice inputs: muted label + chip-sized
+   "Clear all" (always rendered, disabled when empty — no layout shift) */
+.choices-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 4px;
+}
+
+.choices-header-label {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.choices-header .btn {
+  width: auto;
+  padding: 8px 14px;
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 /* clearButtonMode-style ⓧ: full input height for a 44pt target (the input's

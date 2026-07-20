@@ -392,20 +392,21 @@ export default function PlayView({ identity, onLeave }) {
               setRematchChoices(cs);
             }}
           />
-          {rematchChoices.some((c) => c.trim()) && (
-            <div className="clear-all-row">
-              <Button
-                variant="link"
-                type="button"
-                onClick={() => {
-                  rematchFilledRef.current = false;
-                  setRematchChoices(["", "", "", ""]);
-                }}
-              >
-                Clear all
-              </Button>
-            </div>
-          )}
+          {/* Always rendered so enabling it never shifts the inputs. */}
+          <div className="choices-header">
+            <span className="choices-header-label">Your 4</span>
+            <Button
+              variant="ghost"
+              type="button"
+              disabled={!rematchChoices.some((c) => c.trim())}
+              onClick={() => {
+                rematchFilledRef.current = false;
+                setRematchChoices(["", "", "", ""]);
+              }}
+            >
+              Clear all
+            </Button>
+          </div>
           {rematchChoices.map((c, i) => (
             <ChoiceInput
               key={i}
