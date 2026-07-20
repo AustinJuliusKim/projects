@@ -255,7 +255,7 @@ async function ogPreviewPage(rawCode) {
   <meta property="og:type" content="website" />
   <meta property="og:title" content="You've got Choices 😏" />
   <meta property="og:description" content="${escapeHtml(description)}" />
-${image}  <meta name="theme-color" content="#0f172a" />
+${image}  <meta name="theme-color" content="#0b1020" />
   <script>location.replace(${JSON.stringify(target)});</script>
 </head>
 <body>

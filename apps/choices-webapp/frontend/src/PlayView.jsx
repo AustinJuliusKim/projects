@@ -75,7 +75,7 @@ export default function PlayView({ identity, onLeave }) {
         particleCount: 90,
         spread: 70,
         startVelocity: 35,
-        colors: ["#4f46e5", "#22c55e"],
+        colors: ["#5b5bf7", "#ffc53d"],
         disableForReducedMotion: true,
         origin: r
           ? {

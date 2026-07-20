@@ -1,12 +1,13 @@
 :root {
-  --indigo: #4f46e5;
-  --indigo-dark: #4338ca;
-  --bg: #0f172a;
+  --indigo: #5b5bf7;
+  --indigo-dark: #4d4dd2;
+  --bg: #0b1020;
   --card: #1e293b;
-  --text: #f1f5f9;
+  --text: #f4f4f0;
   --muted: #94a3b8;
   --green: #22c55e;
-  --red: #ef4444;
+  --red: #ff4d5e;
+  --gold: #ffc53d;
   --border: #334155;
   --radius-card: 16px;
   --radius-choice: 18px;
@@ -190,7 +191,7 @@ h1 {
 
 .suggestion.active,
 .suggestion:hover {
-  background: rgba(79, 70, 229, 0.25);
+  background: rgba(91, 91, 247, 0.25);
 }
 
 .suggestion .tag {
@@ -225,7 +226,7 @@ h1 {
 
 .chip.active {
   border-color: var(--indigo);
-  background: rgba(79, 70, 229, 0.25);
+  background: rgba(91, 91, 247, 0.25);
 }
 
 .fill-note {
@@ -453,8 +454,8 @@ h1 {
 }
 
 .choice.winner .choice-btn {
-  border-color: var(--green);
-  background: rgba(34, 197, 94, 0.15);
+  border-color: var(--gold);
+  background: rgba(255, 197, 61, 0.15);
 }
 
 .tag {
@@ -468,8 +469,8 @@ h1 {
 }
 
 .tag.win {
-  color: var(--green);
-  background: rgba(34, 197, 94, 0.2);
+  color: var(--gold);
+  background: rgba(255, 197, 61, 0.2);
 }
 
 .error {
@@ -875,7 +876,7 @@ h1 {
 }
 
 .pager-btn:not(:disabled):active {
-  background: rgba(79, 70, 229, 0.25);
+  background: rgba(91, 91, 247, 0.25);
 }
 
 .pager-btn:disabled {
@@ -954,7 +955,7 @@ h1 {
 .premium-badge-crest {
   font-size: 1.6rem;
   line-height: 1;
-  filter: drop-shadow(0 1px 6px rgba(79, 70, 229, 0.55));
+  filter: drop-shadow(0 1px 6px rgba(91, 91, 247, 0.55));
 }
 
 .premium-badge-body {
@@ -1528,7 +1529,7 @@ h1 {
 
 .plan-card.selected {
   border-color: var(--indigo);
-  background: rgba(79, 70, 229, 0.25);
+  background: rgba(91, 91, 247, 0.25);
 }
 
 .plan-price {
@@ -1618,7 +1619,7 @@ h1 {
 }
 
 .bottom-nav-tab.active {
-  background: rgba(79, 70, 229, 0.25);
+  background: rgba(91, 91, 247, 0.25);
   color: var(--text);
 }
 
