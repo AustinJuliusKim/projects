@@ -84,7 +84,7 @@ h1 {
 .choice-input {
   display: block;
   width: 100%;
-  padding: 14px 16px;
+  padding: 14px 44px 14px 16px; /* right clears the ⓧ button */
   margin-bottom: 12px;
   font-size: 1rem;
   border: 1px solid var(--border);
@@ -101,6 +101,35 @@ h1 {
 /* Typeahead dropdown (ChoiceInput) */
 .choice-input-wrap {
   position: relative;
+}
+
+/* Right-aligned "Clear all" above the 4 choice inputs */
+.clear-all-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+/* clearButtonMode-style ⓧ: full input height for a 44pt target (the input's
+   12px bottom margin collapses out of the wrap, so bottom: 0 = input edge) */
+.choice-clear {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.choice-clear:active {
+  color: var(--text);
 }
 
 .suggestions {
@@ -448,6 +477,26 @@ h1 {
   border-radius: 20px;
   color: var(--text);
   user-select: all; /* intentional copy affordance — keep selectable */
+}
+
+/* Pinned invite on the game page while the opponent hasn't joined:
+   tappable code (copy) + share button under the waiting banner. */
+.code-display.pinned {
+  display: block;
+  width: 100%;
+  font-family: inherit;
+  font-size: 1.6rem;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.code-display.pinned .copy-hint {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  margin-top: 2px;
+  user-select: none; /* keep select-all on the code only */
 }
 
 .code-input {
