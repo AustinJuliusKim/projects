@@ -3,7 +3,7 @@ import { createPairing, claimSeat, linkClick, fillMyFour } from "./api.js";
 import { hasSession } from "./auth.js";
 import { saveIdentity } from "./storage.js";
 import { enablePush, pushSupported } from "./push.js";
-import { isNative, WEB_ORIGIN } from "./platform.js";
+import { shareInvite } from "./invite.js";
 import IosInstallHint from "./IosInstallHint.jsx";
 import TipJar, { PremiumTease } from "./support.jsx";
 import ChoiceInput from "./ChoiceInput.jsx";
@@ -68,40 +68,6 @@ export default function CreatePairingView({ onReady }) {
     }
   }
 
-  function joinLink(code) {
-    // Inside the native shell the location origin is capacitor://localhost —
-    // recipients need the web app. The /j/ path serves an OG preview card to
-    // crawlers and instantly redirects humans into the join flow.
-    const base = isNative
-      ? `${WEB_ORIGIN}/`
-      : `${window.location.origin}${window.location.pathname}`;
-    return `${base}j/${encodeURIComponent(code)}`;
-  }
-
-  async function onShare() {
-    const text = `You've got Choices 😏 Enter code ${created.code} and cut wisely.`;
-    const shareData = { title: "Choices", text, url: joinLink(created.code) };
-    if (isNative) {
-      const { Share } = await import("@capacitor/share");
-      try {
-        await Share.share(shareData);
-      } catch {
-        /* sheet dismissed */
-      }
-      return;
-    }
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch {
-        /* cancelled -> fall through */
-      }
-    }
-    await navigator.clipboard.writeText(`${text}\n${joinLink(created.code)}`);
-    alert("Invite copied to clipboard!");
-  }
-
   if (created) {
     return (
       <div className="container">
@@ -113,7 +79,7 @@ export default function CreatePairingView({ onReady }) {
 
         <div className="code-display">{created.code}</div>
 
-        <Button onClick={onShare}>
+        <Button onClick={() => shareInvite(created.code)}>
           📤 Share invite
         </Button>
         <Button variant="primary" onClick={onContinueAsHost} busy={busy}>
@@ -147,6 +113,20 @@ export default function CreatePairingView({ onReady }) {
             setChoices(cs);
           }}
         />
+        {choices.some((c) => c.trim()) && (
+          <div className="clear-all-row">
+            <Button
+              variant="link"
+              type="button"
+              onClick={() => {
+                filledRef.current = false;
+                setChoices(["", "", "", ""]);
+              }}
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
         {choices.map((c, i) => (
           <ChoiceInput
             key={i}
