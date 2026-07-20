@@ -113,9 +113,17 @@ export default function CreatePairingView({ onReady }) {
             setChoices(cs);
           }}
         />
-        {/* Always rendered so enabling it never shifts the inputs. */}
-        <div className="choices-header">
-          <span className="choices-header-label">Your 4</span>
+        {choices.map((c, i) => (
+          <ChoiceInput
+            key={i}
+            placeholder={`Choice ${i + 1}`}
+            value={c}
+            onChange={(v) => setChoice(i, v)}
+          />
+        ))}
+        {error && <p className="error">{error}</p>}
+        {/* Clear all is always rendered (disabled when empty) — no layout shift. */}
+        <div className="form-actions">
           <Button
             variant="ghost"
             type="button"
@@ -127,19 +135,10 @@ export default function CreatePairingView({ onReady }) {
           >
             Clear all
           </Button>
+          <Button variant="primary" type="submit" disabled={!ready} busy={busy}>
+            {busy ? "Creating…" : "Create game"}
+          </Button>
         </div>
-        {choices.map((c, i) => (
-          <ChoiceInput
-            key={i}
-            placeholder={`Choice ${i + 1}`}
-            value={c}
-            onChange={(v) => setChoice(i, v)}
-          />
-        ))}
-        {error && <p className="error">{error}</p>}
-        <Button variant="primary" type="submit" disabled={!ready} busy={busy}>
-          {busy ? "Creating…" : "Create game"}
-        </Button>
       </form>
     </div>
   );
