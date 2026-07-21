@@ -522,6 +522,40 @@ h1 {
   user-select: none; /* keep select-all on the code only */
 }
 
+/* Mid-game code reminder (both joined): compact line so the code is never
+   lost. Rendered as a tap-to-copy button for the host, plain <p> for the
+   guest — same look either way. */
+.game-code-line {
+  display: block;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  text-align: center;
+  color: var(--muted);
+  background: none;
+  border: 0;
+}
+
+.game-code-line strong {
+  color: var(--text);
+  letter-spacing: 0.06em;
+}
+
+button.game-code-line {
+  min-height: 44px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.game-code-line .copy-hint {
+  margin-left: 8px;
+  font-size: 0.8rem;
+}
+
 .code-input {
   text-transform: uppercase;
   text-align: center;
@@ -991,7 +1025,7 @@ h1 {
   font-size: 0.9rem;
 }
 
-/* Cancel-subscription page (Choicey) */
+/* Cancel-subscription page (Cutty) */
 .cancel-view {
   text-align: center;
 }
@@ -1000,13 +1034,14 @@ h1 {
   margin-top: 8px;
 }
 
-.choicey {
+/* Transparent sticker art — no card frame (a radius/shadow would draw the
+   old rectangular PNG bounds around the cutout). */
+.cutty {
+  display: block;
   width: 200px;
   max-width: 62%;
   height: auto;
   margin: 8px auto 4px;
-  border-radius: 24px;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
 }
 
 .cancel-quote {

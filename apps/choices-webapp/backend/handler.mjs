@@ -1023,7 +1023,7 @@ async function doCreatePortalSession(user) {
   return createPortalSession(item, process.env.SITE_URL);
 }
 
-// In-app "Cancel subscription" (the Choicey page). Flags cancel_at_period_end
+// In-app "Cancel subscription" (the Cutty page). Flags cancel_at_period_end
 // at Stripe and mirrors the intent onto the USER# item so the badge can show
 // "Premium until <date>" before the webhook's final .deleted event lands.
 async function doCancelSubscription(user) {

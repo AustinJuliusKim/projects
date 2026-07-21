@@ -5,7 +5,7 @@ import { useMe, invalidateMe } from "./useMe.js";
 import Button from "./Button.jsx";
 import NavButton from "./NavButton.jsx";
 
-// The cute unsubscribe page (reached from the Premium badge). Choicey makes a
+// The cute unsubscribe page (reached from the Premium badge). Cutty makes a
 // cheeky plea, then a single Confirm sets cancel_at_period_end at Stripe — the
 // member keeps Premium until the paid period ends. Web-only, like the rest of
 // the billing surface.
@@ -43,9 +43,9 @@ export default function CancelView() {
   return (
     <div className="container cancel-view">
       <img
-        className="choicey"
-        src="/choicey.png"
-        alt="Choicey the raccoon, looking hopeful"
+        className="cutty"
+        src="/cutty.png"
+        alt="Cutty the raccoon, looking hopeful"
         width="220"
         height="220"
       />
@@ -91,7 +91,7 @@ export default function CancelView() {
           <p className="cancel-quote">
             “Aw, c'mon — I was just getting warmed up. Keep me around and I'll
             keep your streak safe. Promise.”
-            <span className="cancel-sign">— Choicey</span>
+            <span className="cancel-sign">— Cutty</span>
           </p>
           <p className="muted">
             You'll keep Premium until the end of your billing period, so there's
