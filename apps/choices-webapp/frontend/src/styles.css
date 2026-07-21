@@ -7,7 +7,7 @@
   --muted: #94a3b8;
   --green: #22c55e;
   --red: #ff4d5e;
-  --gold: #ffc53d;
+  --winner: #22c55e; /* winner/celebration accent (distinct slot from --green's functional success) */
   --border: #334155;
   --radius-card: 16px;
   --radius-choice: 18px;
@@ -454,8 +454,8 @@ h1 {
 }
 
 .choice.winner .choice-btn {
-  border-color: var(--gold);
-  background: rgba(255, 197, 61, 0.15);
+  border-color: var(--winner);
+  background: color-mix(in srgb, var(--winner) 15%, transparent);
 }
 
 .tag {
@@ -469,8 +469,8 @@ h1 {
 }
 
 .tag.win {
-  color: var(--gold);
-  background: rgba(255, 197, 61, 0.2);
+  color: var(--winner);
+  background: color-mix(in srgb, var(--winner) 20%, transparent);
 }
 
 .error {

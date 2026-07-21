@@ -88,7 +88,7 @@ export default function PlayView({ identity, onLeave }) {
         startVelocity: 35,
         colors: [
           theme.getPropertyValue("--indigo").trim(),
-          theme.getPropertyValue("--gold").trim(),
+          theme.getPropertyValue("--winner").trim(),
         ],
         disableForReducedMotion: true,
         origin: r

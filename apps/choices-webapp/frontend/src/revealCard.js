@@ -1,7 +1,7 @@
 // Shareable reveal "cut card" (growth plan §8, channel #1: users generate the
 // marketing; brand book "Final Cut" signature asset). Pure canvas drawing —
 // zero infra, only the two players' own text. Wordle-style result grid:
-// three struck rows, one gold trophy row. 1080×1350 (4:5 portrait, the
+// three struck rows, one green trophy row. 1080×1350 (4:5 portrait, the
 // friendliest size for iMessage and Instagram-shaped surfaces).
 
 const W = 1080;
@@ -24,7 +24,7 @@ export async function drawRevealCard(canvas, { winner, losers }) {
   ctx.fillText("Nobody picked this.", W / 2, 150);
   ctx.fillText("Everybody picked this.", W / 2, 215);
 
-  // Result grid: losers struck in red, winner trophied in gold.
+  // Result grid: losers struck in red, winner trophied in green.
   const tileX = 120;
   const tileW = W - tileX * 2;
   const tileH = 140;
@@ -54,8 +54,8 @@ export async function drawRevealCard(canvas, { winner, losers }) {
     y += tileH + gap;
   }
 
-  ctx.fillStyle = "rgba(255, 197, 61, 0.15)";
-  ctx.strokeStyle = "#ffc53d";
+  ctx.fillStyle = "rgba(34, 197, 94, 0.15)";
+  ctx.strokeStyle = "#22c55e";
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.roundRect(tileX, y, tileW, tileH, 24);
@@ -66,7 +66,7 @@ export async function drawRevealCard(canvas, { winner, losers }) {
   ctx.fillText(winnerText, W / 2, y + tileH / 2 + 22);
 
   // Verdict line (locked brand voice)
-  ctx.fillStyle = "#ffc53d";
+  ctx.fillStyle = "#22c55e";
   ctx.font = `600 46px ${FONT}`;
   const verdict = fit(ctx, `${winner} survived · nobody's fault`, `600 46px ${FONT}`, W - 160);
   ctx.fillText(verdict, W / 2, 1010);
