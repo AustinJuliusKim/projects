@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { track } from "./api.js";
-import { authEnabled, hasSession, signIn } from "./auth.js";
-import { useMe } from "./useMe.js";
-import AccountSkeleton from "./AccountSkeleton.jsx";
-import Button from "./Button.jsx";
+import { track } from "@/lib/api.js";
+import { authEnabled, hasSession, signIn } from "@/lib/auth.js";
+import { useMe } from "@/hooks/useMe.js";
+import AccountSkeleton from "@/features/account/AccountSkeleton.jsx";
+import Button from "@/components/Button.jsx";
 
 // Recent games arrive fully in one getMe call (hard-capped ≤10 free / ≤50
 // premium), so pagination is pure client-side slicing — no cursor/fetch.

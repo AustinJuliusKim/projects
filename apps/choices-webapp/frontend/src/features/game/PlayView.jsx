@@ -1,22 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
-import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour, track } from "./api.js";
-import { authEnabled } from "./auth.js";
-import { useMe } from "./useMe.js";
-import ChoiceInput from "./ChoiceInput.jsx";
-import PlayViewSkeleton from "./PlayViewSkeleton.jsx";
-import FillMyFour from "./FillMyFour.jsx";
-import { drawRevealCard } from "./revealCard.js";
-import { PLATFORMS } from "./affiliates.js";
-import TipJar from "./support.jsx";
-import Button from "./Button.jsx";
-import NavButton from "./NavButton.jsx";
-import { WinnerAccountLine } from "./HistoryView.jsx";
-import { clearIdentity } from "./storage.js";
-import { shareInvite } from "./invite.js";
-import { enablePush, pushSupported, isIosSafari, isStandalone } from "./push.js";
-import { isNative } from "./platform.js";
+import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour, track } from "@/lib/api.js";
+import { authEnabled } from "@/lib/auth.js";
+import { useMe } from "@/hooks/useMe.js";
+import ChoiceInput from "@/features/game/ChoiceInput.jsx";
+import PlayViewSkeleton from "@/features/game/PlayViewSkeleton.jsx";
+import FillMyFour from "@/features/game/FillMyFour.jsx";
+import { drawRevealCard } from "@/features/game/revealCard.js";
+import { PLATFORMS } from "@/features/game/affiliates.js";
+import TipJar from "@/features/premium/support.jsx";
+import Button from "@/components/Button.jsx";
+import NavButton from "@/components/NavButton.jsx";
+import { WinnerAccountLine } from "@/features/account/HistoryView.jsx";
+import { clearIdentity } from "@/lib/storage.js";
+import { shareInvite } from "@/features/game/invite.js";
+import { enablePush, pushSupported, isIosSafari, isStandalone } from "@/lib/push.js";
+import { isNative } from "@/lib/platform.js";
 
 // Adaptive polling (foreground fallback; push is primary). The interval
 // tracks how hot the game is; hidden tabs stop polling entirely and refetch

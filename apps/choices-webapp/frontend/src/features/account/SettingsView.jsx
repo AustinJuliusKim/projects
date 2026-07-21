@@ -1,7 +1,7 @@
 import React from "react";
-import { authEnabled, hasSession, getProfile, signIn, signOut } from "./auth.js";
-import { invalidateMe } from "./useMe.js";
-import Button from "./Button.jsx";
+import { authEnabled, hasSession, getProfile, signIn, signOut } from "@/lib/auth.js";
+import { invalidateMe } from "@/hooks/useMe.js";
+import Button from "@/components/Button.jsx";
 
 const ADMIN_FLAG = "choices:admin";
 

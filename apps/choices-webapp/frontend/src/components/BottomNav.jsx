@@ -1,6 +1,6 @@
 import React from "react";
-import { authEnabled, getProfile } from "./auth.js";
-import { readStreak } from "./streakCache.js";
+import { authEnabled, getProfile } from "@/lib/auth.js";
+import { readStreak } from "@/lib/streakCache.js";
 
 // Which pill lights up for a given hash. Every route in the app resolves to
 // one of these four: the unlisted entry hashes (#/create, #/join) plus the
