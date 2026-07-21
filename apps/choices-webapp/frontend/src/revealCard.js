@@ -1,7 +1,7 @@
 // Shareable reveal "cut card" (growth plan §8, channel #1: users generate the
 // marketing; brand book "Final Cut" signature asset). Pure canvas drawing —
 // zero infra, only the two players' own text. Wordle-style result grid:
-// three struck rows, one gold crowned row. 1080×1350 (4:5 portrait, the
+// three struck rows, one gold trophy row. 1080×1350 (4:5 portrait, the
 // friendliest size for iMessage and Instagram-shaped surfaces).
 
 const W = 1080;
@@ -24,7 +24,7 @@ export async function drawRevealCard(canvas, { winner, losers }) {
   ctx.fillText("Nobody picked this.", W / 2, 150);
   ctx.fillText("Everybody picked this.", W / 2, 215);
 
-  // Result grid: losers struck in red, winner crowned in gold.
+  // Result grid: losers struck in red, winner trophied in gold.
   const tileX = 120;
   const tileW = W - tileX * 2;
   const tileH = 140;
@@ -61,7 +61,7 @@ export async function drawRevealCard(canvas, { winner, losers }) {
   ctx.roundRect(tileX, y, tileW, tileH, 24);
   ctx.fill();
   ctx.stroke();
-  const winnerText = fit(ctx, `👑 ${winner}`, `800 64px ${FONT}`, tileW - 80);
+  const winnerText = fit(ctx, `🏆 ${winner}`, `800 64px ${FONT}`, tileW - 80);
   ctx.fillStyle = "#f4f4f0";
   ctx.fillText(winnerText, W / 2, y + tileH / 2 + 22);
 

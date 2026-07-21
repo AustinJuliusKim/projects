@@ -71,11 +71,15 @@ export default function PlayView({ identity, onLeave }) {
         Haptics.notification({ type: NotificationType.Success }).catch(() => {});
       }
       const r = sceneRef.current?.getBoundingClientRect();
+      const theme = getComputedStyle(document.documentElement);
       confetti({
         particleCount: 90,
         spread: 70,
         startVelocity: 35,
-        colors: ["#5b5bf7", "#ffc53d"],
+        colors: [
+          theme.getPropertyValue("--indigo").trim(),
+          theme.getPropertyValue("--gold").trim(),
+        ],
         disableForReducedMotion: true,
         origin: r
           ? {
