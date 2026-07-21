@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { getAdminOverview, adminSetPremium } from "./api.js";
-import { getProfile, signIn } from "./auth.js";
-import AdminSkeleton from "./AdminSkeleton.jsx";
-import Button from "./Button.jsx";
+import { getAdminOverview, adminSetPremium } from "@/lib/api.js";
+import { getProfile, signIn } from "@/lib/auth.js";
+import AdminSkeleton from "@/features/admin/AdminSkeleton.jsx";
+import Button from "@/components/Button.jsx";
 
 // Owner-only activity dashboard (anonymous aggregates). Polls every 30s using
 // the same self-scheduling / visibility-aware loop as PlayView, at a slow fixed

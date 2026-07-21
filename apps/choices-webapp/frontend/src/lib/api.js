@@ -1,6 +1,6 @@
 // Thin fetch wrappers around the game API (Function URL or CloudFront /api).
-import { getIdToken, getProfile } from "./auth.js";
-import { writeStreak } from "./streakCache.js";
+import { getIdToken, getProfile } from "@/lib/auth.js";
+import { writeStreak } from "@/lib/streakCache.js";
 
 const API_URL = import.meta.env.VITE_API_URL;
 

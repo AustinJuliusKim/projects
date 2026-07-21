@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { cancelSubscription } from "./api.js";
-import { authEnabled, hasSession } from "./auth.js";
-import { useMe, invalidateMe } from "./useMe.js";
-import Button from "./Button.jsx";
-import NavButton from "./NavButton.jsx";
+import { cancelSubscription } from "@/lib/api.js";
+import { authEnabled, hasSession } from "@/lib/auth.js";
+import { useMe, invalidateMe } from "@/hooks/useMe.js";
+import Button from "@/components/Button.jsx";
+import NavButton from "@/components/NavButton.jsx";
 
 // The cute unsubscribe page (reached from the Premium badge). Cutty makes a
 // cheeky plea, then a single Confirm sets cancel_at_period_end at Stripe — the

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { track } from "./api.js";
-import { getProfile } from "./auth.js";
-import { readStreak } from "./streakCache.js";
-import Button from "./Button.jsx";
+import { track } from "@/lib/api.js";
+import { getProfile } from "@/lib/auth.js";
+import { readStreak } from "@/lib/streakCache.js";
+import Button from "@/components/Button.jsx";
 
 // "✨ Fill my 4" (suggestion engine Phase 3). Renders occasion chips + the
 // fill button above a set of choice inputs; the returned 4 land in the

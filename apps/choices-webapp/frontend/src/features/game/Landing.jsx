@@ -1,7 +1,7 @@
 import React from "react";
-import IosInstallHint from "./IosInstallHint.jsx";
-import NavButton from "./NavButton.jsx";
-import { authEnabled, hasSession } from "./auth.js";
+import IosInstallHint from "@/components/IosInstallHint.jsx";
+import NavButton from "@/components/NavButton.jsx";
+import { authEnabled, hasSession } from "@/lib/auth.js";
 
 // First screen for a device with no identity yet: start a new pairing, or join
 // an existing one with a code. The brand lockup lives in the persistent top bar.

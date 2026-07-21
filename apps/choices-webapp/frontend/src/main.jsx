@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import CreatePairingView from "./CreatePairingView.jsx";
-import JoinView from "./JoinView.jsx";
-import PlayView from "./PlayView.jsx";
-import Landing from "./Landing.jsx";
-import HistoryView from "./HistoryView.jsx";
-import PremiumView from "./PremiumView.jsx";
-import SettingsView from "./SettingsView.jsx";
-import CancelView from "./CancelView.jsx";
-import AdminView from "./AdminView.jsx";
-import TopBar from "./TopBar.jsx";
-import BottomNav from "./BottomNav.jsx";
-import { registerServiceWorker } from "./push.js";
-import { track } from "./api.js";
-import { loadIdentity } from "./storage.js";
-import { isNative } from "./platform.js";
-import { handleRedirect, authEnabled } from "./auth.js";
-import "./styles.css";
+import CreatePairingView from "@/features/game/CreatePairingView.jsx";
+import JoinView from "@/features/game/JoinView.jsx";
+import PlayView from "@/features/game/PlayView.jsx";
+import Landing from "@/features/game/Landing.jsx";
+import HistoryView from "@/features/account/HistoryView.jsx";
+import PremiumView from "@/features/premium/PremiumView.jsx";
+import SettingsView from "@/features/account/SettingsView.jsx";
+import CancelView from "@/features/premium/CancelView.jsx";
+import AdminView from "@/features/admin/AdminView.jsx";
+import TopBar from "@/components/TopBar.jsx";
+import BottomNav from "@/components/BottomNav.jsx";
+import { registerServiceWorker } from "@/lib/push.js";
+import { track } from "@/lib/api.js";
+import { loadIdentity } from "@/lib/storage.js";
+import { isNative } from "@/lib/platform.js";
+import { handleRedirect, authEnabled } from "@/lib/auth.js";
+import "@/styles.css";
 
 // Routing is driven by stored identity, NOT the URL — on iOS an installed PWA
 // always boots at "/". Optional entry hashes (#/create, #/join?code=) let A/B

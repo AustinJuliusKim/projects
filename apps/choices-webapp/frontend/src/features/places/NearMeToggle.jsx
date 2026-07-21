@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
-import { useNearMe, disableNearMe, requestNearMe, initNearMe } from "./nearMeStore.js";
-import { getProfile } from "./auth.js";
-import { readStreak } from "./streakCache.js";
+import { useNearMe, disableNearMe, requestNearMe, initNearMe } from "@/features/places/nearMeStore.js";
+import { getProfile } from "@/lib/auth.js";
+import { readStreak } from "@/lib/streakCache.js";
 
 const PLACES_ENABLED = import.meta.env.VITE_PLACES_ENABLED === "true";
 
