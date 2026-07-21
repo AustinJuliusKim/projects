@@ -4,17 +4,13 @@ import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { getState, eliminate, rematch, linkClick, getPairHistory, fillMyFour, track } from "@/lib/api.js";
 import { authEnabled } from "@/lib/auth.js";
 import { useMe } from "@/hooks/useMe.js";
-import ChoiceInput from "@/features/game/ChoiceInput.jsx";
 import PlayViewSkeleton from "@/features/game/PlayViewSkeleton.jsx";
-import FillMyFour from "@/features/game/FillMyFour.jsx";
 import { drawRevealCard } from "@/features/game/revealCard.js";
-import { PLATFORMS } from "@/features/game/affiliates.js";
-import TipJar from "@/features/premium/support.jsx";
+import WinnerFace from "@/features/game/WinnerFace.jsx";
+import NewGameScreen from "@/features/game/NewGameScreen.jsx";
+import { PinnedInvite, GameCodeLine } from "@/features/game/GameCode.jsx";
 import Button from "@/components/Button.jsx";
-import NavButton from "@/components/NavButton.jsx";
-import { WinnerAccountLine } from "@/features/account/HistoryView.jsx";
 import { clearIdentity } from "@/lib/storage.js";
-import { shareInvite } from "@/features/game/invite.js";
 import { enablePush, pushSupported, isIosSafari, isStandalone } from "@/lib/push.js";
 import { isNative } from "@/lib/platform.js";
 
@@ -53,17 +49,6 @@ export default function PlayView({ identity, onLeave }) {
   const [animateFlip, setAnimateFlip] = useState(false); // stays false when loading into an already-complete game
   const [settled, setSettled] = useState(false); // post-flip: drop front face from layout
   const [rematchRevealed, setRematchRevealed] = useState(false); // 2nd flip: winner card -> next-game form on the front face
-  const [codeCopied, setCodeCopied] = useState(false); // code tap-to-copy feedback
-
-  const copyCode = async (code) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCodeCopied(true);
-      setTimeout(() => setCodeCopied(false), 1500);
-    } catch {
-      /* selection fallback: the text stays selectable */
-    }
-  };
 
   useEffect(() => {
     if (state?.game?.status === "active") setAnimateFlip(true);
@@ -393,61 +378,28 @@ export default function PlayView({ identity, onLeave }) {
   // the winner card — no leftover winner header, no card-in-card.
   if (complete && rematchRevealed) {
     return (
-      <div className="container">
-        <h1>New game 🎲</h1>
-        <p className="muted">Pick 4 new choices. Player {other} cuts first.</p>
-        <form onSubmit={onRematch}>
-          <FillMyFour
-            context="pairing"
-            trackOpts={{ pairingId, role, token }}
-            request={(occasion) => fillMyFour({ pairingId, role, token, occasion })}
-            onFill={(cs) => {
-              rematchFilledRef.current = true;
-              setRematchChoices(cs);
-            }}
-          />
-          {rematchChoices.map((c, i) => (
-            <ChoiceInput
-              key={i}
-              placeholder={`Choice ${i + 1}`}
-              value={c}
-              pairEntries={pairEntries}
-              trackOpts={{ pairingId, role, token }}
-              onChange={(v) =>
-                setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
-              }
-            />
-          ))}
-          {error && <p className="error">{error}</p>}
-          {/* Clear all is always rendered (disabled when empty) — no layout shift. */}
-          <div className="form-actions">
-            <Button
-              variant="ghost"
-              type="button"
-              disabled={!rematchChoices.some((c) => c.trim())}
-              onClick={() => {
-                rematchFilledRef.current = false;
-                setRematchChoices(["", "", "", ""]);
-              }}
-            >
-              Clear all
-            </Button>
-            <Button
-              variant="primary"
-              type="submit"
-              busy={busy}
-              disabled={rematchChoices.some((c) => !c.trim())}
-            >
-              {busy ? "Starting…" : "🎲 Start new game"}
-            </Button>
-          </div>
-        </form>
-        <div className="footer">
-          <Button variant="ghost" onClick={() => setRematchRevealed(false)}>
-            ← Back to results
-          </Button>
-        </div>
-      </div>
+      <NewGameScreen
+        other={other}
+        choices={rematchChoices}
+        busy={busy}
+        error={error}
+        pairEntries={pairEntries}
+        trackOpts={{ pairingId, role, token }}
+        requestFill={(occasion) => fillMyFour({ pairingId, role, token, occasion })}
+        onFill={(cs) => {
+          rematchFilledRef.current = true;
+          setRematchChoices(cs);
+        }}
+        onChoiceChange={(i, v) =>
+          setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
+        }
+        onClearAll={() => {
+          rematchFilledRef.current = false;
+          setRematchChoices(["", "", "", ""]);
+        }}
+        onSubmit={onRematch}
+        onBack={() => setRematchRevealed(false)}
+      />
     );
   }
 
@@ -464,25 +416,7 @@ export default function PlayView({ identity, onLeave }) {
         // getState no longer carries the code (cache safety) — it lives in
         // the stored identity; state.code covers pre-migration identities.
         ((identity.code ?? state.code) ? (
-          <div className="pinned-invite">
-            <div className="banner waiting">
-              Share this code with your opponent to begin.
-            </div>
-            <button
-              type="button"
-              className="code-display pinned"
-              aria-label="Copy game code"
-              onClick={() => copyCode(identity.code ?? state.code)}
-            >
-              {identity.code ?? state.code}
-              <span className="copy-hint">
-                {codeCopied ? "Copied!" : "Tap to copy"}
-              </span>
-            </button>
-            <Button onClick={() => shareInvite(identity.code ?? state.code)}>
-              📤 Share invite
-            </Button>
-          </div>
+          <PinnedInvite code={identity.code ?? state.code} />
         ) : (
           <div className="banner waiting">
             Waiting for your opponent to join…
@@ -497,27 +431,12 @@ export default function PlayView({ identity, onLeave }) {
         </div>
       )}
 
-      {state.bothJoined &&
-        (identity.code ?? state.code) &&
-        // Once the game fills, keep the code visible so nobody loses it:
-        // the host keeps a tap-to-copy affordance, the guest gets plain text.
-        (identity.role === "A" ? (
-          <button
-            type="button"
-            className="game-code-line"
-            aria-label="Copy game code"
-            onClick={() => copyCode(identity.code ?? state.code)}
-          >
-            Game code: <strong>{identity.code ?? state.code}</strong>
-            <span className="copy-hint muted">
-              {codeCopied ? "Copied!" : "Tap to copy"}
-            </span>
-          </button>
-        ) : (
-          <p className="game-code-line">
-            Game code: <strong>{identity.code ?? state.code}</strong>
-          </p>
-        ))}
+      {state.bothJoined && (identity.code ?? state.code) && (
+        <GameCodeLine
+          code={identity.code ?? state.code}
+          canCopy={identity.role === "A"}
+        />
+      )}
 
       <div className="flip-scene" ref={sceneRef}>
         <div
@@ -558,64 +477,15 @@ export default function PlayView({ identity, onLeave }) {
             aria-hidden={!showBack}
             inert={!showBack ? "" : undefined}
           >
-            {winnerName != null && (
-              <div className="get-winner">
-                <h2 className="reveal" style={{ "--d": "550ms" }}>
-                  Get {winnerName}
-                </h2>
-                <div className="platform-btns reveal" style={{ "--d": "650ms" }}>
-                  {PLATFORMS.map((p) => (
-                    <NavButton
-                      key={p.id}
-                      className="platform"
-                      style={{ "--brand": p.brandColor }}
-                      href={p.buildUrl(winnerName)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => onPlatformClick(e, p)}
-                    >
-                      {p.iconPath ? (
-                        <svg
-                          className="platform-icon"
-                          viewBox="0 0 24 24"
-                          aria-hidden="true"
-                          focusable="false"
-                        >
-                          <path d={p.iconPath} />
-                        </svg>
-                      ) : (
-                        <span className="platform-icon monogram" aria-hidden="true">
-                          {p.monogram}
-                        </span>
-                      )}
-                      <span className="platform-label">{p.label}</span>
-                    </NavButton>
-                  ))}
-                </div>
-                <p className="disclosure muted reveal" style={{ "--d": "750ms" }}>
-                  We may earn a commission from these links.
-                  <br />
-                  Not affiliated with or endorsed by these platforms.
-                </p>
-                <div className="reveal" style={{ "--d": "850ms" }}>
-                  <div className="reveal-actions">
-                    <Button onClick={onShareReveal}>
-                      📸 Share the reveal
-                    </Button>
-                    {iCanRematch && (
-                      <Button
-                        variant="primary"
-                        onClick={() => setRematchRevealed(true)}
-                      >
-                        🔄 Start a new game
-                      </Button>
-                    )}
-                  </div>
-                  <TipJar compact onTip={reportLinkClick} />
-                  {complete && <WinnerAccountLine />}
-                </div>
-              </div>
-            )}
+            <WinnerFace
+              winnerName={winnerName}
+              complete={complete}
+              iCanRematch={iCanRematch}
+              onShare={onShareReveal}
+              onPlatformClick={onPlatformClick}
+              onTip={reportLinkClick}
+              onStartNewGame={() => setRematchRevealed(true)}
+            />
           </div>
         </div>
       </div>
