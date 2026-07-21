@@ -1,6 +1,6 @@
 // Service worker registration + Web Push subscription helpers.
-import { subscribe as apiSubscribe, track } from "./api.js";
-import { isNative } from "./platform.js";
+import { subscribe as apiSubscribe, track } from "@/lib/api.js";
+import { isNative } from "@/lib/platform.js";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 

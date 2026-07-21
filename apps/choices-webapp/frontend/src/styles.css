@@ -1,12 +1,13 @@
 :root {
-  --indigo: #4f46e5;
-  --indigo-dark: #4338ca;
-  --bg: #0f172a;
+  --indigo: #5b5bf7;
+  --indigo-dark: #4d4dd2;
+  --bg: #0b1020;
   --card: #1e293b;
-  --text: #f1f5f9;
+  --text: #f4f4f0;
   --muted: #94a3b8;
   --green: #22c55e;
-  --red: #ef4444;
+  --red: #ff4d5e;
+  --winner: #22c55e; /* winner/celebration accent (distinct slot from --green's functional success) */
   --border: #334155;
   --radius-card: 16px;
   --radius-choice: 18px;
@@ -190,7 +191,7 @@ h1 {
 
 .suggestion.active,
 .suggestion:hover {
-  background: rgba(79, 70, 229, 0.25);
+  background: color-mix(in srgb, var(--indigo) 25%, transparent);
 }
 
 .suggestion .tag {
@@ -225,7 +226,7 @@ h1 {
 
 .chip.active {
   border-color: var(--indigo);
-  background: rgba(79, 70, 229, 0.25);
+  background: color-mix(in srgb, var(--indigo) 25%, transparent);
 }
 
 .fill-note {
@@ -453,8 +454,8 @@ h1 {
 }
 
 .choice.winner .choice-btn {
-  border-color: var(--green);
-  background: rgba(34, 197, 94, 0.15);
+  border-color: var(--winner);
+  background: color-mix(in srgb, var(--winner) 15%, transparent);
 }
 
 .tag {
@@ -468,8 +469,8 @@ h1 {
 }
 
 .tag.win {
-  color: var(--green);
-  background: rgba(34, 197, 94, 0.2);
+  color: var(--winner);
+  background: color-mix(in srgb, var(--winner) 20%, transparent);
 }
 
 .error {
@@ -519,6 +520,44 @@ h1 {
   letter-spacing: normal;
   margin-top: 2px;
   user-select: none; /* keep select-all on the code only */
+}
+
+.pinned-invite {
+  margin-bottom: 16px;
+}
+
+/* Mid-game code reminder (both joined): compact line so the code is never
+   lost. Rendered as a tap-to-copy button for the host, plain <p> for the
+   guest — same look either way. */
+.game-code-line {
+  display: block;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  text-align: center;
+  color: var(--muted);
+  background: none;
+  border: 0;
+}
+
+.game-code-line strong {
+  color: var(--text);
+  letter-spacing: 0.06em;
+}
+
+button.game-code-line {
+  min-height: 44px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.game-code-line .copy-hint {
+  margin-left: 8px;
+  font-size: 0.8rem;
 }
 
 .code-input {
@@ -875,7 +914,7 @@ h1 {
 }
 
 .pager-btn:not(:disabled):active {
-  background: rgba(79, 70, 229, 0.25);
+  background: color-mix(in srgb, var(--indigo) 25%, transparent);
 }
 
 .pager-btn:disabled {
@@ -954,7 +993,7 @@ h1 {
 .premium-badge-crest {
   font-size: 1.6rem;
   line-height: 1;
-  filter: drop-shadow(0 1px 6px rgba(79, 70, 229, 0.55));
+  filter: drop-shadow(0 1px 6px color-mix(in srgb, var(--indigo) 55%, transparent));
 }
 
 .premium-badge-body {
@@ -990,7 +1029,7 @@ h1 {
   font-size: 0.9rem;
 }
 
-/* Cancel-subscription page (Choicey) */
+/* Cancel-subscription page (Cutty) */
 .cancel-view {
   text-align: center;
 }
@@ -999,13 +1038,14 @@ h1 {
   margin-top: 8px;
 }
 
-.choicey {
+/* Transparent sticker art — no card frame (a radius/shadow would draw the
+   old rectangular PNG bounds around the cutout). */
+.cutty {
+  display: block;
   width: 200px;
   max-width: 62%;
   height: auto;
   margin: 8px auto 4px;
-  border-radius: 24px;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
 }
 
 .cancel-quote {
@@ -1528,7 +1568,7 @@ h1 {
 
 .plan-card.selected {
   border-color: var(--indigo);
-  background: rgba(79, 70, 229, 0.25);
+  background: color-mix(in srgb, var(--indigo) 25%, transparent);
 }
 
 .plan-price {
@@ -1618,7 +1658,7 @@ h1 {
 }
 
 .bottom-nav-tab.active {
-  background: rgba(79, 70, 229, 0.25);
+  background: color-mix(in srgb, var(--indigo) 25%, transparent);
   color: var(--text);
 }
 

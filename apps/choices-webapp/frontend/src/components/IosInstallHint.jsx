@@ -1,5 +1,5 @@
 import React from "react";
-import { isIosSafari, isStandalone } from "./push.js";
+import { isIosSafari, isStandalone } from "@/lib/push.js";
 
 // Shown only on iOS Safari (not yet installed). iOS requires installing the PWA
 // to the Home Screen before notifications work and before the app can reopen

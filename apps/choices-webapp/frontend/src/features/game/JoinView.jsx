@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { claimSeat, track, trackBeacon } from "./api.js";
-import { saveIdentity } from "./storage.js";
-import { enablePush, pushSupported } from "./push.js";
-import IosInstallHint from "./IosInstallHint.jsx";
-import Button from "./Button.jsx";
+import { claimSeat, track, trackBeacon } from "@/lib/api.js";
+import { saveIdentity } from "@/lib/storage.js";
+import { enablePush, pushSupported } from "@/lib/push.js";
+import IosInstallHint from "@/components/IosInstallHint.jsx";
+import Button from "@/components/Button.jsx";
 
 export default function JoinView({ prefillCode = "", onReady }) {
   const [code, setCode] = useState(prefillCode);

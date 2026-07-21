@@ -1,14 +1,14 @@
 import React, { useRef, useState } from "react";
-import { createPairing, claimSeat, linkClick, fillMyFour } from "./api.js";
-import { hasSession } from "./auth.js";
-import { saveIdentity } from "./storage.js";
-import { enablePush, pushSupported } from "./push.js";
-import { shareInvite } from "./invite.js";
-import IosInstallHint from "./IosInstallHint.jsx";
-import TipJar, { PremiumTease } from "./support.jsx";
-import ChoiceInput from "./ChoiceInput.jsx";
-import FillMyFour from "./FillMyFour.jsx";
-import Button from "./Button.jsx";
+import { createPairing, claimSeat, linkClick, fillMyFour } from "@/lib/api.js";
+import { hasSession } from "@/lib/auth.js";
+import { saveIdentity } from "@/lib/storage.js";
+import { enablePush, pushSupported } from "@/lib/push.js";
+import { shareInvite } from "@/features/game/invite.js";
+import IosInstallHint from "@/components/IosInstallHint.jsx";
+import TipJar, { PremiumTease } from "@/features/premium/support.jsx";
+import ChoiceInput from "@/features/game/ChoiceInput.jsx";
+import FillMyFour from "@/features/game/FillMyFour.jsx";
+import Button from "@/components/Button.jsx";
 
 export default function CreatePairingView({ onReady }) {
   const [choices, setChoices] = useState(["", "", "", ""]);

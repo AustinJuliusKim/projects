@@ -1,40 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { track } from "./api.js";
-import { authEnabled, hasSession, signIn } from "./auth.js";
-import { useMe } from "./useMe.js";
-import AccountSkeleton from "./AccountSkeleton.jsx";
-import Button from "./Button.jsx";
+import { track } from "@/lib/api.js";
+import { authEnabled, hasSession, signIn } from "@/lib/auth.js";
+import { useMe } from "@/hooks/useMe.js";
+import AccountSkeleton from "@/features/account/AccountSkeleton.jsx";
+import Button from "@/components/Button.jsx";
 
 // Recent games arrive fully in one getMe call (hard-capped ≤10 free / ≤50
 // premium), so pagination is pure client-side slicing — no cursor/fetch.
 const RECENT_PAGE_SIZE = 10;
-
-// One-line account hook for the winner screen (post-value placement, like
-// the tip jar): guests get the sign-in pitch, free accounts the locked-streak
-// teaser, premium the live streak. Renders nothing when accounts are off.
-export function WinnerAccountLine() {
-  const signedIn = hasSession();
-  const { me } = useMe();
-
-  if (!authEnabled) return null;
-  if (!signedIn) {
-    return (
-      <p className="tip-line muted">
-        <a href="#/history">Sign in to keep your game history →</a>
-      </p>
-    );
-  }
-  if (!me) return null;
-  return (
-    <p className="tip-line muted">
-      {me.stats.streakLocked ? (
-        <a href="#/premium">🔥 Streak — unlock with Premium</a>
-      ) : (
-        <>🔥 {me.stats.currentStreak}-day streak</>
-      )}
-    </p>
-  );
-}
 
 // History tab: stats + streak + top winners + recent games. Reachable at
 // #/history even mid-game (it's above the identity gate in main.jsx); web

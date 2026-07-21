@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { placesSuggest, placeDetails, track } from "./api.js";
-import { rankSuggestions, suggestionLayersToReport } from "./suggest.js";
-import { useNearMe } from "./nearMeStore.js";
-import { getProfile } from "./auth.js";
-import { readStreak } from "./streakCache.js";
+import { placesSuggest, placeDetails, track } from "@/lib/api.js";
+import { rankSuggestions, suggestionLayersToReport } from "@/features/game/suggest.js";
+import { useNearMe } from "@/features/places/nearMeStore.js";
+import { getProfile } from "@/lib/auth.js";
+import { readStreak } from "@/lib/streakCache.js";
 
 // Places layer (L3) is stack-config-gated: blank means the client never
 // calls the proxy at all and this renders exactly like the plain input.

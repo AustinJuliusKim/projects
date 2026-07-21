@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { createCheckoutSession, createPortalSession, track } from "./api.js";
-import { hasSession, signIn } from "./auth.js";
-import { useMe } from "./useMe.js";
-import Button from "./Button.jsx";
-import NavButton from "./NavButton.jsx";
-import PremiumSkeleton from "./PremiumSkeleton.jsx";
+import { createCheckoutSession, createPortalSession, track } from "@/lib/api.js";
+import { hasSession, signIn } from "@/lib/auth.js";
+import { useMe } from "@/hooks/useMe.js";
+import Button from "@/components/Button.jsx";
+import NavButton from "@/components/NavButton.jsx";
+import PremiumSkeleton from "@/features/premium/PremiumSkeleton.jsx";
 
 const PLANS = {
   monthly: { label: "Monthly", price: "$2.99/mo" },

@@ -4,8 +4,8 @@
 // Account UI is web-only for v1 (`!isNative`): the Capacitor shell hides
 // sign-in like it hides the tip jar (Apple 3.1.1-adjacent caution), and the
 // hosted-UI redirect flow needs ASWebAuthenticationSession work anyway.
-import { isNative } from "./platform.js";
-import { clearStreak } from "./streakCache.js";
+import { isNative } from "@/lib/platform.js";
+import { clearStreak } from "@/lib/streakCache.js";
 
 const DOMAIN = import.meta.env.VITE_COGNITO_DOMAIN || "";
 const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID || "";

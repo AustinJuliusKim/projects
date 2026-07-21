@@ -1,6 +1,6 @@
 import React from "react";
-import NearMeToggle from "./NearMeToggle.jsx";
-import { activeTab } from "./BottomNav.jsx";
+import NearMeToggle from "@/features/places/NearMeToggle.jsx";
+import { activeTab } from "@/components/BottomNav.jsx";
 
 // Contextual back target. cancel / admin are secondary screens reached from
 // a tab, so they always get a back to that tab. The tab roots themselves

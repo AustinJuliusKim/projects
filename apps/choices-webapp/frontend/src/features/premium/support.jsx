@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { isNative } from "./platform.js";
-import Button from "./Button.jsx";
+import { isNative } from "@/lib/platform.js";
+import Button from "@/components/Button.jsx";
 
 // Tip-the-dev links + premium tease (growth plan §8). Tips are goodwill /
 // hosting money, not revenue — placement is post-value only (created screen,

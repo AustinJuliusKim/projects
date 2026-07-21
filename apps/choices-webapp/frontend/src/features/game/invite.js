@@ -1,4 +1,4 @@
-import { isNative, WEB_ORIGIN } from "./platform.js";
+import { isNative, WEB_ORIGIN } from "@/lib/platform.js";
 
 // Invite plumbing shared by the create screen and the in-game pinned code
 // (re-share after the host has taken their seat).

@@ -3,8 +3,8 @@
 // once. Plain module state + a hook, matching the rest of the codebase (no
 // context provider).
 import { useEffect, useState } from "react";
-import { getMe } from "./api.js";
-import { authEnabled, hasSession } from "./auth.js";
+import { getMe } from "@/lib/api.js";
+import { authEnabled, hasSession } from "@/lib/auth.js";
 
 const TTL = 30_000;
 
