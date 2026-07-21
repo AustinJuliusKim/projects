@@ -522,6 +522,10 @@ h1 {
   user-select: none; /* keep select-all on the code only */
 }
 
+.pinned-invite {
+  margin-bottom: 8px;
+}
+
 /* Mid-game code reminder (both joined): compact line so the code is never
    lost. Rendered as a tap-to-copy button for the host, plain <p> for the
    guest — same look either way. */

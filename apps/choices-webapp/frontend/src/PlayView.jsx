@@ -475,7 +475,7 @@ export default function PlayView({ identity, onLeave }) {
               onClick={() => copyCode(identity.code ?? state.code)}
             >
               {identity.code ?? state.code}
-              <span className="copy-hint muted">
+              <span className="copy-hint">
                 {codeCopied ? "Copied!" : "Tap to copy"}
               </span>
             </button>
