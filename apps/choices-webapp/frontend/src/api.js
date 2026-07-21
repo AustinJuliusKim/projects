@@ -113,7 +113,7 @@ export const createCheckoutSession = async (plan) =>
   post("createCheckoutSession", { plan }, await authHeaders());
 export const createPortalSession = async () =>
   post("createPortalSession", {}, await authHeaders());
-// In-app "Cancel subscription" (the Choicey page): cancels at period end.
+// In-app "Cancel subscription" (the Cutty page): cancels at period end.
 export const cancelSubscription = async () =>
   post("cancelSubscription", {}, await authHeaders());
 // Owner-only premium backfill (AdminView). Defaults to the caller's own

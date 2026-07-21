@@ -53,7 +53,17 @@ export default function PlayView({ identity, onLeave }) {
   const [animateFlip, setAnimateFlip] = useState(false); // stays false when loading into an already-complete game
   const [settled, setSettled] = useState(false); // post-flip: drop front face from layout
   const [rematchRevealed, setRematchRevealed] = useState(false); // 2nd flip: winner card -> next-game form on the front face
-  const [codeCopied, setCodeCopied] = useState(false); // pinned-code tap feedback
+  const [codeCopied, setCodeCopied] = useState(false); // code tap-to-copy feedback
+
+  const copyCode = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 1500);
+    } catch {
+      /* selection fallback: the text stays selectable */
+    }
+  };
 
   useEffect(() => {
     if (state?.game?.status === "active") setAnimateFlip(true);
@@ -462,15 +472,7 @@ export default function PlayView({ identity, onLeave }) {
               type="button"
               className="code-display pinned"
               aria-label="Copy game code"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(identity.code ?? state.code);
-                  setCodeCopied(true);
-                  setTimeout(() => setCodeCopied(false), 1500);
-                } catch {
-                  /* selection fallback: the text stays selectable */
-                }
-              }}
+              onClick={() => copyCode(identity.code ?? state.code)}
             >
               {identity.code ?? state.code}
               <span className="copy-hint muted">
@@ -494,6 +496,28 @@ export default function PlayView({ identity, onLeave }) {
             : `Waiting on player ${game.turn} to cut…`}
         </div>
       )}
+
+      {state.bothJoined &&
+        (identity.code ?? state.code) &&
+        // Once the game fills, keep the code visible so nobody loses it:
+        // the host keeps a tap-to-copy affordance, the guest gets plain text.
+        (identity.role === "A" ? (
+          <button
+            type="button"
+            className="game-code-line"
+            aria-label="Copy game code"
+            onClick={() => copyCode(identity.code ?? state.code)}
+          >
+            Game code: <strong>{identity.code ?? state.code}</strong>
+            <span className="copy-hint muted">
+              {codeCopied ? "Copied!" : "Tap to copy"}
+            </span>
+          </button>
+        ) : (
+          <p className="game-code-line">
+            Game code: <strong>{identity.code ?? state.code}</strong>
+          </p>
+        ))}
 
       <div className="flip-scene" ref={sceneRef}>
         <div

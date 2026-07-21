@@ -61,7 +61,7 @@ function App() {
       return <SettingsView />;
     }
 
-    // Cancel-subscription page (the Choicey plea), reached from the Premium
+    // Cancel-subscription page (the Cutty plea), reached from the Premium
     // badge. Above the identity gate so it's reachable mid-game like above.
     if (hash.startsWith("#/cancel")) {
       return <CancelView />;
