@@ -191,7 +191,7 @@ h1 {
 
 .suggestion.active,
 .suggestion:hover {
-  background: rgba(91, 91, 247, 0.25);
+  background: color-mix(in srgb, var(--indigo) 25%, transparent);
 }
 
 .suggestion .tag {
@@ -226,7 +226,7 @@ h1 {
 
 .chip.active {
   border-color: var(--indigo);
-  background: rgba(91, 91, 247, 0.25);
+  background: color-mix(in srgb, var(--indigo) 25%, transparent);
 }
 
 .fill-note {
@@ -876,7 +876,7 @@ h1 {
 }
 
 .pager-btn:not(:disabled):active {
-  background: rgba(91, 91, 247, 0.25);
+  background: color-mix(in srgb, var(--indigo) 25%, transparent);
 }
 
 .pager-btn:disabled {
@@ -955,7 +955,7 @@ h1 {
 .premium-badge-crest {
   font-size: 1.6rem;
   line-height: 1;
-  filter: drop-shadow(0 1px 6px rgba(91, 91, 247, 0.55));
+  filter: drop-shadow(0 1px 6px color-mix(in srgb, var(--indigo) 55%, transparent));
 }
 
 .premium-badge-body {
@@ -1529,7 +1529,7 @@ h1 {
 
 .plan-card.selected {
   border-color: var(--indigo);
-  background: rgba(91, 91, 247, 0.25);
+  background: color-mix(in srgb, var(--indigo) 25%, transparent);
 }
 
 .plan-price {
@@ -1619,7 +1619,7 @@ h1 {
 }
 
 .bottom-nav-tab.active {
-  background: rgba(91, 91, 247, 0.25);
+  background: color-mix(in srgb, var(--indigo) 25%, transparent);
   color: var(--text);
 }
 
