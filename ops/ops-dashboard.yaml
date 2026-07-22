@@ -80,6 +80,37 @@ Resources:
                   [ "${Namespace}", "Latency", "action", "fillMyFour" ]
                 ]
               }
+            },
+            {
+              "type": "metric", "x": 0, "y": 12, "width": 12, "height": 6,
+              "properties": {
+                "title": "Funnel (per day): created → joined → completed → shared",
+                "region": "${AWS::Region}",
+                "stat": "Sum", "period": 86400, "view": "timeSeries",
+                "metrics": [
+                  [ "${Namespace}", "GameCreated" ],
+                  [ "${Namespace}", "GameJoined" ],
+                  [ "${Namespace}", "GameCompleted" ],
+                  [ "${Namespace}", "ShareReveal" ]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 12, "y": 12, "width": 12, "height": 6,
+              "properties": {
+                "title": "Funnel conversion (per day, %)",
+                "region": "${AWS::Region}",
+                "period": 86400, "view": "timeSeries",
+                "metrics": [
+                  [ { "expression": "100*joined/created", "label": "created → joined" } ],
+                  [ { "expression": "100*completed/joined", "label": "joined → completed" } ],
+                  [ { "expression": "100*shared/completed", "label": "completed → shared" } ],
+                  [ "${Namespace}", "GameCreated", { "id": "created", "stat": "Sum", "visible": false } ],
+                  [ "${Namespace}", "GameJoined", { "id": "joined", "stat": "Sum", "visible": false } ],
+                  [ "${Namespace}", "GameCompleted", { "id": "completed", "stat": "Sum", "visible": false } ],
+                  [ "${Namespace}", "ShareReveal", { "id": "shared", "stat": "Sum", "visible": false } ]
+                ]
+              }
             }
           ]
         }

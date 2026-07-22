@@ -116,6 +116,15 @@ Parameters:
       engine Phase 0). Generate with `openssl rand -hex 32` and pass via
       --parameter-overrides. Blank = anonymized S3 logging disabled
       (HIST# pair memory still recorded).
+  CanarySecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >
+      Shared secret the Synthetics canary sends as x-canary-secret so the
+      handler can exclude canary games from business metrics, the event
+      lake, and the suggestion feed (ops/canary.yaml sends it). Blank =
+      no traffic is treated as canary.
   PlacesApiKey:
     Type: String
     NoEcho: true
@@ -211,6 +220,7 @@ Resources:
           SITE_URL: !Ref CognitoCallbackUrl
           SUGGEST_BUCKET: !Ref SuggestDataBucket
           ANON_SALT: !Ref AnonSalt
+          CANARY_SECRET: !Ref CanarySecret
           PLACES_API_KEY: !Ref PlacesApiKey
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           ADMIN_SUBS: !Ref AdminSubs

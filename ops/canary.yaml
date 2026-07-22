@@ -1,0 +1,241 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudWatch Synthetics canary playing the Choices golden path
+  (create -> join both seats -> alternate cuts -> winner) against prod every
+  5 minutes, plus a failure alarm (Growth Plan §10 observability row 2).
+  Admin-deployed, PROD ONLY (fixed canary/alarm names). The canary sends
+  x-canary-secret so the handler excludes its games from business metrics,
+  the event lake, and the suggestion feed (see backend/metrics.mjs).
+
+# Deploy runbook (admin creds; CI role has no synthetics:* — same pattern as
+# ops/ops-dashboard.yaml / ops/billing-alarms.yaml):
+#
+#   1. Generate a secret once:  openssl rand -hex 32
+#   2. Set it on the app stack (persists via UsePreviousValue afterwards):
+#        sam deploy --parameter-overrides CanarySecret=<secret> ...
+#      (or a targeted `aws cloudformation deploy` of the app stack)
+#   3. Deploy this stack:
+#        aws cloudformation deploy --template-file ops/canary.yaml \
+#          --stack-name ChoicesCanary --region us-west-2 \
+#          --capabilities CAPABILITY_IAM \
+#          --parameter-overrides CanarySecret=<same secret> \
+#            AlertEmail=<you@example.com>
+#   4. Confirm the SNS subscription email (check spam — see the AWS-SNS
+#      memory note: confirmations expire in 3 days).
+#
+# Intrinsics are written long-form (Ref:/Fn::*) on purpose: the repo's
+# template sanity check is a plain yaml.safe_load, which rejects !Ref tags.
+
+Parameters:
+  ApiUrl:
+    Type: String
+    Default: https://choices.austinjuliuskim.com/api
+    Description: Prod API endpoint the canary exercises.
+  CanarySecret:
+    Type: String
+    NoEcho: true
+    Description: >
+      Must match the app stack's CanarySecret parameter — sent as the
+      x-canary-secret header so canary games are excluded from analytics.
+  AlertEmail:
+    Type: String
+    Description: Email for canary-failure alerts.
+  CanaryName:
+    Type: String
+    Default: choices-golden-path
+    Description: Lowercase, max 21 chars (Synthetics constraint).
+  RuntimeVersion:
+    Type: String
+    Default: syn-nodejs-puppeteer-9.1
+    Description: >
+      Synthetics runtime. Override at deploy time if this version has been
+      deprecated in the region (aws synthetics describe-runtime-versions).
+
+Resources:
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-artifacts
+            Status: Enabled
+            ExpirationInDays: 30
+
+  CanaryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: canary-execution
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource:
+                  Fn::Sub: "${ArtifactsBucket.Arn}/*"
+              - Effect: Allow
+                Action:
+                  - s3:GetBucketLocation
+                Resource:
+                  Fn::GetAtt: [ArtifactsBucket, Arn]
+              - Effect: Allow
+                Action:
+                  - s3:ListAllMyBuckets
+                  - xray:PutTraceSegments
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  Fn::Sub: "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/cwsyn-*"
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: CloudWatchSynthetics
+
+  GoldenPathCanary:
+    Type: AWS::Synthetics::Canary
+    Properties:
+      Name:
+        Ref: CanaryName
+      ArtifactS3Location:
+        Fn::Sub: "s3://${ArtifactsBucket}"
+      ExecutionRoleArn:
+        Fn::GetAtt: [CanaryRole, Arn]
+      RuntimeVersion:
+        Ref: RuntimeVersion
+      StartCanaryAfterCreation: true
+      Schedule:
+        Expression: rate(5 minutes)
+      RunConfig:
+        TimeoutInSeconds: 60
+        EnvironmentVariables:
+          API_URL:
+            Ref: ApiUrl
+          CANARY_SECRET:
+            Ref: CanarySecret
+      SuccessRetentionPeriod: 7
+      FailureRetentionPeriod: 31
+      Code:
+        Handler: index.handler
+        Script: |
+          // Golden path: createPairing -> claim A+B -> alternate cuts to a
+          // winner. Pure fetch (Node 18+ runtime); x-canary-secret keeps
+          // these games out of business analytics. Any throw fails the run.
+          const API = process.env.API_URL;
+          const HEADERS = {
+            "content-type": "application/json",
+            "x-canary-secret": process.env.CANARY_SECRET,
+          };
+
+          async function post(payload) {
+            const res = await fetch(API, {
+              method: "POST",
+              headers: HEADERS,
+              body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(payload.action + " -> " + res.status + " " + JSON.stringify(data));
+            }
+            return data;
+          }
+
+          async function getState(pairingId, role, token) {
+            const qs = "?action=getState&pairingId=" + pairingId + "&role=" + role + "&token=" + token;
+            const res = await fetch(API + qs, { headers: HEADERS });
+            if (!res.ok) throw new Error("getState -> " + res.status);
+            return (await res.json()).state;
+          }
+
+          exports.handler = async () => {
+            const created = await post({
+              action: "createPairing",
+              choices: ["Canary Ramen", "Canary Pizza", "Canary Tacos", "Canary Sushi"],
+            });
+            const a = await post({ action: "claimSeat", code: created.code, seat: "A" });
+            const b = await post({ action: "claimSeat", code: created.code, seat: "B" });
+            const tokens = { A: a.token, B: b.token };
+            let state = await getState(a.pairingId, "A", tokens.A);
+            let guard = 0;
+            while (state.game.status === "active") {
+              if (++guard > 10) throw new Error("game did not complete in " + guard + " cuts");
+              const turn = state.game.turn;
+              const dead = new Set(state.game.eliminated.map((e) => e.index));
+              const live = state.game.choices.map((_, i) => i).filter((i) => !dead.has(i));
+              await post({
+                action: "eliminate",
+                pairingId: a.pairingId,
+                role: turn,
+                token: tokens[turn],
+                gameNumber: state.gameNumber,
+                index: live[0],
+              });
+              state = await getState(a.pairingId, "A", tokens.A);
+            }
+            if (state.game.winnerIndex == null) throw new Error("complete game has no winner");
+            console.log("golden path OK — winner: " + state.game.choices[state.game.winnerIndex]);
+          };
+
+  CanaryAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: choices-canary-alerts
+
+  CanaryAlertsSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn:
+        Ref: CanaryAlertsTopic
+      Protocol: email
+      Endpoint:
+        Ref: AlertEmail
+
+  CanaryFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: choices-canary-golden-path-failed
+      AlarmDescription: >
+        Golden-path canary failed — the core game loop is broken for real
+        users even if HTTP looks green elsewhere (Growth Plan §10: alert on
+        any canary failure).
+      Namespace: CloudWatchSynthetics
+      MetricName: SuccessPercent
+      Dimensions:
+        - Name: CanaryName
+          Value:
+            Ref: CanaryName
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 100
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - Ref: CanaryAlertsTopic
+      OKActions:
+        - Ref: CanaryAlertsTopic
+
+Outputs:
+  CanaryConsoleUrl:
+    Value:
+      Fn::Sub: "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#synthetics:canary/detail/${CanaryName}"

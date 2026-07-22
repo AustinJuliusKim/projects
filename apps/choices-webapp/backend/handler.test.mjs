@@ -1997,3 +1997,118 @@ test("origin header enforced only when flag is on", async () => {
   const flagOff = await handler(getEvent(query));
   assert.equal(flagOff.statusCode, 200);
 });
+
+// --- Canary exclusion + funnel metrics (Growth Plan §10) ---
+
+function captureLogs(fn) {
+  const lines = [];
+  const orig = console.log;
+  console.log = (...a) => lines.push(a.join(" "));
+  return Promise.resolve()
+    .then(fn)
+    .then(
+      (v) => ((console.log = orig), { lines, value: v }),
+      (e) => ((console.log = orig), Promise.reject(e))
+    );
+}
+
+test("canary claimSeat writes no EVENT# outbox items; normal claim does", async () => {
+  process.env.CANARY_SECRET = "canary-s3cret";
+  try {
+    const setup = () => {
+      ddbMock.reset();
+      ddbMock
+        .on(GetCommand, { Key: { pk: "CODE#PLUM-42" } })
+        .resolves({ Item: { pk: "CODE#PLUM-42", pairingId: "abc123" } });
+      ddbMock
+        .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+        .resolves({ Item: pairingItem({ tokenB: null }) });
+      ddbMock.on(GetCommand, { Key: { pk: "SUB#abc123#A" } }).resolves({});
+      ddbMock.on(PutCommand).resolves({});
+      ddbMock.on(TransactWriteCommand).resolves({});
+    };
+    const eventPks = () =>
+      ddbMock
+        .commandCalls(TransactWriteCommand)
+        .flatMap((c) => c.args[0].input.TransactItems ?? [])
+        .map((i) => String(i.Put?.Item?.pk ?? ""))
+        .filter((pk) => pk.startsWith("EVENT#"));
+
+    setup();
+    let res = await handler(
+      postEvent(
+        { action: "claimSeat", code: "plum-42", seat: "B" },
+        { "x-canary-secret": "canary-s3cret" }
+      )
+    );
+    assert.equal(res.statusCode, 200);
+    assert.equal(eventPks().length, 0);
+
+    setup();
+    res = await handler(postEvent({ action: "claimSeat", code: "plum-42", seat: "B" }));
+    assert.equal(res.statusCode, 200);
+    assert.ok(eventPks().length >= 1);
+  } finally {
+    delete process.env.CANARY_SECRET;
+  }
+});
+
+test("second-seat claim emits GameJoined; canary claim suppresses it", async () => {
+  process.env.CANARY_SECRET = "canary-s3cret";
+  try {
+    const setup = () => {
+      ddbMock.reset();
+      ddbMock
+        .on(GetCommand, { Key: { pk: "CODE#PLUM-42" } })
+        .resolves({ Item: { pk: "CODE#PLUM-42", pairingId: "abc123" } });
+      ddbMock
+        .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+        .resolves({ Item: pairingItem({ tokenB: null }) });
+      ddbMock.on(GetCommand, { Key: { pk: "SUB#abc123#A" } }).resolves({});
+      ddbMock.on(PutCommand).resolves({});
+      ddbMock.on(TransactWriteCommand).resolves({});
+    };
+
+    setup();
+    let { lines } = await captureLogs(() =>
+      handler(postEvent({ action: "claimSeat", code: "plum-42", seat: "B" }))
+    );
+    assert.ok(lines.some((l) => l.includes('"GameJoined"')));
+
+    setup();
+    ({ lines } = await captureLogs(() =>
+      handler(
+        postEvent(
+          { action: "claimSeat", code: "plum-42", seat: "B" },
+          { "x-canary-secret": "canary-s3cret" }
+        )
+      )
+    ));
+    assert.ok(!lines.some((l) => l.includes('"GameJoined"')));
+  } finally {
+    delete process.env.CANARY_SECRET;
+  }
+});
+
+test("share-reveal linkClick emits the ShareReveal funnel metric", async () => {
+  ddbMock.reset();
+  ddbMock
+    .on(GetCommand, { Key: { pk: "PAIR#abc123" } })
+    .resolves({ Item: pairingItem() });
+  ddbMock.on(PutCommand).resolves({});
+  ddbMock.on(TransactWriteCommand).resolves({});
+
+  const { lines } = await captureLogs(() =>
+    handler(
+      postEvent({
+        action: "linkClick",
+        pairingId: "abc123",
+        role: "A",
+        token: "tok-a",
+        gameNumber: 1,
+        platform: "share-reveal",
+      })
+    )
+  );
+  assert.ok(lines.some((l) => l.includes('"ShareReveal"')));
+});

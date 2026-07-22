@@ -45,9 +45,10 @@ echo "Building frontend…"
 # Tip links come from the caller's environment (GitHub Actions repo vars);
 # empty values leave the tip UI hidden.
 ( cd frontend && \
-  printf 'VITE_API_URL=%s\nVITE_VAPID_PUBLIC_KEY=%s\nVITE_TIP_VENMO_URL=%s\nVITE_TIP_STRIPE_URL=%s\nVITE_COGNITO_DOMAIN=%s\nVITE_COGNITO_CLIENT_ID=%s\nVITE_PLACES_ENABLED=%s\nVITE_AI_ENABLED=%s\n' \
+  printf 'VITE_API_URL=%s\nVITE_VAPID_PUBLIC_KEY=%s\nVITE_TIP_VENMO_URL=%s\nVITE_TIP_STRIPE_URL=%s\nVITE_COGNITO_DOMAIN=%s\nVITE_COGNITO_CLIENT_ID=%s\nVITE_PLACES_ENABLED=%s\nVITE_AI_ENABLED=%s\nVITE_RUM_MONITOR_ID=%s\nVITE_RUM_REGION=%s\nVITE_RUM_IDENTITY_POOL_ID=%s\nVITE_RUM_GUEST_ROLE_ARN=%s\n' \
     "$API_URL" "$VAPID_PUBLIC_KEY" "${VITE_TIP_VENMO_URL:-}" "${VITE_TIP_STRIPE_URL:-}" \
-    "$COGNITO_DOMAIN" "$COGNITO_CLIENT_ID" "$PLACES_ENABLED" "$AI_ENABLED" > .env && \
+    "$COGNITO_DOMAIN" "$COGNITO_CLIENT_ID" "$PLACES_ENABLED" "$AI_ENABLED" \
+    "${VITE_RUM_MONITOR_ID:-}" "${VITE_RUM_REGION:-}" "${VITE_RUM_IDENTITY_POOL_ID:-}" "${VITE_RUM_GUEST_ROLE_ARN:-}" > .env && \
   npm run build )
 
 echo "Uploading to s3://$BUCKET …"
