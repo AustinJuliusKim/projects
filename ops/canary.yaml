@@ -1,8 +1,11 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
   CloudWatch Synthetics canary playing the Choices golden path
-  (create -> join both seats -> alternate cuts -> winner) against prod every
-  5 minutes, plus a failure alarm (Growth Plan §10 observability row 2).
+  (create -> join both seats -> alternate cuts -> winner) against prod once
+  a day, plus a failure alarm (Growth Plan §10 observability row 2; daily
+  cadence chosen 2026-07-23 — 5-minute runs cost ~$10/mo vs ~$0.04/mo daily,
+  clashing with the $0 posture; hourly (~$0.87/mo) is the middle option if
+  detection lag ever matters more).
   Admin-deployed, PROD ONLY (fixed canary/alarm names). The canary sends
   x-canary-secret so the handler excludes its games from business metrics,
   the event lake, and the suggestion feed (see backend/metrics.mjs).
@@ -44,6 +47,12 @@ Parameters:
     Type: String
     Default: choices-golden-path
     Description: Lowercase, max 21 chars (Synthetics constraint).
+  ScheduleExpression:
+    Type: String
+    Default: cron(7 15 * * ? *)
+    Description: >
+      Daily at 15:07 UTC (8:07am PT). Sub-hour cadences need rate();
+      the alarm below assumes at most one run per day (Period 86400).
   RuntimeVersion:
     Type: String
     Default: syn-nodejs-puppeteer-9.1
@@ -125,7 +134,8 @@ Resources:
         Ref: RuntimeVersion
       StartCanaryAfterCreation: true
       Schedule:
-        Expression: rate(5 minutes)
+        Expression:
+          Ref: ScheduleExpression
       RunConfig:
         TimeoutInSeconds: 60
         EnvironmentVariables:
@@ -225,10 +235,11 @@ Resources:
           Value:
             Ref: CanaryName
       Statistic: Average
-      Period: 300
+      Period: 86400
       EvaluationPeriods: 1
       Threshold: 100
       ComparisonOperator: LessThanThreshold
+      # A day with no run at all is also a failure (canary stopped).
       TreatMissingData: breaching
       AlarmActions:
         - Ref: CanaryAlertsTopic
