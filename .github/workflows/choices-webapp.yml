@@ -116,6 +116,10 @@ jobs:
         env:
           VITE_TIP_VENMO_URL: ${{ vars.VITE_TIP_VENMO_URL }}
           VITE_TIP_STRIPE_URL: ${{ vars.VITE_TIP_STRIPE_URL }}
+          VITE_RUM_MONITOR_ID: ${{ vars.VITE_RUM_MONITOR_ID }}
+          VITE_RUM_REGION: ${{ vars.VITE_RUM_REGION }}
+          VITE_RUM_IDENTITY_POOL_ID: ${{ vars.VITE_RUM_IDENTITY_POOL_ID }}
+          VITE_RUM_GUEST_ROLE_ARN: ${{ vars.VITE_RUM_GUEST_ROLE_ARN }}
       # One comment per PR (on open/reopen); pushes just redeploy silently.
       - name: Comment preview URL
         if: github.event.action == 'opened' || github.event.action == 'reopened'
@@ -164,3 +168,7 @@ jobs:
           # Repo variables; unset -> empty -> tip UI stays hidden.
           VITE_TIP_VENMO_URL: ${{ vars.VITE_TIP_VENMO_URL }}
           VITE_TIP_STRIPE_URL: ${{ vars.VITE_TIP_STRIPE_URL }}
+          VITE_RUM_MONITOR_ID: ${{ vars.VITE_RUM_MONITOR_ID }}
+          VITE_RUM_REGION: ${{ vars.VITE_RUM_REGION }}
+          VITE_RUM_IDENTITY_POOL_ID: ${{ vars.VITE_RUM_IDENTITY_POOL_ID }}
+          VITE_RUM_GUEST_ROLE_ARN: ${{ vars.VITE_RUM_GUEST_ROLE_ARN }}
