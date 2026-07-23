@@ -8,7 +8,9 @@ import HistoryView from "@/features/account/HistoryView.jsx";
 import PremiumView from "@/features/premium/PremiumView.jsx";
 import SettingsView from "@/features/account/SettingsView.jsx";
 import CancelView from "@/features/premium/CancelView.jsx";
-import AdminView from "@/features/admin/AdminView.jsx";
+// Admin surface is code-split (§10c): lazy chunk never fetched by player
+// sessions. Route gate below = the Cognito "admin" group claim.
+const AdminScreen = React.lazy(() => import("@/features/admin/AdminScreen.jsx"));
 import TopBar from "@/components/TopBar.jsx";
 import BottomNav from "@/components/BottomNav.jsx";
 import { registerServiceWorker } from "@/lib/push.js";
@@ -16,7 +18,8 @@ import { initRum } from "@/lib/rum.js";
 import { track } from "@/lib/api.js";
 import { loadIdentity } from "@/lib/storage.js";
 import { isNative } from "@/lib/platform.js";
-import { handleRedirect, authEnabled } from "@/lib/auth.js";
+import { handleRedirect, authEnabled, getProfile } from "@/lib/auth.js";
+import { FlagsProvider } from "@/lib/flags.jsx";
 import "@/styles.css";
 
 // Routing is driven by stored identity, NOT the URL — on iOS an installed PWA
@@ -68,10 +71,25 @@ function App() {
       return <CancelView />;
     }
 
-    // Owner-only activity dashboard — also above the identity gate so it's
-    // reachable mid-game. The real access boundary is the backend assertAdmin.
+    // Admin surface (activity dashboard + feature flags) — above the identity
+    // gate so it's reachable mid-game. Route renders only with the Cognito
+    // "admin" group claim; everyone else gets a plain 404 (§10c). The claim
+    // check here is UX — the real boundaries stay server-side (assertAdmin /
+    // assertFlagAdmin).
     if (hash.startsWith("#/admin")) {
-      return <AdminView />;
+      if (!getProfile()?.groups?.includes("admin")) {
+        return (
+          <div className="container">
+            <h1>404</h1>
+            <p className="muted">There's nothing here.</p>
+          </div>
+        );
+      }
+      return (
+        <React.Suspense fallback={null}>
+          <AdminScreen />
+        </React.Suspense>
+      );
     }
 
     // Alias resolves via the effect above — render nothing for the one frame
@@ -139,5 +157,9 @@ handleRedirect()
   })
   .catch(() => {})
   .finally(() => {
-    createRoot(document.getElementById("root")).render(<App />);
+    createRoot(document.getElementById("root")).render(
+      <FlagsProvider>
+        <App />
+      </FlagsProvider>
+    );
   });

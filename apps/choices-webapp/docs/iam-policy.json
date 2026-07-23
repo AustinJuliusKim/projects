@@ -212,7 +212,9 @@
         "arn:aws:iam::*:role/ChoicesWebApp*"
       ],
       "Condition": {
-        "StringEquals": { "iam:PassedToService": "scheduler.amazonaws.com" }
+        "StringEquals": {
+          "iam:PassedToService": "scheduler.amazonaws.com"
+        }
       }
     },
     {
@@ -365,7 +367,11 @@
         "cognito-idp:SetUserPoolMfaConfig",
         "cognito-idp:TagResource",
         "cognito-idp:UntagResource",
-        "cognito-idp:ListTagsForResource"
+        "cognito-idp:ListTagsForResource",
+        "cognito-idp:CreateGroup",
+        "cognito-idp:DeleteGroup",
+        "cognito-idp:GetGroup",
+        "cognito-idp:UpdateGroup"
       ],
       "Resource": "*"
     }

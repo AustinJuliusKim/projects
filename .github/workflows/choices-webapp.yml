@@ -40,6 +40,7 @@ jobs:
           cache: npm
           cache-dependency-path: apps/choices-webapp/frontend/package-lock.json
       - run: npm ci
+      - run: npm test
       - run: npm run build
 
   # PR previews: every same-repo PR touching the app redeploys the single
