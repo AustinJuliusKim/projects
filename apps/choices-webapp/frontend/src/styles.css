@@ -104,6 +104,43 @@ h1 {
   position: relative;
 }
 
+/* Variable choice count: input row with an optional remove button beside it
+   (rendered only when above the 3-choice minimum). The input's 12px bottom
+   margin can't collapse out of the wrap inside a flex row, so zero it here
+   and carry the gap on the row — this keeps the wrap exactly input-height
+   (the ⓧ clear button's bottom: 0 depends on that) and centers the –. */
+.choice-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.choice-row .choice-input-wrap {
+  flex: 1;
+}
+
+.choice-row .choice-input {
+  margin-bottom: 0;
+}
+
+.choice-remove {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted, #888);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.choice-remove:active {
+  color: var(--danger, #c0392b);
+}
+
 /* Bottom action row: content-sized ghost "Clear all" (always rendered,
    disabled when empty — no layout shift) beside the stretching primary */
 .form-actions {

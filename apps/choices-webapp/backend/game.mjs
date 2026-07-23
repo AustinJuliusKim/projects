@@ -1,28 +1,41 @@
 // Pure game logic for the two-player elimination game.
 // No I/O here so it can be unit-tested in isolation and reused by the Lambda.
 //
-// Flow: 4 choices, 3 eliminations leave 1 winner. The player who STARTS a game
-// (picks the choices) does NOT eliminate first — the OTHER player eliminates
-// first. So within-game order is [nonStarter, starter, nonStarter].
+// Flow: C choices (3–8, default 4), C-1 eliminations leave 1 winner. Turns
+// strictly alternate with one invariant (Austin's ruling, PR #53 review):
+// the player who STARTS a game (picks the choices) NEVER cuts first — the
+// other player always opens. 4 choices keeps the classic
+// [nonStarter, starter, nonStarter] order exactly. Odd counts have an even
+// number of cuts, so there the starter ends up making the final cut.
 
-// Whose turn it is after `n` eliminations, given who started the game.
-// n=0 -> nonStarter, 1 -> starter, 2 -> nonStarter, 3 -> "done".
-export function turnAfter(eliminationCount, startedBy) {
-  const nonStarter = otherRole(startedBy);
-  const order = [nonStarter, startedBy, nonStarter];
-  return eliminationCount < order.length ? order[eliminationCount] : "done";
+export const MIN_CHOICES = 3;
+export const MAX_CHOICES = 8;
+
+// Whose turn it is after `n` eliminations, given who started the game and
+// how many choices the game has. Returns "done" once C-1 cuts are made.
+export function turnAfter(eliminationCount, startedBy, choiceCount = 4) {
+  const total = choiceCount - 1; // eliminations in a full game
+  if (eliminationCount >= total) return "done";
+  return eliminationCount % 2 === 0 ? otherRole(startedBy) : startedBy;
 }
 
-// Create a new game from 4 choice labels.
-// opts.startedBy: "A" | "B" (who picked the choices; the other moves first).
+// Create a new game from 3–8 choice labels (default flow is 4).
+// opts.startedBy: "A" | "B" (who picked the choices; they never cut last).
 // opts.number: monotonic game number within a pairing.
 export function createGame(choices, opts = {}, now = Date.now()) {
   const { startedBy = "A", number = 1 } = opts;
   if (startedBy !== "A" && startedBy !== "B") {
     throw new GameError("BAD_ROLE", "startedBy must be 'A' or 'B'.");
   }
-  if (!Array.isArray(choices) || choices.length !== 4) {
-    throw new GameError("EXACTLY_FOUR", "Provide exactly 4 choices.");
+  if (
+    !Array.isArray(choices) ||
+    choices.length < MIN_CHOICES ||
+    choices.length > MAX_CHOICES
+  ) {
+    throw new GameError(
+      "BAD_COUNT",
+      `Provide ${MIN_CHOICES} to ${MAX_CHOICES} choices.`
+    );
   }
   // Server-side mirror of the client's 60-char cap, plus control/zero-width
   // stripping (labels feed link previews and share cards).
@@ -42,7 +55,7 @@ export function createGame(choices, opts = {}, now = Date.now()) {
     startedBy,
     choices: cleaned,
     eliminated: [], // ordered: [{ index, by, at }]
-    turn: turnAfter(0, startedBy), // non-starter moves first
+    turn: turnAfter(0, startedBy, cleaned.length),
     status: "active",
     winnerIndex: null,
     createdAt: now,
@@ -75,7 +88,7 @@ export function applyElimination(game, role, index, now = Date.now()) {
   }
 
   const eliminated = [...game.eliminated, { index, by: role, at: now }];
-  const turn = turnAfter(eliminated.length, game.startedBy);
+  const turn = turnAfter(eliminated.length, game.startedBy, game.choices.length);
   const done = turn === "done";
   const winnerIndex = done ? liveIndicesFrom(game.choices, eliminated)[0] : null;
 

@@ -267,7 +267,7 @@ async function ogPreviewPage(rawCode) {
   const description =
     choices && choices.every(isClean)
       ? `${choices.join(" vs ")} — cut wisely.`
-      : "4 choices. 3 cuts. 1 winner.";
+      : "Their choices. Your cuts. 1 winner.";
   // Relative redirect works on any stack; og:image needs an absolute URL,
   // so it only renders when SITE_URL is configured.
   const target = code && choices

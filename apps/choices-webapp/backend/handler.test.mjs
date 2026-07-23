@@ -1612,7 +1612,7 @@ test("GET /j/{code} downgrades a profane label to the generic description", asyn
 
   const res = await handler(jEvent("/j/PLUM-42"));
   assert.equal(res.statusCode, 200);
-  assert.ok(res.body.includes("4 choices. 3 cuts. 1 winner."));
+  assert.ok(res.body.includes("Their choices. Your cuts. 1 winner."));
   assert.ok(!res.body.includes("fuck"));
   // The join redirect still carries the code — moderation never blocks play.
   assert.ok(res.body.includes("/#/join?code=PLUM-42"));
@@ -1623,7 +1623,7 @@ test("GET /j/ with an unknown or missing code falls back to the generic page", a
 
   const unknown = await handler(jEvent("/j/NOPE-99"));
   assert.equal(unknown.statusCode, 200);
-  assert.ok(unknown.body.includes("4 choices. 3 cuts. 1 winner."));
+  assert.ok(unknown.body.includes("Their choices. Your cuts. 1 winner."));
   assert.ok(unknown.body.includes("/#/join"));
   assert.ok(!unknown.body.includes("join?code="));
 
