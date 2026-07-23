@@ -82,6 +82,7 @@ One JSON object per line, identical shape in both zones:
 | `client_error` | client track: global handlers + api layer | null | `{error_type:"js_error"\|"unhandled_rejection"\|"api_5xx"\|"api_network"}` — enum only |
 | `realtime_fallback` | **reserved, no emitter** (no WS yet — Growth Plan §10a) | — | `{}` |
 | `pairing_deleted` | streamConsumer, PAIR# REMOVE (additive system type) | system | `{reason:"ttl"\|"explicit"}` |
+| `flag_changed` | doAdminSetFlag (best-effort standalone put) | system | `{flag, enabled_old, enabled_new, default_old, default_new, updated_by:"admin"}` (bundle E, added 2026-07-23 — admin actor only, never PII; the admin's sub stays on the FLAGS#global item, not in the lake) |
 
 Client events go through the `track` action: only `CLIENT_EVENT_TYPES`,
 strict per-type validation (free-form strings never validate), seat-token
