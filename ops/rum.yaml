@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudWatch RUM app monitor for the Choices frontend (Growth Plan §10:
+  frontend errors + real-user latency — the canary can't see client-side
+  breakage). Cookies disabled; errors + performance telemetries only.
+  Admin-deployed, PROD ONLY (fixed monitor name). The frontend init is
+  config-dormant until the VITE_RUM_* GitHub repo variables are set from
+  this stack's outputs (see frontend/src/lib/rum.js).
+
+# Deploy runbook (admin creds; CI role has no rum:/cognito-identity:* —
+# same pattern as ops/ops-dashboard.yaml):
+#
+#   aws cloudformation deploy --template-file ops/rum.yaml \
+#     --stack-name ChoicesRum --region us-west-2 \
+#     --capabilities CAPABILITY_IAM
+#
+# Then set GitHub repo variables from the stack outputs (Settings →
+# Secrets and variables → Actions → Variables):
+#   VITE_RUM_MONITOR_ID / VITE_RUM_REGION / VITE_RUM_IDENTITY_POOL_ID /
+#   VITE_RUM_GUEST_ROLE_ARN
+# and re-run the frontend deploy. Verify: throw an error in the browser
+# console on the live site; it appears in the RUM console within ~5 min.
+#
+# Intrinsics are written long-form (Ref:/Fn::*) on purpose: the repo's
+# template sanity check is a plain yaml.safe_load, which rejects !Ref tags.
+
+Parameters:
+  AppDomain:
+    Type: String
+    Default: choices.austinjuliuskim.com
+    Description: Domain the monitor accepts events from.
+
+Resources:
+  RumIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: ChoicesRumIdentityPool
+      AllowUnauthenticatedIdentities: true
+
+  RumGuestRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud:
+                  Ref: RumIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: unauthenticated
+      Policies:
+        - PolicyName: rum-put-events
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: rum:PutRumEvents
+                Resource:
+                  Fn::Sub: "arn:aws:rum:${AWS::Region}:${AWS::AccountId}:appmonitor/ChoicesWebApp"
+
+  RumIdentityPoolRoles:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId:
+        Ref: RumIdentityPool
+      Roles:
+        unauthenticated:
+          Fn::GetAtt: [RumGuestRole, Arn]
+
+  RumAppMonitor:
+    Type: AWS::RUM::AppMonitor
+    Properties:
+      Name: ChoicesWebApp
+      Domain:
+        Ref: AppDomain
+      CustomEvents:
+        Status: DISABLED
+      CwLogEnabled: false
+      AppMonitorConfiguration:
+        AllowCookies: false
+        EnableXRay: false
+        SessionSampleRate: 1
+        Telemetries:
+          - errors
+          - performance
+        IdentityPoolId:
+          Ref: RumIdentityPool
+        GuestRoleArn:
+          Fn::GetAtt: [RumGuestRole, Arn]
+
+Outputs:
+  MonitorId:
+    Description: Set as GitHub repo variable VITE_RUM_MONITOR_ID
+    Value:
+      Fn::GetAtt: [RumAppMonitor, Id]
+  Region:
+    Description: Set as VITE_RUM_REGION
+    Value:
+      Ref: AWS::Region
+  IdentityPoolId:
+    Description: Set as VITE_RUM_IDENTITY_POOL_ID
+    Value:
+      Ref: RumIdentityPool
+  GuestRoleArn:
+    Description: Set as VITE_RUM_GUEST_ROLE_ARN
+    Value:
+      Fn::GetAtt: [RumGuestRole, Arn]

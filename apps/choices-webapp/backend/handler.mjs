@@ -46,7 +46,13 @@ import { sendPush } from "./push.mjs";
 import { autocomplete, details, placesEnabled } from "./places.mjs";
 import { aiEnabled, fillFour } from "./suggestai.mjs";
 import { isClean } from "./moderation.mjs";
-import { emitCount, emitLatency } from "./metrics.mjs";
+import {
+  emitCount,
+  emitLatency,
+  emitBusinessCount,
+  setCanaryRequest,
+  isCanaryRequest,
+} from "./metrics.mjs";
 import { aggregateActive, isAdmin } from "./admin.mjs";
 import { buildEvent, eventItem, EVENT_TYPES, CLIENT_EVENT_TYPES } from "./events.mjs";
 
@@ -97,6 +103,15 @@ export async function handler(event) {
   const method = event?.requestContext?.http?.method;
   if (method === "OPTIONS") return reply(204, "");
   if (!originAllowed(event)) return reply(403, { error: "Forbidden" });
+
+  // Synthetics canary traffic: flagged per-request (reset every invocation)
+  // so business metrics + analytics writes can exclude it. Latency/ApiError
+  // keep counting canary requests — monitoring them is the point.
+  const canarySecret = process.env.CANARY_SECRET;
+  setCanaryRequest(
+    Boolean(canarySecret) &&
+      event?.headers?.["x-canary-secret"] === canarySecret
+  );
 
   // Stripe webhook: routed by path (Stripe posts to a fixed URL, not our
   // action envelope) and verified against the RAW body before any parsing.
@@ -290,6 +305,7 @@ function choiceSource(body) {
 // Failures are logged, never surfaced — the lake is analytics, not the
 // source of truth for any of these.
 async function putEvent(type, fields) {
+  if (isCanaryRequest()) return;
   try {
     await ddb.send(new PutCommand(eventItem(buildEvent(type, fields)).Put));
   } catch (err) {
@@ -330,7 +346,7 @@ async function doCreatePairing(body) {
     })
   );
 
-  emitCount("GameCreated");
+  emitBusinessCount("GameCreated");
   return { pairingId, code, state: publicState(item) };
 }
 
@@ -381,6 +397,7 @@ async function doClaimSeat(body, user) {
 
     // Best-effort: tell A their opponent joined (only on the first B claim).
     if (wasFirstBClaim) {
+      emitBusinessCount("GameJoined"); // funnel: both seats now occupied
       await pushTo(pairing, "A", {
         title: "They took the bait 😏",
         body: "Your opponent is in — they cut first.",
@@ -388,7 +405,7 @@ async function doClaimSeat(body, user) {
       }, "joined");
     }
 
-    emitCount("SeatClaimed");
+    emitBusinessCount("SeatClaimed");
     return {
       pairingId: pairing.pk.slice("PAIR#".length),
       code: pairing.code,
@@ -438,7 +455,7 @@ async function doEliminate(body) {
   if (!replay) {
     await notifyAfterMove(pairing);
     if (pairing.game.status === "complete") {
-      emitCount("GameCompleted");
+      emitBusinessCount("GameCompleted");
       await putAnonRecord(pairing);
     }
   }
@@ -451,6 +468,7 @@ async function doEliminate(body) {
 // k-anonymity floor without the store ever holding pairing ids. Best-effort:
 // failures are logged, never surfaced to the move that won the game.
 async function putAnonRecord(pairing) {
+  if (isCanaryRequest()) return; // canary games never feed suggestions
   const bucket = process.env.SUGGEST_BUCKET;
   const salt = process.env.ANON_SALT;
   if (!bucket || !salt) return;
@@ -612,6 +630,8 @@ async function doLinkClick(body) {
     },
     (pairing) => linkClickEventItems(pairing, role, platform, body)
   );
+  // Funnel tail (Growth Plan §10): reveal-card shares are the viral step.
+  if (platform === "share-reveal") emitBusinessCount("ShareReveal");
   return { ok: true };
 }
 
@@ -770,7 +790,7 @@ async function doFillMyFour(body, user) {
   const res = body.pairingId
     ? await fillForPairing(body, occasion)
     : await fillForUser(user, occasion);
-  emitCount("FillMyFour");
+  emitBusinessCount("FillMyFour");
   return res;
 }
 
@@ -1148,6 +1168,14 @@ async function pushTo(pairing, role, payload, trigger) {
 // pairing put is always TransactItems[0], so cancellation reason 0 is the
 // version check.
 async function savePairing(pairing, extraItems = []) {
+  // Canary games never reach the event lake: drop EVENT# outbox items from
+  // canary requests (the pairing write itself still happens — the canary
+  // plays a real game; TTL cleans it up).
+  if (isCanaryRequest()) {
+    extraItems = extraItems.filter(
+      (i) => !String(i?.Put?.Item?.pk ?? "").startsWith("EVENT#")
+    );
+  }
   const expected = pairing.version;
   pairing.version = (expected ?? 0) + 1;
   const put = { TableName: TABLE, Item: pairing };

@@ -32,6 +32,28 @@ export function emitCount(name, dims = {}) {
   emit(name, 1, { unit: "Count", dims });
 }
 
+// --- Canary exclusion (Growth Plan §10 observability) ---
+// The Synthetics canary plays real games every 5 minutes; at current volume
+// that synthetic traffic would dwarf real usage in business metrics, the
+// event lake, and the suggestion feed. The handler flags canary requests
+// (x-canary-secret header vs CANARY_SECRET env) at entry; business counters
+// and analytics writes are suppressed for them, while Latency/ApiError still
+// reflect canary traffic (that's what it's for).
+let canaryRequest = false;
+
+export function setCanaryRequest(v) {
+  canaryRequest = Boolean(v);
+}
+
+export function isCanaryRequest() {
+  return canaryRequest;
+}
+
+// Business-funnel counter: no-ops on canary traffic.
+export function emitBusinessCount(name, dims = {}) {
+  if (!canaryRequest) emitCount(name, dims);
+}
+
 // Per-action handler latency in milliseconds, dimensioned by action so
 // CloudWatch can compute p50/p95/p99 (Growth Plan §10 row 4).
 export function emitLatency(action, ms) {

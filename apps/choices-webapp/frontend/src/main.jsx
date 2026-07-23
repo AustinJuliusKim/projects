@@ -12,6 +12,7 @@ import AdminView from "@/features/admin/AdminView.jsx";
 import TopBar from "@/components/TopBar.jsx";
 import BottomNav from "@/components/BottomNav.jsx";
 import { registerServiceWorker } from "@/lib/push.js";
+import { initRum } from "@/lib/rum.js";
 import { track } from "@/lib/api.js";
 import { loadIdentity } from "@/lib/storage.js";
 import { isNative } from "@/lib/platform.js";
@@ -114,6 +115,7 @@ function App() {
 // Service workers don't run in the Capacitor WKWebView — skip registration
 // there (push is handled natively in a future phase; polling covers turns).
 if (!isNative) registerServiceWorker();
+initRum();
 
 // Analytics beacons (event catalog bundles A + D). Enum-only payloads by
 // contract: never an error message, stack, or URL — just the fact that a
