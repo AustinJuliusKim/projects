@@ -1695,12 +1695,14 @@ button.game-code-line {
   z-index: 59;
 }
 
-/* Feature-flag admin panel (§10c) — admin bundle only */
+/* Feature-flag admin panel (§10c) — admin bundle only. Brand semantics:
+   enabled = functional green, disabled = Cut Red (outline, so a page of
+   healthy Off kill-switches stays calm). */
 .flags-panel .flag-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -1709,10 +1711,45 @@ button.game-code-line {
   min-width: 0;
 }
 
+.flags-panel .flag-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.flags-panel .flag-head code {
+  font-size: 0.95rem;
+}
+
+.flags-panel .tag {
+  white-space: nowrap;
+}
+
 .flags-panel .flag-info p {
   margin: 4px 0 0;
 }
 
 .flags-panel .flag-meta {
   font-size: 0.8rem;
+}
+
+/* The toggle never stretches (the shared .btn is full-width by default). */
+.flags-panel .btn.flag-toggle {
+  width: 76px;
+  flex: none;
+  padding: 10px 0;
+  font-weight: 700;
+}
+
+.btn.flag-toggle.flag-on {
+  background: var(--green);
+  border: 1px solid var(--green);
+  color: var(--bg);
+}
+
+.btn.flag-toggle.flag-off {
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
 }
