@@ -52,9 +52,11 @@ export default function FlagsPanel() {
       {Object.entries(data.flags).map(([name, f]) => (
         <div className="flag-row" key={name}>
           <div className="flag-info">
-            <code>{name}</code>
-            <span className={`tag flag-type-${f.type}`}>{f.type}</span>
-            {!f.public && <span className="tag">server-only</span>}
+            <div className="flag-head">
+              <code>{name}</code>
+              <span className={`tag flag-type-${f.type}`}>{f.type}</span>
+              {!f.public && <span className="tag">server-only</span>}
+            </div>
             <p className="muted">{f.description}</p>
             {f.updatedAt && (
               <p className="muted flag-meta">
@@ -64,8 +66,9 @@ export default function FlagsPanel() {
             )}
           </div>
           <Button
-            variant={f.enabled ? "primary" : "ghost"}
+            className={`flag-toggle ${f.enabled ? "flag-on" : "flag-off"}`}
             busy={busy === name}
+            aria-pressed={f.enabled}
             onClick={() => toggle(name, f.enabled)}
           >
             {f.enabled ? "On" : "Off"}
