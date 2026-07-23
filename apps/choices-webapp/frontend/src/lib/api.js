@@ -109,6 +109,23 @@ export const getMe = async () => {
 // ADMIN_SUBS and returns anonymous aggregates only. No retry — the poll is it.
 export const getAdminOverview = async () =>
   post("getAdminOverview", {}, await authHeaders());
+
+// Feature flags (§10c). getFlags rides the cacheable GET path (60s
+// browser cache via the response header); the admin calls are group-gated
+// server-side.
+export async function getFlags() {
+  if (!API_URL) throw new Error("VITE_API_URL is not configured");
+  const res = await fetch(`${API_URL}?action=getFlags`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw toError(res.status, data);
+  return data;
+}
+
+export const adminListFlags = async () =>
+  post("adminListFlags", {}, await authHeaders());
+
+export const adminSetFlag = async (name, enabled, version) =>
+  post("adminSetFlag", { name, enabled, version }, await authHeaders());
 export const createCheckoutSession = async (plan) =>
   post("createCheckoutSession", { plan }, await authHeaders());
 export const createPortalSession = async () =>

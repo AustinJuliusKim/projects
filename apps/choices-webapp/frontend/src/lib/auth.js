@@ -145,6 +145,9 @@ function parseClaims(jwt) {
       sub: payload.sub,
       email: payload.email ?? null,
       name: payload.name ?? payload.email ?? null,
+      // Cognito group memberships (§10c admin flag surface). UI hint only —
+      // the real boundary is the server's group-claim check.
+      groups: payload["cognito:groups"] ?? [],
     };
   } catch {
     return null;

@@ -251,6 +251,18 @@ Resources:
 
   # --- Accounts: Cognito user pool, Google-federated only (v1). Sign in with
   # Apple joins when the Apple Developer enrollment lands (iOS Phase B). ---
+  # Flag-management group (§10c): membership grants the admin flag surface
+  # (adminListFlags/adminSetFlag + the #/admin flags panel). Declarative so
+  # both stacks get it via CI; adding USERS to the group stays a manual op
+  # (aws cognito-idp admin-add-user-to-group).
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Condition: HasCognito
+    Properties:
+      GroupName: admin
+      UserPoolId: !Ref UserPool
+      Description: Feature-flag administrators (Growth Plan §10c)
+
   UserPool:
     Type: AWS::Cognito::UserPool
     Condition: HasCognito

@@ -1694,3 +1694,25 @@ button.game-code-line {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
   z-index: 59;
 }
+
+/* Feature-flag admin panel (§10c) — admin bundle only */
+.flags-panel .flag-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.flags-panel .flag-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.flags-panel .flag-info p {
+  margin: 4px 0 0;
+}
+
+.flags-panel .flag-meta {
+  font-size: 0.8rem;
+}
