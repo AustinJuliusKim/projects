@@ -10,6 +10,10 @@ import ChoiceInput from "@/features/game/ChoiceInput.jsx";
 import FillMyFour from "@/features/game/FillMyFour.jsx";
 import Button from "@/components/Button.jsx";
 
+// Mirror of backend game.mjs MIN_CHOICES/MAX_CHOICES.
+const MIN_CHOICES = 3;
+const MAX_CHOICES = 8;
+
 export default function CreatePairingView({ onReady }) {
   const [choices, setChoices] = useState(["", "", "", ""]);
   const [created, setCreated] = useState(null); // { pairingId, code }
@@ -99,10 +103,10 @@ export default function CreatePairingView({ onReady }) {
 
   return (
     <div className="container">
-      <h1>Pick 4 choices</h1>
+      <h1>Pick your choices</h1>
       <p className="muted">
-        Give them Choices. They cut one first, then you, then them — the last
-        one standing is dinner.
+        Give them Choices. You take turns cutting — the last one standing is
+        dinner.
       </p>
       <form onSubmit={onCreate}>
         <FillMyFour
@@ -114,13 +118,35 @@ export default function CreatePairingView({ onReady }) {
           }}
         />
         {choices.map((c, i) => (
-          <ChoiceInput
-            key={i}
-            placeholder={`Choice ${i + 1}`}
-            value={c}
-            onChange={(v) => setChoice(i, v)}
-          />
+          <div className="choice-row" key={i}>
+            <ChoiceInput
+              placeholder={`Choice ${i + 1}`}
+              value={c}
+              onChange={(v) => setChoice(i, v)}
+            />
+            {choices.length > MIN_CHOICES && (
+              <button
+                type="button"
+                className="choice-remove"
+                aria-label={`Remove choice ${i + 1}`}
+                onClick={() =>
+                  setChoices((cs) => cs.filter((_, j) => j !== i))
+                }
+              >
+                –
+              </button>
+            )}
+          </div>
         ))}
+        {choices.length < MAX_CHOICES && (
+          <Button
+            variant="ghost"
+            type="button"
+            onClick={() => setChoices((cs) => [...cs, ""])}
+          >
+            + Add a choice
+          </Button>
+        )}
         {error && <p className="error">{error}</p>}
         {/* Clear all is always rendered (disabled when empty) — no layout shift. */}
         <div className="form-actions">

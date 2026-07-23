@@ -58,8 +58,8 @@ One JSON object per line, identical shape in both zones:
 |---|---|---|---|
 | `game_created` | doCreatePairing (outbox tx) | A | `{game_number:1, choice_count, source:"manual"\|"fill4"}` |
 | `seat_claimed` | doClaimSeat (outbox tx) | seat | `{seat, first_claim, signed_in}` |
-| `cut_made` | doEliminate (outbox tx, every cut) | role | `{game_number, cut_number:1-3, index:0-3}` |
-| `game_finished` | doEliminate completion (outbox tx) | final cutter | `{game_number, winner_index, winner_label, choices[4], duration_ms}` |
+| `cut_made` | doEliminate (outbox tx, every cut) | role | `{game_number, cut_number:1-7, index:0-7}` (schema_v 2, 2026-07-22 — was 1-3/0-3 at v1; variable choice count 3–8) |
+| `game_finished` | doEliminate completion (outbox tx) | final cutter | `{game_number, winner_index:0-7, winner_label, choices[3-8], duration_ms}` (schema_v 2, 2026-07-22 — was 0-3/choices[4] at v1) |
 | `rematch` | doRematch (outbox tx) | role | `{game_number, choice_count, source}` |
 | `push_sent` | pushTo (standalone, only accepted sends) | system | `{trigger:"joined"\|"your_turn"\|"winner"\|"rematch"\|"nudge"}` |
 | `link_clicked` | doLinkClick (outbox tx, every platform) | role | `{platform}` |

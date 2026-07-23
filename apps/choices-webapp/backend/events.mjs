@@ -28,7 +28,10 @@ const intIn = (min, max) => (v) => Number.isInteger(v) && v >= min && v <= max;
 const bool = (v) => v === true || v === false;
 // Server-produced choice label (game.mjs caps at 60 and strips controls).
 const label = (v) => typeof v === "string" && v.length > 0 && v.length <= 60;
-const labels4 = (v) => Array.isArray(v) && v.length === 4 && v.every(label);
+// Game choice lists: 3–8 labels (variable choice count; was exactly 4 in
+// schema_v 1 rows).
+const gameLabels = (v) =>
+  Array.isArray(v) && v.length >= 3 && v.length <= 8 && v.every(label);
 // Google Places id (same 300-char bound as doPlaceDetails).
 const placeId = (v) => typeof v === "string" && v.length > 0 && v.length <= 300;
 // Flag names: lifecycle-prefixed snake_case identifiers (§10c).
@@ -87,17 +90,20 @@ export const EVENT_TYPES = Object.freeze({
     schema_v: 1,
     validate: shape({ seat: oneOf("A", "B"), first_claim: bool, signed_in: bool }),
   },
+  // schema_v 2 (2026-07-22): bounds widened for variable choice count 3–8
+  // (cut_number 1–7, index/winner_index 0–7, choices 3–8 labels). Fields
+  // unchanged — additive evolution per the catalog rules.
   cut_made: {
-    schema_v: 1,
-    validate: shape({ game_number: gameNumber, cut_number: intIn(1, 3), index: intIn(0, 3) }),
+    schema_v: 2,
+    validate: shape({ game_number: gameNumber, cut_number: intIn(1, 7), index: intIn(0, 7) }),
   },
   game_finished: {
-    schema_v: 1,
+    schema_v: 2,
     validate: shape({
       game_number: gameNumber,
-      winner_index: intIn(0, 3),
+      winner_index: intIn(0, 7),
       winner_label: label,
-      choices: labels4,
+      choices: gameLabels,
       duration_ms: intIn(0, 100_000_000_000),
     }),
     anonymize: anonymizeGameFinished,

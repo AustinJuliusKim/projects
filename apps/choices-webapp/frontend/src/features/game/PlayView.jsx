@@ -393,6 +393,10 @@ export default function PlayView({ identity, onLeave }) {
         onChoiceChange={(i, v) =>
           setRematchChoices((cs) => cs.map((x, j) => (j === i ? v : x)))
         }
+        onAddChoice={() => setRematchChoices((cs) => [...cs, ""])}
+        onRemoveChoice={(i) =>
+          setRematchChoices((cs) => cs.filter((_, j) => j !== i))
+        }
         onClearAll={() => {
           rematchFilledRef.current = false;
           setRematchChoices(["", "", "", ""]);

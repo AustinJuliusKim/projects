@@ -54,8 +54,22 @@ test("createGame strips control characters and caps label length", () => {
 });
 
 test("createGame rejects wrong count", () => {
-  assert.throws(() => createGame(["a", "b", "c"]), (e) => e.code === "EXACTLY_FOUR");
-  assert.throws(() => createGame(["a", "b", "c", "d", "e"]), (e) => e.code === "EXACTLY_FOUR");
+  assert.throws(() => createGame(["a", "b"]), (e) => e.code === "BAD_COUNT");
+  assert.throws(
+    () => createGame(["a", "b", "c", "d", "e", "f", "g", "h", "i"]),
+    (e) => e.code === "BAD_COUNT"
+  );
+  assert.throws(() => createGame("abcd"), (e) => e.code === "BAD_COUNT");
+});
+
+test("createGame accepts the 3 and 8 choice boundaries", () => {
+  const three = createGame(["a", "b", "c"]);
+  assert.equal(three.choices.length, 3);
+  // The non-starter opens at EVERY count (Austin's ruling, PR #53 review).
+  assert.equal(three.turn, "B");
+  const eight = createGame(["a", "b", "c", "d", "e", "f", "g", "h"]);
+  assert.equal(eight.choices.length, 8);
+  assert.equal(eight.turn, "B");
 });
 
 test("createGame rejects empty/whitespace choices", () => {
@@ -149,6 +163,41 @@ test("rejects moves on a complete game", () => {
   g = applyElimination(g, "B", 2);
   assert.equal(g.status, "complete");
   assert.throws(() => applyElimination(g, "A", 3), (e) => e.code === "GAME_COMPLETE");
+});
+
+test("every count 3–8 plays to one winner and the starter never cuts first", () => {
+  for (let count = 3; count <= 8; count++) {
+    for (const startedBy of ["A", "B"]) {
+      const labels = Array.from({ length: count }, (_, i) => `C${i + 1}`);
+      let g = createGame(labels, { startedBy });
+      const cutters = [];
+      while (g.status === "active") {
+        cutters.push(g.turn);
+        g = applyElimination(g, g.turn, liveIndices(g)[0]);
+      }
+      assert.equal(g.eliminated.length, count - 1, `count=${count}`);
+      assert.equal(g.status, "complete");
+      assert.equal(liveIndices(g).length, 1);
+      assert.equal(g.winnerIndex, liveIndices(g)[0]);
+      // The invariant (Austin's ruling, PR #53): the starter curates, the
+      // OTHER player always opens the cutting — at every count.
+      assert.equal(cutters[0], otherRole(startedBy), `count=${count}`);
+      // Turns strictly alternate (so odd counts end on the starter's cut).
+      for (let i = 1; i < cutters.length; i++) {
+        assert.notEqual(cutters[i], cutters[i - 1], `count=${count} cut=${i}`);
+      }
+    }
+  }
+});
+
+test("4-choice games keep the classic [nonStarter, starter, nonStarter] order", () => {
+  let g = createGame(CHOICES, { startedBy: "A" });
+  const cutters = [];
+  while (g.status === "active") {
+    cutters.push(g.turn);
+    g = applyElimination(g, g.turn, liveIndices(g)[0]);
+  }
+  assert.deepEqual(cutters, ["B", "A", "B"]);
 });
 
 test("otherRole flips A/B", () => {

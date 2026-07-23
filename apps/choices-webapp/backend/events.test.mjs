@@ -91,7 +91,7 @@ test("buildEvent returns the frozen envelope shape", () => {
   assert.match(ev.event_id, /^[0-9a-f-]{36}$/);
   assert.equal(ev.ts, "2026-07-12T03:14:15.926Z");
   assert.equal(ev.type, "cut_made");
-  assert.equal(ev.schema_v, 1);
+  assert.equal(ev.schema_v, 2);
   assert.equal(ev.pairing_ref, "abc123def456");
   assert.equal(ev.actor_role, "B");
   assert.deepEqual(ev.payload, HAPPY.cut_made);
@@ -154,8 +154,21 @@ test("bounded ints are enforced (no unbounded numeric smuggling)", () => {
   assert.equal(v({ layer: "pair", count: 3.5 }), false);
   assert.equal(v({ layer: "pair", count: 3 }), true);
   const cut = EVENT_TYPES.cut_made.validate;
-  assert.equal(cut({ ...HAPPY.cut_made, cut_number: 4 }), false);
-  assert.equal(cut({ ...HAPPY.cut_made, index: 4 }), false);
+  // Variable choice count (3–8): up to 7 cuts / index 7 are legal, 8 is not.
+  assert.equal(cut({ ...HAPPY.cut_made, cut_number: 7, index: 7 }), true);
+  assert.equal(cut({ ...HAPPY.cut_made, cut_number: 8 }), false);
+  assert.equal(cut({ ...HAPPY.cut_made, index: 8 }), false);
+});
+
+test("game_finished accepts 3–8 choices, rejects outside the range", () => {
+  const v = EVENT_TYPES.game_finished.validate;
+  const base = HAPPY.game_finished;
+  const labels = (n) => Array.from({ length: n }, (_, i) => `Choice ${i + 1}`);
+  assert.equal(v({ ...base, choices: labels(3), winner_index: 2 }), true);
+  assert.equal(v({ ...base, choices: labels(8), winner_index: 7 }), true);
+  assert.equal(v({ ...base, choices: labels(2), winner_index: 1 }), false);
+  assert.equal(v({ ...base, choices: labels(9), winner_index: 0 }), false);
+  assert.equal(v({ ...base, winner_index: 8 }), false);
 });
 
 test("eventItem flattens the envelope onto an EVENT# put with a 2-day ttl", () => {
