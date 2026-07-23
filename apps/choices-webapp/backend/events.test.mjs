@@ -50,11 +50,19 @@ const HAPPY = {
   client_error: { error_type: "js_error" },
   realtime_fallback: {},
   pairing_deleted: { reason: "ttl" },
+  flag_changed: {
+    flag: "ops_kill_fill4",
+    enabled_old: false,
+    enabled_new: true,
+    default_old: false,
+    default_new: false,
+    updated_by: "admin",
+  },
 };
 
-test("registry covers the frozen catalog (25 types) + pairing_deleted", () => {
+test("registry covers the frozen catalog (25 types) + pairing_deleted + bundle E", () => {
   const types = Object.keys(EVENT_TYPES);
-  assert.equal(types.length, 26);
+  assert.equal(types.length, 27);
   assert.deepEqual(new Set(types), new Set(Object.keys(HAPPY)));
 });
 

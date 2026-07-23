@@ -31,6 +31,9 @@ export async function verifyIdToken(authorizationHeader) {
       sub: claims.sub,
       email: claims.email ?? null,
       name: claims.name ?? claims.email ?? null,
+      // Cognito group memberships (e.g. the §10c "admin" flag-management
+      // group). Absent claim => empty list.
+      groups: claims["cognito:groups"] ?? [],
     };
   } catch {
     throw new AuthError("Invalid or expired sign-in token.");

@@ -428,7 +428,7 @@ Resources:
           classification: json
           projection.enabled: "true"
           projection.type.type: enum
-          projection.type.values: game_created,seat_claimed,cut_made,game_finished,rematch,push_sent,link_clicked,suggestion_accepted,fill4_used,invite_link_opened,join_abandoned,reveal_viewed,reveal_card_shared,pwa_installed,push_permission_result,suggestion_shown,fill4_shown,fill4_swapped,order_click,paywall_viewed,sub_started,sub_cancelled,tip_given,client_error,realtime_fallback,pairing_deleted
+          projection.type.values: game_created,seat_claimed,cut_made,game_finished,rematch,push_sent,link_clicked,suggestion_accepted,fill4_used,invite_link_opened,join_abandoned,reveal_viewed,reveal_card_shared,pwa_installed,push_permission_result,suggestion_shown,fill4_shown,fill4_swapped,order_click,paywall_viewed,sub_started,sub_cancelled,tip_given,client_error,realtime_fallback,pairing_deleted,flag_changed
           projection.dt.type: date
           projection.dt.format: yyyy-MM-dd
           projection.dt.range: 2026-07-01,NOW
@@ -472,7 +472,7 @@ Resources:
           classification: json
           projection.enabled: "true"
           projection.type.type: enum
-          projection.type.values: game_created,seat_claimed,cut_made,game_finished,rematch,push_sent,link_clicked,suggestion_accepted,fill4_used,invite_link_opened,join_abandoned,reveal_viewed,reveal_card_shared,pwa_installed,push_permission_result,suggestion_shown,fill4_shown,fill4_swapped,order_click,paywall_viewed,sub_started,sub_cancelled,tip_given,client_error,realtime_fallback,pairing_deleted
+          projection.type.values: game_created,seat_claimed,cut_made,game_finished,rematch,push_sent,link_clicked,suggestion_accepted,fill4_used,invite_link_opened,join_abandoned,reveal_viewed,reveal_card_shared,pwa_installed,push_permission_result,suggestion_shown,fill4_shown,fill4_swapped,order_click,paywall_viewed,sub_started,sub_cancelled,tip_given,client_error,realtime_fallback,pairing_deleted,flag_changed
           projection.dt.type: date
           projection.dt.format: yyyy-MM-dd
           projection.dt.range: 2026-07-01,NOW

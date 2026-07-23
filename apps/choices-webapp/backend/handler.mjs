@@ -55,6 +55,15 @@ import {
 } from "./metrics.mjs";
 import { aggregateActive, isAdmin } from "./admin.mjs";
 import { buildEvent, eventItem, EVENT_TYPES, CLIENT_EVENT_TYPES } from "./events.mjs";
+import {
+  FLAG_DEFS,
+  FLAGS_PK,
+  configureFlagsStore,
+  publicFlags,
+  listFlags,
+  mergeView,
+  bustFlagsCache,
+} from "./flags.mjs";
 
 const TABLE = process.env.TABLE_NAME;
 const TTL_DAYS = 30;
@@ -65,6 +74,7 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
   marshallOptions: { removeUndefinedValues: true },
 });
 const s3 = new S3Client({});
+configureFlagsStore(ddb, TABLE);
 
 const pairPk = (id) => `PAIR#${id}`;
 const codePk = (code) => `CODE#${code}`;
@@ -143,10 +153,12 @@ export async function handler(event) {
 
   let body;
   if (method === "GET") {
-    // Cacheable read path: CloudFront only caches GET, so getState is also
-    // exposed as GET /?action=getState&pairingId=..&role=..&token=..
+    // Cacheable read paths: CloudFront only caches GET, so getState and
+    // getFlags are also exposed as GET /?action=...
     body = { ...(event.queryStringParameters || {}) };
-    if (body.action !== "getState") return reply(400, { error: "Unknown action" });
+    if (body.action !== "getState" && body.action !== "getFlags") {
+      return reply(400, { error: "Unknown action" });
+    }
   } else {
     try {
       body = JSON.parse(event.body || "{}");
@@ -198,6 +210,12 @@ export async function handler(event) {
         return reply(200, await doGetAdminOverview(user));
       case "adminSetPremium":
         return reply(200, await doAdminSetPremium(user, body));
+      case "getFlags":
+        return reply(200, { flags: await publicFlags() }, FLAGS_HEADERS);
+      case "adminListFlags":
+        return reply(200, await doAdminListFlags(user));
+      case "adminSetFlag":
+        return reply(200, await doAdminSetFlag(user, body));
       default:
         return reply(400, { error: "Unknown action" });
     }
@@ -967,6 +985,88 @@ function assertAdmin(user) {
   if (!isAdmin(user.sub, process.env.ADMIN_SUBS)) {
     throw new HttpError(403, "Forbidden.", "NOT_ADMIN");
   }
+}
+
+// Flag management gate (§10c): Cognito "admin" GROUP claim, distinct from the
+// ADMIN_SUBS owner allowlist above (which stays for the activity dashboard).
+function assertFlagAdmin(user) {
+  if (!user) throw new HttpError(401, "Sign in required.", "SIGN_IN_REQUIRED");
+  if (!(user.groups ?? []).includes("admin")) {
+    throw new HttpError(403, "Forbidden.", "NOT_ADMIN");
+  }
+}
+
+// getFlags is public + cacheable. The /api* behavior is pinned to the managed
+// CachingDisabled policy under the pricing plan (see template.yaml), so today
+// this header only drives browser caching; §10c accepts 60s-2min propagation.
+const FLAGS_HEADERS = { "cache-control": "public, max-age=60" };
+
+async function doAdminListFlags(user) {
+  assertFlagAdmin(user);
+  return listFlags();
+}
+
+async function doAdminSetFlag(user, body) {
+  assertFlagAdmin(user);
+  const { name, enabled, version } = body;
+  const def = FLAG_DEFS[name];
+  if (!def) throw new HttpError(400, "Unknown flag.", "UNKNOWN_FLAG");
+  if (typeof enabled !== "boolean") {
+    throw new HttpError(400, "enabled must be a boolean.", "BAD_FLAG_VALUE");
+  }
+  if (version !== null && version !== undefined && !Number.isInteger(version)) {
+    throw new HttpError(400, "version must be an integer or null.", "BAD_VERSION");
+  }
+
+  // Fresh read (never the 60s cache): the write below carries the FULL
+  // override map, so building it from a stale cache could silently revert
+  // interim changes even when the version condition passes.
+  bustFlagsCache();
+  const current = await listFlags();
+  if ((version ?? null) !== current.version) {
+    throw new HttpError(409, "Conflicting update, try again.", "WRITE_CONFLICT");
+  }
+  const enabledOld = current.flags[name].enabled;
+  const item = {
+    pk: FLAGS_PK,
+    flags: Object.fromEntries(
+      Object.entries(current.flags)
+        .filter(([, f]) => f.updatedAt != null)
+        .map(([n, f]) => [n, { enabled: f.enabled, updatedAt: f.updatedAt, updatedBy: f.updatedBy }])
+    ),
+    version: current.version,
+  };
+  item.flags[name] = { enabled, updatedAt: Date.now(), updatedBy: user.sub };
+  if (item.version === null) delete item.version; // first write: attribute_not_exists branch
+
+  try {
+    await ddb.send(new PutCommand(versionedPut(item).Put));
+  } catch (err) {
+    if (lostWriteRace(err)) {
+      bustFlagsCache();
+      throw new HttpError(409, "Conflicting update, try again.", "WRITE_CONFLICT");
+    }
+    throw err;
+  }
+  bustFlagsCache();
+
+  // Audit trail (bundle E). Role marker only — never the admin's sub (PII
+  // stays out of the lake; the sub lives on the DDB item for ops forensics).
+  await putEvent("flag_changed", {
+    actorRole: "system",
+    payload: {
+      flag: name,
+      enabled_old: enabledOld,
+      enabled_new: enabled,
+      default_old: def.default,
+      default_new: def.default,
+      updated_by: "admin",
+    },
+  });
+
+  // Respond from the state just written — no redundant read; the version in
+  // the store is now expected+1 (versionedPut semantics).
+  return mergeView(item.flags, (current.version ?? 0) + 1);
 }
 
 // The table has no GSI/stream, so the live set is read by a projected Scan

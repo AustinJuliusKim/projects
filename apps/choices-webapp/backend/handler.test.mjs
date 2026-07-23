@@ -19,10 +19,19 @@ import { _setPlacesFetchForTests } from "./places.mjs";
 import { _setBedrockForTests } from "./suggestai.mjs";
 import { _setWebpushForTests } from "./push.mjs";
 
-// Fake Cognito verifier: token "good-token" -> user u-1; anything else throws.
+// Fake Cognito verifier: token "good-token" -> user u-1; "admin-token" ->
+// u-admin with the "admin" group claim (§10c flag gate); anything else throws.
 function fakeVerifier() {
   return {
     verify: async (token) => {
+      if (token === "admin-token") {
+        return {
+          sub: "u-admin",
+          email: "admin@example.com",
+          name: "Admin",
+          "cognito:groups": ["admin"],
+        };
+      }
       if (token !== "good-token") throw new Error("bad token");
       return { sub: "u-1", email: "u1@example.com", name: "U One" };
     },
@@ -2145,4 +2154,102 @@ test("canary createPairing writes no game_created outbox item; normal create doe
   } finally {
     delete process.env.CANARY_SECRET;
   }
+});
+
+// --- Feature flags (§10c, harness row 11) ---
+
+test("getFlags is GET-able, public-only, and cacheable", async () => {
+  ddbMock.reset();
+  ddbMock.on(GetCommand, { Key: { pk: "FLAGS#global" } }).resolves({
+    Item: {
+      pk: "FLAGS#global",
+      flags: { ops_kill_fill4: { enabled: true, updatedAt: 1, updatedBy: "u" } },
+      version: 2,
+    },
+  });
+  const res = await handler(getEvent({ action: "getFlags" }));
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.headers["cache-control"], "public, max-age=60");
+  const { flags } = JSON.parse(res.body);
+  assert.equal(flags.release_reveal_card, true);
+  assert.ok(!("ops_kill_fill4" in flags)); // non-public never leaks
+  assert.ok(!("ops_kill_places" in flags));
+});
+
+test("adminSetFlag: 401 guest, 403 non-admin group, 200 admin, 409 stale version", async () => {
+  const { bustFlagsCache } = await import("./flags.mjs");
+
+  const setup = (item) => {
+    ddbMock.reset();
+    bustFlagsCache();
+    ddbMock.on(GetCommand, { Key: { pk: "FLAGS#global" } }).resolves({ Item: item });
+    ddbMock.on(PutCommand).resolves({});
+  };
+  const body = { action: "adminSetFlag", name: "ops_kill_fill4", enabled: true, version: 2 };
+  const item = { pk: "FLAGS#global", flags: {}, version: 2 };
+
+  setup(item);
+  let res = await handler(postEvent(body));
+  assert.equal(res.statusCode, 401);
+
+  setup(item);
+  res = await handler(postEvent(body, { authorization: "Bearer good-token" }));
+  assert.equal(res.statusCode, 403);
+  assert.equal(JSON.parse(res.body).code, "NOT_ADMIN");
+
+  setup(item);
+  res = await handler(postEvent(body, { authorization: "Bearer admin-token" }));
+  assert.equal(res.statusCode, 200);
+  const after = JSON.parse(res.body);
+  assert.equal(after.flags.ops_kill_fill4.enabled, true);
+  // flag_changed audit event was written (best-effort standalone put)
+  const flagEvents = ddbMock
+    .commandCalls(PutCommand)
+    .map((c) => c.args[0].input.Item)
+    .filter((i) => i && String(i.pk ?? "").startsWith("EVENT#") && i.type === "flag_changed");
+  assert.equal(flagEvents.length, 1);
+  assert.deepEqual(flagEvents[0].payload, {
+    flag: "ops_kill_fill4",
+    enabled_old: false,
+    enabled_new: true,
+    default_old: false,
+    default_new: false,
+    updated_by: "admin",
+  });
+  assert.equal(flagEvents[0].actor_role, "system");
+
+  setup(item);
+  res = await handler(
+    postEvent({ ...body, version: 1 }, { authorization: "Bearer admin-token" })
+  );
+  assert.equal(res.statusCode, 409);
+  assert.equal(JSON.parse(res.body).code, "WRITE_CONFLICT");
+
+  setup(item);
+  res = await handler(
+    postEvent({ ...body, name: "nope" }, { authorization: "Bearer admin-token" })
+  );
+  assert.equal(res.statusCode, 400);
+  assert.equal(JSON.parse(res.body).code, "UNKNOWN_FLAG");
+});
+
+test("adminListFlags requires the admin group and returns the merged view", async () => {
+  const { bustFlagsCache } = await import("./flags.mjs");
+  ddbMock.reset();
+  bustFlagsCache();
+  ddbMock.on(GetCommand, { Key: { pk: "FLAGS#global" } }).resolves({ Item: undefined });
+
+  let res = await handler(
+    postEvent({ action: "adminListFlags" }, { authorization: "Bearer good-token" })
+  );
+  assert.equal(res.statusCode, 403);
+
+  res = await handler(
+    postEvent({ action: "adminListFlags" }, { authorization: "Bearer admin-token" })
+  );
+  assert.equal(res.statusCode, 200);
+  const data = JSON.parse(res.body);
+  assert.equal(data.version, null);
+  assert.equal(data.flags.ops_kill_places.enabled, false);
+  assert.equal(data.flags.release_reveal_card.type, "release");
 });

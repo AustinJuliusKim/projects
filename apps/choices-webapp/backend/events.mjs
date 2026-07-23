@@ -31,6 +31,8 @@ const label = (v) => typeof v === "string" && v.length > 0 && v.length <= 60;
 const labels4 = (v) => Array.isArray(v) && v.length === 4 && v.every(label);
 // Google Places id (same 300-char bound as doPlaceDetails).
 const placeId = (v) => typeof v === "string" && v.length > 0 && v.length <= 300;
+// Flag names: lifecycle-prefixed snake_case identifiers (§10c).
+const flagName = (v) => typeof v === "string" && /^[a-z0-9_]{1,40}$/.test(v);
 
 function shape(required, optional = {}) {
   return (payload) => {
@@ -212,6 +214,19 @@ export const EVENT_TYPES = Object.freeze({
   pairing_deleted: {
     schema_v: 1,
     validate: shape({ reason: oneOf("ttl", "explicit") }),
+  },
+  // Bundle E — flags (added 2026-07-23, additive; Growth Plan §10c). Admin
+  // actor only, never PII: updated_by is a role marker, not a Cognito sub.
+  flag_changed: {
+    schema_v: 1,
+    validate: shape({
+      flag: flagName,
+      enabled_old: bool,
+      enabled_new: bool,
+      default_old: bool,
+      default_new: bool,
+      updated_by: oneOf("admin"),
+    }),
   },
 });
 
