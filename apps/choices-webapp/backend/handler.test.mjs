@@ -2112,3 +2112,37 @@ test("share-reveal linkClick emits the ShareReveal funnel metric", async () => {
   );
   assert.ok(lines.some((l) => l.includes('"ShareReveal"')));
 });
+
+test("canary createPairing writes no game_created outbox item; normal create does", async () => {
+  process.env.CANARY_SECRET = "canary-s3cret";
+  try {
+    const setup = () => {
+      ddbMock.reset();
+      ddbMock.on(PutCommand).resolves({}); // CODE# reservation
+      ddbMock.on(TransactWriteCommand).resolves({});
+    };
+    const eventPks = () =>
+      ddbMock
+        .commandCalls(TransactWriteCommand)
+        .flatMap((c) => c.args[0].input.TransactItems ?? [])
+        .map((i) => String(i.Put?.Item?.pk ?? ""))
+        .filter((pk) => pk.startsWith("EVENT#"));
+
+    setup();
+    let res = await handler(
+      postEvent(
+        { action: "createPairing", choices: CHOICES },
+        { "x-canary-secret": "canary-s3cret" }
+      )
+    );
+    assert.equal(res.statusCode, 200);
+    assert.equal(eventPks().length, 0);
+
+    setup();
+    res = await handler(postEvent({ action: "createPairing", choices: CHOICES }));
+    assert.equal(res.statusCode, 200);
+    assert.equal(eventPks().length, 1);
+  } finally {
+    delete process.env.CANARY_SECRET;
+  }
+});

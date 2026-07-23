@@ -342,7 +342,10 @@ async function doCreatePairing(body) {
   });
   await ddb.send(
     new TransactWriteCommand({
-      TransactItems: [{ Put: { TableName: TABLE, Item: item } }, eventItem(created)],
+      TransactItems: [
+        { Put: { TableName: TABLE, Item: item } },
+        ...stripCanaryEventItems([eventItem(created)]),
+      ],
     })
   );
 
@@ -1167,15 +1170,18 @@ async function pushTo(pairing, role, payload, trigger) {
 // items (e.g. the GAME# archive) commit atomically with the pairing — the
 // pairing put is always TransactItems[0], so cancellation reason 0 is the
 // version check.
+// Canary games never reach the event lake: drop EVENT# outbox items from
+// canary requests (the game writes themselves still happen — the canary
+// plays a real game; TTL cleans it up). Used by savePairing AND by
+// doCreatePairing's direct transaction — the create path bypassing this was
+// a live leak found during the 2026-07-23 ops run.
+function stripCanaryEventItems(items) {
+  if (!isCanaryRequest()) return items;
+  return items.filter((i) => !String(i?.Put?.Item?.pk ?? "").startsWith("EVENT#"));
+}
+
 async function savePairing(pairing, extraItems = []) {
-  // Canary games never reach the event lake: drop EVENT# outbox items from
-  // canary requests (the pairing write itself still happens — the canary
-  // plays a real game; TTL cleans it up).
-  if (isCanaryRequest()) {
-    extraItems = extraItems.filter(
-      (i) => !String(i?.Put?.Item?.pk ?? "").startsWith("EVENT#")
-    );
-  }
+  extraItems = stripCanaryEventItems(extraItems);
   const expected = pairing.version;
   pairing.version = (expected ?? 0) + 1;
   const put = { TableName: TABLE, Item: pairing };
