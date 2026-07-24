@@ -33,9 +33,9 @@ export function emitCount(name, dims = {}) {
 }
 
 // --- Canary exclusion (Growth Plan §10 observability) ---
-// The Synthetics canary plays real games every 5 minutes; at current volume
-// that synthetic traffic would dwarf real usage in business metrics, the
-// event lake, and the suggestion feed. The handler flags canary requests
+// The Synthetics canary plays a real golden-path game daily; its synthetic
+// games must never pollute business metrics, the event lake, or the
+// suggestion feed. The handler flags canary requests
 // (x-canary-secret header vs CANARY_SECRET env) at entry; business counters
 // and analytics writes are suppressed for them, while Latency/ApiError still
 // reflect canary traffic (that's what it's for).
