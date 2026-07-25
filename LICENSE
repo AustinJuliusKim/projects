@@ -1,0 +1,51 @@
+All Rights Reserved
+
+Copyright (c) 2026 Austin Julius Kim
+
+This is the default license for this repository. It applies to everything that
+is not explicitly covered by a more permissive LICENSE file in a subdirectory.
+
+No permission is granted to use, copy, modify, merge, publish, distribute,
+sublicense, or sell any part of this repository, except as expressly stated in
+the per-project licenses listed below.
+
+The repository being publicly readable does not make it open source. Anything
+not named below is reserved.
+
+--------------------------------------------------------------------------------
+Per-project licenses
+--------------------------------------------------------------------------------
+
+MIT — free to reuse, see the LICENSE file in each directory:
+
+  apps/guided-repl
+  packages/guided-repl-lessons
+  packages/guided-repl-protocol
+  services/guided-repl-api
+  services/guided-repl-foundry
+  services/guided-repl-seeder
+
+MIT for source code, All Rights Reserved for written content and images:
+
+  apps/portfolio          (see apps/portfolio/LICENSE and LICENSE-CONTENT)
+
+All Rights Reserved — explicitly, not by omission:
+
+  apps/choices-webapp     (see apps/choices-webapp/LICENSE)
+
+Covered by this file, reserved:
+
+  ops/        infrastructure templates
+  foundry/    evaluation workbench, configs and notes
+  agents/     agent definitions
+  .claude/    repository tooling and skills
+  docs/       repository documentation
+
+--------------------------------------------------------------------------------
+
+The ObsidianVault submodule is a separate private repository and is not covered
+by this license or any license granted here.
+
+If this table and the LICENSE files on disk ever disagree, the LICENSE file in
+the subdirectory governs that subdirectory, and this file governs everything
+else.

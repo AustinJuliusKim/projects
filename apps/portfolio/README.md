@@ -46,3 +46,14 @@ CloudFront invalidation), reading stack outputs from `deploy-params.json`.
 Content is filled in and NDA-reviewed. The ACM cert ARN is set in
 `deploy-params.json`. Remaining: run `bootstrap-infra.sh` once to create the
 deploy role + stack, then CI takes over.
+
+## License
+
+Split, deliberately:
+
+- **Code is MIT** — components, styles, build config, CloudFormation template,
+  deploy scripts. See [LICENSE](LICENSE). Reuse it freely.
+- **Content is All Rights Reserved** — the copy in `src/data.ts`, the résumé at
+  `/resume`, and everything under `deliverables/`. See [LICENSE-CONTENT](LICENSE-CONTENT).
+
+Copying the code gets you an empty portfolio shell, not someone else's career history.

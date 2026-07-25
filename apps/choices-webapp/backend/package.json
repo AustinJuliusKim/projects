@@ -1,6 +1,8 @@
 {
   "name": "choices-webapp-backend",
+  "private": true,
   "version": "1.0.0",
+  "license": "UNLICENSED",
   "description": "Lambda backend for the two-player elimination game",
   "type": "module",
   "main": "handler.mjs",

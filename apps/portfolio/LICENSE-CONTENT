@@ -1,0 +1,22 @@
+Content License — All Rights Reserved
+
+Copyright (c) 2026 Austin Julius Kim
+
+This covers everything in this project that is *not* source code:
+
+  - the written copy in src/data.ts — biography, positioning, project
+    descriptions, experience and skills claims
+  - the résumé content rendered at /resume
+  - everything under deliverables/, including resume.md and
+    linkedin-copy-pack.md
+  - any photographs or images
+
+All rights are reserved. No permission is granted to any person to copy,
+reproduce, republish, adapt, or distribute this material, in whole or in part,
+by any means, without prior written permission.
+
+This is a personal professional record. Reusing it verbatim would amount to
+misrepresenting someone else's career history as your own, which is why the
+permissive license over the code stops here.
+
+The source code of this site is MIT licensed and free to reuse. See LICENSE.

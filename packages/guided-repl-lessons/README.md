@@ -41,3 +41,7 @@ The committed app manifest is generated-but-committed; CI runs
 - Annotation anchors resolve against the referenced fixture stream.
 - `terminalDrill.transcript` references a `kind: shellTranscript` fixture;
   run branches reference `claudeStream` fixtures.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Free to reuse.

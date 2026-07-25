@@ -138,3 +138,7 @@ Live requirements (manual ops):
   - a writable `/home/user/workspace`
 - Verify with one supervised run before trusting CI: `seed-lessons l1` wired
   to the E2B runner should produce fixtures byte-comparable to a local run.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Free to reuse.

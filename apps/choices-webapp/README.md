@@ -260,3 +260,12 @@ frontend/
 docs/PLAN.md         Original design doc (historical)
 docs/iam-policy.json Least-privilege deploy policy
 ```
+
+## License
+
+**All Rights Reserved** — see [LICENSE](LICENSE).
+
+This is the one project in the monorepo that is explicitly not open source. The
+file is deliberate rather than an omission: several sibling projects are MIT, and
+this one is carved out of that. Publicly readable is not the same as licensed to
+use, and that includes running it or a derivative as a hosted service.

@@ -91,3 +91,7 @@ in the button and as a plain-text fallback link.
 3. Swap `DATABASE_URL` — discipline #1 makes that the whole data cutover.
 4. Replace `supabaseAdapter` with a self-rolled magic-link adapter (SES);
    sessions invalidate, users re-login via magic link.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Free to reuse.

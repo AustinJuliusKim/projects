@@ -161,3 +161,7 @@ version-pathed fixtures don't need invalidation).
 providers) pointing at the stack's `DistributionDomainName` output —
 `bootstrap-infra.sh` handles this automatically for a Route53-hosted zone,
 otherwise prints the record to add by hand.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Free to reuse.

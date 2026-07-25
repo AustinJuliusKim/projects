@@ -151,3 +151,7 @@ for d in packages/guided-repl-protocol packages/guided-repl-lessons \
 done
 cd apps/guided-repl && npm run check:lessons
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE). Free to reuse.

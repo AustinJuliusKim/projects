@@ -39,6 +39,12 @@ The personal knowledge base ([`AustinJuliusKim/ObsidianVault`](https://github.co
 is linked at `ObsidianVault/` as a git submodule. It holds project plans,
 decisions, and roadmaps that inform work in this repo.
 
+> **The vault is a private repository.** The commands below only work if you have
+> access to it. For anyone else, `--recurse-submodules` and `submodule update` will
+> fail on authentication — that's expected, and nothing else in this repo depends on
+> the submodule. No build or CI workflow references it. Clone without
+> `--recurse-submodules` and everything works.
+
 ```bash
 # Clone the repo with the vault already populated
 git clone --recurse-submodules git@github.com:AustinJuliusKim/projects.git
@@ -50,3 +56,31 @@ git submodule update --init ObsidianVault
 git submodule update --remote ObsidianVault
 git add ObsidianVault && git commit -m "Bump ObsidianVault submodule"
 ```
+
+## License
+
+This repository is **not uniformly licensed**. The root [LICENSE](LICENSE) is
+All Rights Reserved and acts as the default; individual projects opt into
+something more permissive. Anything not listed below is reserved.
+
+| Project | License |
+|---|---|
+| `apps/guided-repl` | MIT |
+| `packages/guided-repl-lessons` | MIT |
+| `packages/guided-repl-protocol` | MIT |
+| `services/guided-repl-api` | MIT |
+| `services/guided-repl-foundry` | MIT |
+| `services/guided-repl-seeder` | MIT |
+| `apps/portfolio` | MIT for code, All Rights Reserved for written content |
+| `apps/choices-webapp` | All Rights Reserved |
+| `ops/`, `foundry/`, `agents/`, `.claude/`, `docs/` | All Rights Reserved (root LICENSE) |
+
+Two things worth stating plainly:
+
+- **Public does not mean open source.** The default with no license is that nobody
+  may copy or reuse anything. The MIT grants above are the exceptions.
+- **`apps/choices-webapp` is reserved on purpose.** It has a commercial roadmap, so
+  it is readable but not licensed for use — including running it as a hosted service.
+
+The `ObsidianVault` submodule is a separate private repository and carries none of
+these licenses.
