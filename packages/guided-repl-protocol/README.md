@@ -49,3 +49,7 @@ import { isServerFrame, parseClientMessage, validateFixture } from "@guided-repl
 npm install
 npm test
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE). Free to reuse.
