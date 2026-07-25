@@ -6,5 +6,9 @@
       "Write(//Users/aukim/personal/ObsidianVault/**)"
     ],
     "additionalDirectories": ["/Users/aukim/personal/ObsidianVault"]
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
   }
 }
