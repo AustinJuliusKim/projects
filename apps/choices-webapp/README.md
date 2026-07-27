@@ -29,6 +29,131 @@ from a new device takes it over. Automatic "your turn" alerts via free
 See [docs/PLAN.md](docs/PLAN.md) for the original design doc (historical — it
 predates the pairing/join-code/rematch flow).
 
+### Tech stack
+
+One Lambda behind a Function URL handles every action; there is no API Gateway
+on the game path. Everything below is provisioned by the single SAM template.
+
+```mermaid
+flowchart TD
+    subgraph Client
+        spa["React 18 + Vite SPA<br>polls getState every 3s"]
+        cap["Capacitor shell<br>iOS wrapper — haptics, share, browser"]
+        rum["aws-rum-web<br>CloudWatch RUM"]
+        spa --- cap
+        spa --- rum
+    end
+
+    subgraph Edge
+        cfd["CloudFront + OAC<br>private S3 origin"]
+        spafn["SpaRewriteFunction<br>viewer-request"]
+        waf["WAF protection pack<br>attached by the Free plan"]
+    end
+
+    subgraph Compute["Lambda — one function, action-dispatched"]
+        api["ApiFunction<br>Function URL"]
+        consumer["EventStreamConsumerFunction"]
+        compact["CompactionFunction"]
+    end
+
+    subgraph State
+        ddb[("DynamoDB<br>single table + TTL + Streams")]
+        lake[("S3 event lake<br>raw + anon zones")]
+        sug[("S3 suggestion data")]
+    end
+
+    subgraph Query["Analytics"]
+        glue["Glue tables<br>raw · anon"]
+        athena["Athena workgroup"]
+    end
+
+    subgraph External
+        cognito["Cognito + Google IdP"]
+        stripe["Stripe<br>checkout · portal · webhook"]
+        bedrock["Bedrock<br>Fill-my-4"]
+        places["Google Places<br>proxied"]
+        push["Web Push · VAPID"]
+    end
+
+    spa --> cfd --> spafn --> s3site[("S3 static site")]
+    spa -->|"POST action"| api
+    api --> ddb
+    api --> cognito
+    api --> stripe
+    api --> bedrock
+    api --> places
+    api --> push
+    api --> sug
+    ddb -->|"DynamoDB Streams"| consumer --> lake
+    lake --> compact --> lake
+    lake --> glue --> athena
+    waf -.-> cfd
+```
+
+### Data flow
+
+Two distinct paths: hot game state in DynamoDB read on a 3-second poll, and a
+cold append-only event lake fed asynchronously off DynamoDB Streams. The event
+envelope is frozen and additive-only — nothing on the hot path waits for the
+lake.
+
+```mermaid
+flowchart LR
+    subgraph Hot["Hot path — game state"]
+        action["Player action<br>createPairing · claimSeat · eliminate · rematch"] --> handler["handler.mjs<br>action dispatch"]
+        handler --> game["game.mjs<br>turn + elimination rules"]
+        game --> ddb[("DynamoDB<br>pairing · seats · choices · TTL")]
+        ddb --> poll["getState<br>polled every 3s"] --> ui["Both clients"]
+        handler --> notify["push.mjs<br>'your turn' Web Push"]
+    end
+
+    subgraph Cold["Cold path — analytics"]
+        ddb -->|"Streams"| sc["streamConsumer.mjs"]
+        sc -->|"frozen envelope,<br>additive-only"| raw[("s3://…/raw")]
+        sc -->|"pairHash — k-anonymity,<br>salted"| anon[("s3://…/anon")]
+        raw --> comp["compaction.mjs"] --> raw
+        raw --> g1["Glue raw table"]
+        anon --> g2["Glue anon table"]
+        g1 --> ath["Athena"]
+        g2 --> ath
+    end
+
+    subgraph Derived["Suggestions"]
+        hist["history.mjs<br>HIST# per-pairing memory"] --> sugg["Pair-memory typeahead"]
+        ddb --- hist
+    end
+
+    handler --> emf["metrics.mjs<br>EMF → CloudWatch"]
+```
+
+### App flow
+
+A pairing is persistent: completing a game unlocks a rematch with new choices
+and the starter alternates. No accounts on the game path — each seat is claimed
+by join code and held by a per-device `localStorage` token.
+
+```mermaid
+flowchart TD
+    start(["Host opens the app"]) --> seed["Seed N choices<br>(3–8; ✨ Fill-my-4 via Bedrock optional)"]
+    seed --> create["createPairing → join code, e.g. PLUM-42"]
+    create --> share["Share the code through any messaging app"]
+    share --> claim["Guest enters code → claimSeat"]
+
+    claim --> turn{"Whose turn?"}
+    turn -->|"non-starter first —<br>the picker never cuts first"| elim["eliminate one choice"]
+    elim --> notify["Web Push to the other seat"]
+    notify --> remaining{"More than one left?"}
+    remaining -->|yes| turn
+    remaining -->|no| reveal["Both clients see the winner"]
+
+    reveal --> rematch{"Rematch?"}
+    rematch -->|yes| seed2["New choices,<br>starter alternates"] --> create
+    rematch -->|no| done(["Pairing idles until TTL"])
+```
+
+> **Note:** the intro above says "4 choices" — the shipped model is now 3–8 per
+> the variable-choice-count work. The diagram reflects the code.
+
 ## Prerequisites
 
 - **Node.js 24+** (the Lambda runtime is Node 24) — `node --version`
