@@ -21,9 +21,21 @@ Parameters:
       Leave blank to deploy without the /api/* behavior (guided mode is fully
       static and never requires it).
 
+  WebAclArn:
+    Type: String
+    Default: ""
+    Description: >
+      Pin for the WAF web ACL already attached to the distribution. The CloudFront
+      Free pricing plan attaches a protection-pack ACL out of band, and a distribution
+      on that plan cannot have its web ACL removed — leaving this blank makes every
+      distribution update fail with "You can't remove or replace the web ACL for your
+      distribution". Set it to the live ACL ARN so updates leave it alone.
+      Drop the pin (back to "") if the Free plan is ever removed.
+
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
   HasApiOrigin: !Not [!Equals [!Ref ApiOriginDomain, ""]]
+  HasWebAcl: !Not [!Equals [!Ref WebAclArn, ""]]
 
 Resources:
   SiteBucket:
@@ -50,6 +62,7 @@ Resources:
       DistributionConfig:
         Enabled: true
         DefaultRootObject: index.html
+        WebACLId: !If [HasWebAcl, !Ref WebAclArn, !Ref "AWS::NoValue"]
         Aliases: !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
         ViewerCertificate: !If
           - HasCustomDomain
