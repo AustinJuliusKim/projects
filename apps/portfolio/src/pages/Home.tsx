@@ -4,7 +4,7 @@ import About from "../components/About";
 import Work from "../components/Work";
 import Skills from "../components/Skills";
 import Contact from "../components/Contact";
-import { profile } from "../data";
+import Footer from "../components/Footer";
 
 export default function Home() {
   return (
@@ -20,11 +20,7 @@ export default function Home() {
         <Skills />
         <Contact />
       </main>
-      <footer>
-        <div className="wrap">
-          © {new Date().getFullYear()} {profile.name} · Built with React + Vite, deployed on AWS.
-        </div>
-      </footer>
+      <Footer />
     </>
   );
 }

@@ -5,10 +5,11 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "node scripts/build-posts.mjs && vite",
+    "build": "node scripts/build-posts.mjs && tsc -b && vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
-    "deploy": "./deploy-frontend.sh"
+    "deploy": "./deploy-frontend.sh",
+    "posts": "node scripts/build-posts.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -19,6 +20,9 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",
+    "gray-matter": "^4.0.3",
+    "marked": "^18.0.7",
+    "shiki": "^4.3.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.0"
   }
