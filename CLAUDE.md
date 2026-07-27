@@ -1,39 +1,33 @@
 # CLAUDE.md
 
-## ObsidianVault: check for related notes first
+## Repo shape
 
-Before starting work on any task in this repo, scan the ObsidianVault for notes related to the topic — especially `30-projects/` (per-project plans and decisions) and `10-maps/Projects MOC.md` (index). Use grep/find to locate relevant notes by keyword rather than reading the whole vault.
+A monorepo of independently deployed pieces: `apps/` (choices-webapp, guided-repl, portfolio), `packages/` (shared libraries), `services/` (Lambda/API backends), `ops/` (CloudFormation for alarms, dashboards, canaries), `foundry/`.
+
+There is no workspace root. Each area owns its own `package.json`, deploy workflow, and AWS stack — `cd` into the area you're working in and run its scripts there. CI runs `npm ci && npm test && npm run build` per area.
+
+- Tests use Node's built-in runner (`node --test`). Don't introduce a second framework.
+- `npm run check` exists in some areas (e.g. `packages/guided-repl-lessons`).
+- `apps/portfolio` is build-only and has no test script by design — its absence is not a gap.
+- Don't run deploy scripts or `bootstrap-infra.sh`.
+
+## ObsidianVault
+
+The vault holds locked decisions and roadmaps that override assumptions drawn from code alone — `30-projects/Choices Growth Plan.md` governs choices-webapp, for example. Scan it for related notes when a task touches documented project decisions, using grep by keyword rather than reading it whole. Index is `10-maps/Projects MOC.md`. If the work would change something a note documents, say so rather than quietly diverging.
 
 Resolve the vault location in this order:
-1. **Absolute local path** `/Users/aukim/personal/ObsidianVault/` — the source of truth, always the most current. Use it whenever it resolves.
-2. **In-repo submodule** `./ObsidianVault/` — fallback when the absolute path is unavailable (e.g. running in CI or a remote/cloud session). Note this is pinned to a commit and may be out of date; run `git submodule update --init ObsidianVault` first, and treat its notes as potentially stale relative to the absolute path.
 
-These notes contain locked decisions, roadmaps, and context that override assumptions derived from code alone (e.g. `30-projects/Choices Growth Plan.md` for the choices-webapp). When a task conflicts with or changes a documented plan, mention it.
+1. `/Users/aukim/personal/ObsidianVault/` — the source of truth, always current.
+2. `./ObsidianVault/` — in-repo submodule, for CI or remote sessions where the absolute path doesn't resolve. Pinned to a commit and possibly stale; run `git submodule update --init ObsidianVault` first.
 
-After completing work that changes files under `apps/`, `packages/`, or `services/`, run `/vault-sync` before shipping or opening a PR, so the vault's `30-projects/` notes stay accurate to the code.
+Run `/vault-sync` before shipping work that changed `apps/`, `packages/`, or `services/`.
 
-## Agents and model routing
+## Agents
 
-Two sets of agent definitions exist, for two different tools:
+`.claude/agents/` holds `architect` (fable), `developer` (sonnet), `code-reviewer` (opus), `repo-scout` (sonnet). Routing is the cheapest model that does the job. `code-reviewer` is on Opus because the expensive misses here — a too-broad IAM policy, a credential-leaking workflow — are what a weaker reviewer waves through.
 
-- **`.claude/agents/`** — Claude Code format. These are the ones Claude Code loads.
-- **`agents/`** — the original OpenCode definitions (`mode:`, `temperature:`, `tools:` as a boolean map, provider-prefixed model IDs). Kept as-is; Claude Code does not read them.
+Run `architect` as the main session agent (`claude --agent architect`), not as a subagent: Claude Code strips `Agent` and `AskUserQuestion` from subagents, and subagents cannot call each other, so the architect owns every hand-off.
 
-The Claude Code set is a port of the OpenCode one, so keep them in step when either changes.
+## PR descriptions
 
-| Agent | Model | Role |
-|---|---|---|
-| `architect` | `fable` | Plans work, writes Task Briefs under `misc/coding-team/`, drives the loop. Never implements. |
-| `developer` | `sonnet` | Implements exactly one Task Brief. |
-| `code-reviewer` | `opus` | Reviews the diff. Read-only; returns change requests or approval. |
-| `repo-scout` | `sonnet` | Orientation in an unfamiliar area; reports drift between the code, `CLAUDE.md`, and the vault. |
-
-Routing is cheapest-model-that-does-the-job with no auto-escalation. `code-reviewer` is on Opus because the expensive misses here — a too-broad IAM policy, a credential-leaking workflow, a low-ROI test suite that ossifies — are exactly what a weaker reviewer waves through. `repo-scout` is on Sonnet rather than Haiku because orienting in a multi-app monorepo is not a simple lookup. (In `christine-portfolio`, which is one small static site, the same agent is on Haiku.)
-
-**Run `architect` as the main session agent** — `claude --agent architect` — not as a subagent. Claude Code strips `Agent` and `AskUserQuestion` from subagents, so an architect spawned as one could neither ask questions nor delegate. As the main session agent it has both, and it owns every hand-off because **subagents cannot call each other**.
-
-The OpenCode originals reference `@code-reviewerer`, `@code-reviwerer` and `@diff-summarizer`, none of which exist as files. Those references are dropped in the Claude Code port rather than carried over.
-
-## PR descriptions: always document post-completion ops tasks
-
-Every GitHub PR description must end with an **"Ops tasks"** section listing the manual/DevOps steps required after the work is merged — e.g. creating third-party resources (Stripe prices/webhooks, OAuth clients), setting env vars / GitHub repo variables / SAM parameter overrides, DNS or console configuration, and one-time deploy or migration commands. Write "None" explicitly if there are none. This applies to new PRs and to updates of existing PR descriptions when a session adds such requirements.
+Every PR description ends with an **Ops tasks** section listing the manual steps needed after merge — third-party resources (Stripe prices/webhooks, OAuth clients), env vars, GitHub repo variables, SAM parameter overrides, DNS or console configuration, one-time deploy or migration commands. Write "None" explicitly if there are none.
