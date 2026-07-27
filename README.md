@@ -17,7 +17,6 @@ below.
 │   └── guided-repl-protocol/  # Frame vocabulary + fixture schema shared by guided-repl + its seeder
 ├── services/    # Standalone, long-lived backends/scripts
 │   └── guided-repl-seeder/    # Node CLI that records real Claude Code runs into fixtures
-├── agents/      # Claude agent definitions
 └── docs/        # Cross-cutting repo documentation
 ```
 
@@ -73,7 +72,7 @@ something more permissive. Anything not listed below is reserved.
 | `services/guided-repl-seeder` | MIT |
 | `apps/portfolio` | MIT for code, All Rights Reserved for written content |
 | `apps/choices-webapp` | All Rights Reserved |
-| `ops/`, `foundry/`, `agents/`, `.claude/`, `docs/` | All Rights Reserved (root LICENSE) |
+| `ops/`, `foundry/`, `.claude/`, `docs/` | All Rights Reserved (root LICENSE) |
 
 Two things worth stating plainly:
 
