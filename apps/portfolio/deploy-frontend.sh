@@ -42,17 +42,27 @@ echo "Building…"
 npm ci
 npm run build
 
-echo "Uploading to s3://$BUCKET (long-cache, immutable)…"
-aws s3 sync dist/ "s3://$BUCKET" --delete \
-  --cache-control "public,max-age=31536000,immutable" \
-  --exclude index.html
+# Cache-Control is split by mutability, not by filename. Only dist/assets/* is
+# content-hashed, so only it is safe to freeze. Everything else — page HTML,
+# rss.xml, robots.txt, blog images — keeps its URL across deploys and must stay
+# revalidatable. "immutable" tells browsers not to revalidate at all, so a
+# CloudFront invalidation cannot undo it once served.
+echo "Uploading hashed assets to s3://$BUCKET (immutable)…"
+aws s3 sync dist/assets/ "s3://$BUCKET/assets/" --delete \
+  --cache-control "public,max-age=31536000,immutable"
+
+echo "Uploading everything else (short cache)…"
+# --delete honours --exclude, so assets/ uploaded above is not pruned here.
+aws s3 sync dist/ "s3://$BUCKET" --delete --exclude "assets/*" \
+  --cache-control "public,max-age=60,must-revalidate"
 
 echo "Uploading index.html (no-cache)…"
 aws s3 cp dist/index.html "s3://$BUCKET/index.html" \
   --cache-control "no-cache"
 
-echo "Invalidating CloudFront cache for /index.html ($DIST_ID)…"
-aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/index.html" >/dev/null
+echo "Invalidating CloudFront cache ($DIST_ID)…"
+# "/*" is one path against the monthly free-invalidation allowance.
+aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*" >/dev/null
 
 echo ""
 echo "Deployed. Your portfolio:"

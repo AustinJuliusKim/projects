@@ -1,0 +1,160 @@
+/* Blog index and post pages. Scoped by the .blog-page root and a b- prefix,
+   matching the r- convention in resume.css. Consumes global tokens only. */
+
+.blog-page {
+  padding: 56px 0 72px;
+}
+
+.b-title {
+  margin: 6px 0 8px;
+  font-size: clamp(1.9rem, 4.5vw, 2.5rem);
+}
+
+.b-meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.b-empty,
+.b-desc {
+  color: var(--text-muted);
+}
+
+/* ---- Index ---- */
+
+.b-list {
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 0;
+}
+
+.b-item {
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+}
+
+.b-item-title {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+}
+
+.b-item-title a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.b-item-title a:hover {
+  color: var(--accent);
+}
+
+.b-item .b-desc {
+  margin: 10px 0 12px;
+}
+
+/* ---- Post ---- */
+
+.b-post-head {
+  padding-bottom: 20px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.b-body {
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+.b-body h2 {
+  margin: 40px 0 12px;
+  font-size: 1.45rem;
+}
+
+.b-body h3 {
+  margin: 32px 0 10px;
+  font-size: 1.15rem;
+}
+
+.b-body p,
+.b-body ul,
+.b-body ol {
+  margin: 0 0 18px;
+}
+
+.b-body ul,
+.b-body ol {
+  padding-left: 22px;
+}
+
+.b-body li {
+  margin-bottom: 8px;
+}
+
+.b-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.b-body blockquote {
+  margin: 0 0 18px;
+  padding: 2px 0 2px 18px;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+}
+
+.b-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 18px;
+  font-size: 15px;
+  display: block;
+  overflow-x: auto;
+}
+
+.b-body th,
+.b-body td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.b-body :not(pre) > code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--chip-bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.b-back {
+  margin-top: 48px;
+  font-size: 15px;
+}
+
+/* ---- Code blocks (shiki, dual theme) ---- */
+
+.b-body pre.shiki {
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.b-body pre.shiki code {
+  font-family: var(--mono);
+}
+
+/* shiki emits both themes as custom properties; pick per colour scheme so code
+   follows the site's prefers-color-scheme-only dark mode. */
+@media (prefers-color-scheme: dark) {
+  .b-body pre.shiki,
+  .b-body pre.shiki span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+  }
+}

@@ -36,29 +36,48 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
-  WwwRedirectFunction:
+  # One viewer-request function, because CloudFront allows only one per behavior.
+  # It does two things: the www->apex redirect (when IncludeWww), and rewriting
+  # extensionless URIs to /<path>/index.html so prerendered blog pages are served
+  # with their own <title>/OG tags instead of falling through to the SPA shell.
+  # S3 is a REST origin, so it will not resolve directory indexes on its own.
+  ViewerRequestFunction:
     Type: AWS::CloudFront::Function
-    Condition: HasWww
     Properties:
-      Name: !Sub "${AWS::StackName}-www-redirect"
+      Name: !Sub "${AWS::StackName}-viewer-request"
       AutoPublish: true
       FunctionConfig:
-        Comment: 301-redirect www.<domain> to the apex domain
+        Comment: Rewrite extensionless URIs to /index.html; redirect www to apex
         Runtime: cloudfront-js-2.0
-      FunctionCode: |
-        function handler(event) {
-          var request = event.request;
-          var host = request.headers.host.value;
-          if (host.startsWith('www.')) {
-            var apex = host.substring(4);
-            return {
-              statusCode: 301,
-              statusDescription: 'Moved Permanently',
-              headers: { location: { value: 'https://' + apex + request.uri } }
-            };
+      FunctionCode: !Sub
+        - |
+          function handler(event) {
+            var request = event.request;
+            ${WwwRedirect}
+            var uri = request.uri;
+            if (uri.endsWith('/')) {
+              request.uri = uri + 'index.html';
+            } else if (uri.split('/').pop().indexOf('.') === -1) {
+              // Extensionless path: try a prerendered page. Missing keys 403 and
+              // fall through to the SPA shell via CustomErrorResponses, so
+              // client-only routes keep working unchanged.
+              request.uri = uri + '/index.html';
+            }
+            return request;
           }
-          return request;
-        }
+        - WwwRedirect: !If
+            - HasWww
+            - |-
+              var host = request.headers.host.value;
+              if (host.startsWith('www.')) {
+                  var apex = host.substring(4);
+                  return {
+                    statusCode: 301,
+                    statusDescription: 'Moved Permanently',
+                    headers: { location: { value: 'https://' + apex + request.uri } }
+                  };
+                }
+            - ""
 
   SiteOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
@@ -97,11 +116,9 @@ Resources:
           # AWS managed "CachingOptimized" policy
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
           AllowedMethods: [GET, HEAD, OPTIONS]
-          FunctionAssociations: !If
-            - HasWww
-            - - EventType: viewer-request
-                FunctionARN: !GetAtt WwwRedirectFunction.FunctionARN
-            - !Ref "AWS::NoValue"
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt ViewerRequestFunction.FunctionARN
         CustomErrorResponses:
           # SPA fallback: serve index.html for client-side routes (e.g. /resume)
           - ErrorCode: 403

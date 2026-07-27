@@ -5,3 +5,6 @@ dist/
 # tsc -b emits these next to the source config — build artifacts, not source
 vite.config.js
 vite.config.d.ts
+
+# generated from content/posts by scripts/build-posts.mjs
+src/generated/
