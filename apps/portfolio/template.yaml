@@ -19,12 +19,23 @@ Parameters:
     Description: >
       Add www.<CustomDomain> as an alias and 301-redirect it to the apex.
       Requires the ACM cert to cover BOTH the apex and the www name.
+  WebAclArn:
+    Type: String
+    Default: ""
+    Description: >
+      Pin for the WAF web ACL already attached to the distribution. The CloudFront
+      Free pricing plan attaches a protection-pack ACL out of band, and a distribution
+      on that plan cannot have its web ACL removed — leaving this blank makes every
+      distribution update fail with "You can't remove or replace the web ACL for your
+      distribution". Set it to the live ACL ARN so updates leave it alone.
+      Drop the pin (back to "") if the Free plan is ever removed.
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
   HasWww: !And
     - !Condition HasCustomDomain
     - !Equals [!Ref IncludeWww, "true"]
+  HasWebAcl: !Not [!Equals [!Ref WebAclArn, ""]]
 
 Resources:
   SiteBucket:
@@ -94,6 +105,7 @@ Resources:
       DistributionConfig:
         Enabled: true
         DefaultRootObject: index.html
+        WebACLId: !If [HasWebAcl, !Ref WebAclArn, !Ref "AWS::NoValue"]
         Aliases: !If
           - HasWww
           - [!Ref CustomDomain, !Sub "www.${CustomDomain}"]

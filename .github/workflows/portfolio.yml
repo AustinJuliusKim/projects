@@ -65,10 +65,11 @@ jobs:
           CUSTOM_DOMAIN=$(node -pe "require('./deploy-params.json').CustomDomain")
           CERT_ARN=$(node -pe "require('./deploy-params.json').CertificateArn")
           INCLUDE_WWW=$(node -pe "require('./deploy-params.json').IncludeWww ?? 'false'")
+          WEB_ACL_ARN=$(node -pe "require('./deploy-params.json').WebAclArn ?? ''")
           aws cloudformation deploy \
             --template-file template.yaml \
             --stack-name "$STACK_NAME" \
             --region "$REGION" \
-            --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" "IncludeWww=$INCLUDE_WWW" \
+            --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" "IncludeWww=$INCLUDE_WWW" "WebAclArn=$WEB_ACL_ARN" \
             --no-fail-on-empty-changeset
       - run: ./deploy-frontend.sh

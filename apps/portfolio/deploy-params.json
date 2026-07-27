@@ -4,5 +4,6 @@
   "CustomDomain": "austinjuliuskim.com",
   "IncludeWww": "true",
   "CertificateArn": "arn:aws:acm:us-east-1:549883968767:certificate/c29ee168-60a4-4597-898e-0d0c27517ed2",
-  "RoleArn": "arn:aws:iam::549883968767:role/portfolio-github-deploy"
+  "RoleArn": "arn:aws:iam::549883968767:role/portfolio-github-deploy",
+  "WebAclArn": "arn:aws:wafv2:us-east-1:549883968767:global/webacl/CreatedByCloudFront-f3d62d98/f6de1830-56bf-41da-bb29-5b3067ed1eb8"
 }
