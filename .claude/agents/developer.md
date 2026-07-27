@@ -26,6 +26,6 @@ Discover and run the area's own checks — typically `npm test`, `npm run build`
 
 ## Report
 
-What changed and why, the files touched, which checks you actually ran and their results, any tradeoffs or risks, and whether the change hit `apps/`, `packages/`, or `services/` (which means `/vault-sync` needs to run). Include the Ops tasks the change will require after merge — env vars, repo variables, SAM parameter overrides, third-party resources, DNS, one-time migrations — or say "none" explicitly. You're closest to knowing.
+What changed and why, the files touched, which checks you actually ran and their results, any tradeoffs or risks, and whether the change hit `apps/`, `packages/`, or `services/` (which means `/vault-sync` needs to run). Include whatever the change will require after merge for the PR's Ops tasks section — you're closest to knowing — or say "none" explicitly.
 
 Leave committing and pushing to the user.
