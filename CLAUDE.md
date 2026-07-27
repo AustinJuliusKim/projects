@@ -4,7 +4,9 @@
 
 A monorepo of independently deployed pieces: `apps/` (choices-webapp, guided-repl, portfolio), `packages/` (shared libraries), `services/` (Lambda/API backends), `ops/` (CloudFormation for alarms, dashboards, canaries), `foundry/`.
 
-There is no workspace root. Each area owns its own `package.json`, deploy workflow, and AWS stack — `cd` into the area you're working in and run its scripts there. CI runs `npm ci && npm test && npm run build` per area.
+There is no workspace root. Each area owns its own `package.json`, deploy workflow, and AWS stack — `cd` into the area you're working in and run its scripts there. Each area's workflow runs `npm ci` plus whichever of `test`, `build`, and `check` that area actually has; several areas have no `build` script and `apps/portfolio` has no `test`.
+
+Don't create an `ARCHITECTURE.md`. Repo conventions live here and project decisions live in the vault; a third source would immediately drift.
 
 - Tests use Node's built-in runner (`node --test`). Don't introduce a second framework.
 - `npm run check` exists in some areas (e.g. `packages/guided-repl-lessons`).
@@ -13,7 +15,9 @@ There is no workspace root. Each area owns its own `package.json`, deploy workfl
 
 ## ObsidianVault
 
-The vault holds locked decisions and roadmaps that override assumptions drawn from code alone — `30-projects/Choices Growth Plan.md` governs choices-webapp, for example. Scan it for related notes when a task touches documented project decisions, using grep by keyword rather than reading it whole. Index is `10-maps/Projects MOC.md`. If the work would change something a note documents, say so rather than quietly diverging.
+Before starting work on any task in this repo, scan the vault for notes related to the topic — grep by keyword rather than reading it whole. Index is `10-maps/Projects MOC.md`; per-project plans are in `30-projects/`.
+
+The vault holds locked decisions and roadmaps that override assumptions drawn from code alone — `30-projects/Choices Growth Plan.md` governs choices-webapp, for example. If the work would change something a note documents, say so rather than quietly diverging.
 
 Resolve the vault location in this order:
 

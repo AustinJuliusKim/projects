@@ -12,7 +12,7 @@ across projects. This document defines the rules that keep that workable.
 | `apps/`     | Things you run or deploy as a product             | `choices-webapp`, `personal-site` |
 | `packages/` | Reusable libraries imported by apps               | `ui`, `utils`, `api-client`       |
 | `services/` | Standalone backends/scripts, often non-JS         | a Python API, a cron script       |
-| `agents/`   | Claude agent definitions                          | —                                 |
+| `.claude/`  | Claude agent, skill, and command definitions      | `agents/`, `skills/`              |
 | `docs/`     | Cross-cutting repo documentation                  | this file                         |
 
 `packages/` and `services/` are created when first needed — don't scaffold them

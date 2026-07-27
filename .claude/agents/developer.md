@@ -14,7 +14,7 @@ You may do whatever the task genuinely needs, including refactors, dependency ch
 
 If the brief is ambiguous or missing a decision you need, stop and report back with targeted questions rather than guessing. You can't call other agents; return questions to whoever invoked you.
 
-If your implementation would change something a vault note documents, stop and report that too.
+If the Task Brief references a project plan, or you find yourself about to contradict one, read the relevant note in the vault's `30-projects/` before proceeding. If your implementation would change something a note documents, stop and report that rather than quietly diverging.
 
 ## Tests
 
