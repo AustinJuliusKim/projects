@@ -22,6 +22,11 @@ const OUT_FILE = join(root, "src", "generated", "posts.json");
 
 const REQUIRED = ["title", "date", "description"];
 
+const GATES = [
+  { pattern: /\[PENDING\b/i, reason: "still contains an unfilled [PENDING] slot" },
+  { pattern: /do not publish/i, reason: 'still carries a "do not publish" sentinel' },
+];
+
 // Dual themes so code follows the site's prefers-color-scheme dark mode.
 // defaultColor:false emits --shiki-dark custom properties for blog.css to use.
 async function highlight(code, lang) {
@@ -94,6 +99,22 @@ async function main() {
     if (data.draft === true) {
       console.log(`build-posts: skipping draft ${slug}`);
       continue;
+    }
+
+    // Publishing gates. Drafts are written in the vault and carry markers for
+    // work that isn't finished: unfilled [PENDING #n] slots, and the
+    // "Awaiting ... edit pass — do not publish" sentinel. Converting a draft
+    // means resolving those; if one survives into content/posts/ the
+    // conversion was incomplete, and shipping it would publish placeholder text
+    // or something deliberately held back. Checked after the draft skip, so
+    // `draft: true` remains the way to stage an unfinished post.
+    const gate = GATES.find((g) => g.pattern.test(content));
+    if (gate) {
+      throw new Error(
+        `${file}: ${gate.reason}. Resolve it before publishing, or set "draft: true" ` +
+          `to stage the post. If the phrase is deliberate prose, reword it — this check ` +
+          `is intentionally blunt because publishing a gated draft is not undoable.`
+      );
     }
 
     posts.push({
