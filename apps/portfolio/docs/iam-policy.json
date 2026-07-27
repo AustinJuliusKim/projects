@@ -74,11 +74,25 @@
         "cloudfront:ListOriginAccessControls",
         "cloudfront:CreateInvalidation",
         "cloudfront:GetInvalidation",
+        "cloudfront:ListFunctions",
         "cloudfront:TagResource",
         "cloudfront:UntagResource",
         "cloudfront:ListTagsForResource"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "CloudFrontViewerRequestFunction",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateFunction",
+        "cloudfront:UpdateFunction",
+        "cloudfront:DeleteFunction",
+        "cloudfront:DescribeFunction",
+        "cloudfront:GetFunction",
+        "cloudfront:PublishFunction"
+      ],
+      "Resource": "arn:aws:cloudfront::*:function/Portfolio-*"
     }
   ]
 }
