@@ -9,6 +9,7 @@ There is no workspace root. Each area owns its own `package.json`, deploy workfl
 Don't create an `ARCHITECTURE.md`. Repo conventions live here and project decisions live in the vault; a third source would immediately drift.
 
 - Tests use Node's built-in runner (`node --test`). Don't introduce a second framework.
+- React apps use React `^19` — don't start a new app on an older major. The caret keeps each app on 19.x without drifting to a future major.
 - `npm run check` exists in some areas (e.g. `packages/guided-repl-lessons`).
 - `apps/portfolio` is build-only and has no test script by design — its absence is not a gap.
 - Don't run deploy scripts or `bootstrap-infra.sh`.
