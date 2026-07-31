@@ -29,7 +29,14 @@ Parameters:
   WebAclName:
     Type: String
     Default: CreatedByCloudFront-8bb2952d
-    Description: Protection pack imported by ops/edge-waf.yaml.
+    Description: >
+      Protection pack imported by ops/edge-waf.yaml. Note the AWS/WAFV2 metric
+      shape (verified via list-metrics 2026-07-31): CLOUDFRONT-scope metrics
+      carry only WebACL + Rule dimensions — no Region dimension, unlike
+      AWS/CloudFront — and the Rule dimension value is each rule's
+      VisibilityConfig MetricName, which is why the baseline rate rule appears
+      as choices-rate-per-ip. Rate rules emit CountedRequests only when the
+      limit trips, so a flat-zero line there is normal.
 
 Resources:
   OpsDashboard:
@@ -145,12 +152,15 @@ Resources:
                 "region": "us-east-1",
                 "stat": "Sum", "period": 300, "view": "timeSeries",
                 "metrics": [
-                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "ChoicesRateLimitPerIp", "Region", "Global" ],
-                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "ApiWriteRateLimitPerIp", "Region", "Global" ],
-                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "SharePreviewRateLimitPerIp", "Region", "Global" ],
-                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "SuspectUserAgentOnApi", "Region", "Global" ],
-                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "CreatePairingCaptcha", "Region", "Global" ],
-                  [ "AWS/WAFV2", "BlockedRequests", "WebACL", "${WebAclName}", "Rule", "ALL", "Region", "Global" ]
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "AWS-AWSManagedRulesAmazonIpReputationList" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "AWS-AWSManagedRulesCommonRuleSet" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "AWS-AWSManagedRulesKnownBadInputsRuleSet" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "choices-rate-per-ip" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "ApiWriteRateLimitPerIp" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "SharePreviewRateLimitPerIp" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "SuspectUserAgentOnApi" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "CreatePairingCaptcha" ],
+                  [ "AWS/WAFV2", "BlockedRequests", "WebACL", "${WebAclName}", "Rule", "ALL" ]
                 ]
               }
             }

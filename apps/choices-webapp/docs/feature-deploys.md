@@ -60,9 +60,12 @@ or `CertificateArn` by design.
 
 Preview's own pricing-plan status is a live question: PR #40 recorded
 (2026-07-17) that the preview distribution `ELPTRPJXY02YO` picked up a **Free**
-plan out of band. If it still has one, preview needs its own `WebAclArn` pin
-for the same reason prod does — otherwise its next distribution update fails.
-Check the console and record the answer here.
+plan out of band. **Verified 2026-07-31 (billing-cycle boundary, admin CLI):
+the pack ACL `CreatedByCloudFront-a3fa5526` is still attached** — the plan has
+not dropped. Until it does, any preview deploy that updates the distribution
+fails unless `WebAclArn` is pinned to that pack ARN (the pin exists only on
+`feature/payg-unlocks`, not main). Re-check after the plan drops and delete
+this paragraph when preview is plan-free.
 
 The `deploy-preview` step also injects the Stripe **Test-mode** secret key,
 webhook secret, and `AdminSubs` from GitHub secrets/vars via
@@ -107,8 +110,10 @@ sam delete --config-env preview
   console-created pack rather than creating one; the ARN pinned above never
   changes. Baseline contents (all Count until each soak completes): 3 AWS
   managed groups (IP reputation, Common, Known Bad Inputs) +
-  `ChoicesRateLimitPerIp` (600 req/5 min/IP, all traffic), then the Pro-tier
-  bot rules behind `EnableBotRules`.
+  `ChoicesRateLimitPerIp` (600 req/5 min/IP, all traffic; live CloudWatch
+  metric name is `choices-rate-per-ip`), then the Pro-tier bot rules behind
+  `EnableBotRules`. The soak levers are `ManagedRulesMode` (baseline groups)
+  and `BotRuleMode` (bot rules) — both default Count.
 - **What the Pro tier does and doesn't give you.** Unlocked vs Free: 25 WAF
   rules instead of 5, scope-down statements (so rate limits can target
   `/api*` writes and `/j/*` separately), header matching, the CAPTCHA action,
@@ -119,6 +124,13 @@ sam delete --config-env preview
   statements, custom cache policies, and custom origin request policies.
   There is no managed bot ruleset at Pro — `ops/edge-waf.yaml`'s bot defense
   is hand-built from rate limits, header heuristics, and CAPTCHA.
+- **CAPTCHA precondition (blocks Phase 4).** The frontend has no AWS WAF
+  CAPTCHA integration — no `aws-waf-integration` SDK, no challenge handling
+  in `lib/api.js`. A WAF CAPTCHA interstitial served to a `fetch()` cannot be
+  solved without it, and `CreatePairingCaptcha` matches *every* createPairing
+  request — so flipping `BotRuleMode=Enforce` today would break pairing
+  creation for all users. Integrate the SDK (or change that rule's enforce
+  action) before enforcing.
 - **Business upgrade trigger.** Move to Business when either (a) `/j/*`
   scraping survives the rate + CAPTCHA rules for two consecutive weeks in the
   WAF logs, or (b) `getState` polling volume makes a 1s-TTL edge cache worth

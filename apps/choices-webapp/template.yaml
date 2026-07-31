@@ -585,8 +585,9 @@ Resources:
       DistributionConfig:
         Enabled: true
         DefaultRootObject: index.html
-        # HTTP/3 is available on every pricing-plan tier; the CloudFormation
-        # default is http2 only, so it has to be asked for explicitly.
+        # HTTP/3 is available on every pricing-plan tier; CloudFormation's
+        # default is http1.1 (verified live 2026-07-31 — the distribution was
+        # serving http1.1), so it has to be asked for explicitly.
         HttpVersion: http2and3
         WebACLId: !If [HasWebAcl, !Ref WebAclArn, !Ref "AWS::NoValue"]
         Aliases: !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
@@ -664,11 +665,11 @@ Resources:
             AllowedMethods: [GET, HEAD, OPTIONS]
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
-            # Prerendered HTML for crawlers — worth compressing, and it's a
-            # viewer-facing page so it gets the same managed security headers
-            # as the SPA.
+            # Viewer-facing page, so it gets the same managed security headers
+            # as the SPA. No Compress here: CloudFront only compresses when
+            # the cache policy enables gzip/brotli, and CachingDisabled has
+            # both off (verified 2026-07-31) — the flag would be a no-op.
             ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
-            Compress: true
 
   SiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
