@@ -43,9 +43,12 @@ Parameters:
     Description: >
       ARN of the CloudFront-scoped WAF WebACL to keep associated with the
       distribution. For prod this is the CloudFront pricing-plan protection
-      pack (CreatedByCloudFront-*) — the plan requires it and blocks
-      removal/replacement, so this parameter must always match what's
-      attached. Blank = no WAF (preview).
+      pack (CreatedByCloudFront-*) attached by the Pro plan — every plan tier
+      requires a web ACL and blocks removal/replacement, so this parameter
+      must always match what's attached. The pack's rules are managed by
+      ops/edge-waf.yaml (us-east-1), which imports it rather than creating
+      it, precisely because the association can't be swapped. Blank = no WAF
+      (preview).
   OriginVerifySecret:
     Type: String
     NoEcho: true
@@ -582,6 +585,9 @@ Resources:
       DistributionConfig:
         Enabled: true
         DefaultRootObject: index.html
+        # HTTP/3 is available on every pricing-plan tier; the CloudFormation
+        # default is http2 only, so it has to be asked for explicitly.
+        HttpVersion: http2and3
         WebACLId: !If [HasWebAcl, !Ref WebAclArn, !Ref "AWS::NoValue"]
         Aliases: !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
         ViewerCertificate: !If
@@ -613,6 +619,12 @@ Resources:
           ViewerProtocolPolicy: redirect-to-https
           # AWS managed "CachingOptimized" policy
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          # AWS managed "SecurityHeadersPolicy" — HSTS, X-Frame-Options,
+          # X-Content-Type-Options, Referrer-Policy. Managed response-headers
+          # policies are allowed on every pricing-plan tier; only custom ones
+          # are Business-tier+. Not applied to /api* (see below).
+          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
+          Compress: true
           AllowedMethods: [GET, HEAD, OPTIONS]
           FunctionAssociations:
             - EventType: viewer-request
@@ -623,22 +635,25 @@ Resources:
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
             # AWS managed "CachingDisabled". Constraints that force this:
-            # prod's CloudFront flat-rate pricing plan excludes custom cache
-            # policies, and the only caching-enabled managed policy that
-            # honors origin Cache-Control (UseOriginCacheControlHeaders-*)
-            # puts `host` in the cache key — cache-key headers are always
-            # forwarded, and Lambda Function URLs reject a viewer Host
-            # header. If the distribution ever leaves the pricing plan,
-            # restore a custom 1s-TTL policy here (keyed on the getState
-            # query strings) so the edge absorbs retry storms.
+            # custom cache policies are Business-tier+ under CloudFront
+            # flat-rate pricing plans (prod is on Pro, so still blocked), and
+            # the only caching-enabled managed policy that honors origin
+            # Cache-Control (UseOriginCacheControlHeaders-*) puts `host` in
+            # the cache key — cache-key headers are always forwarded, and
+            # Lambda Function URLs reject a viewer Host header. A custom
+            # 1s-TTL policy keyed on the getState query strings would let the
+            # edge absorb retry storms, but it needs Business or PAYG; see
+            # the upgrade trigger in docs/feature-deploys.md before assuming
+            # any plan change unlocks it.
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             # AWS managed "AllViewerExceptHostHeader" origin request policy
             # (Function URLs reject a forwarded viewer Host header). A custom
             # policy carrying CloudFront's viewer-geo headers was tried and
-            # REJECTED by prod's flat-rate Free pricing plan (2026-07-08:
-            # "Distributions with the Free pricing plan can't have: Custom
-            # origin request policy") — Places location bias comes from
-            # browser geolocation in the request body instead.
+            # REJECTED (2026-07-08, then on the Free plan: "Distributions
+            # with the Free pricing plan can't have: Custom origin request
+            # policy"). Custom origin request policies are Business-tier+, so
+            # the Free -> Pro swap did NOT unlock this — Places location bias
+            # still comes from browser geolocation in the request body.
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           # Share-link OG previews prerendered at origin (GET /j/{code}).
           # Must bypass the SPA-rewrite function (default behavior only), and
@@ -649,6 +664,11 @@ Resources:
             AllowedMethods: [GET, HEAD, OPTIONS]
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            # Prerendered HTML for crawlers — worth compressing, and it's a
+            # viewer-facing page so it gets the same managed security headers
+            # as the SPA.
+            ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
+            Compress: true
 
   SiteBucketPolicy:
     Type: AWS::S3::BucketPolicy

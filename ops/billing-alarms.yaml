@@ -16,8 +16,12 @@ Parameters:
     Default: austinjuliuskim@gmail.com
   MonthlyBudgetUsd:
     Type: Number
-    Default: 10
-    Description: Monthly budget; alerts at 80%/100% actual and 100% forecast.
+    Default: 35
+    Description: >
+      Monthly budget; alerts at 80%/100% actual and 100% forecast. Was 10,
+      which the choices-webapp prod distribution's CloudFront Pro flat-rate
+      plan ($15/mo on its own) would breach every month on a healthy account.
+      35 covers the plan plus Lambda/DynamoDB/S3/canary headroom.
   AnomalyThresholdUsd:
     Type: Number
     Default: 5
