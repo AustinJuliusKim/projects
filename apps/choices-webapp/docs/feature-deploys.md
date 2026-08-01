@@ -52,6 +52,21 @@ admin profile; keep `docs/iam-policy.json` in sync):
    All other patterns (`ChoicesWebApp*`, `choices-games*`, `choices_events*`)
    already match the preview stack's resource names.
 
+Because the CLI's `--parameter-overrides` **replaces** samconfig's list rather
+than merging it, every new `template.yaml` parameter has to be added in *both*
+the workflow's `params=()` array and `samconfig.toml [preview]`, or preview
+silently drifts from prod. Preview also carries no `WebAclArn`, `CustomDomain`,
+or `CertificateArn` by design.
+
+Preview's own pricing-plan status is a live question: PR #40 recorded
+(2026-07-17) that the preview distribution `ELPTRPJXY02YO` picked up a **Free**
+plan out of band. **Verified 2026-07-31 (billing-cycle boundary, admin CLI):
+the pack ACL `CreatedByCloudFront-a3fa5526` is still attached** — the plan has
+not dropped. Until it does, any preview deploy that updates the distribution
+fails unless `WebAclArn` is pinned to that pack ARN (the pin exists only on
+`feature/payg-unlocks`, not main). Re-check after the plan drops and delete
+this paragraph when preview is plan-free.
+
 The `deploy-preview` step also injects the Stripe **Test-mode** secret key,
 webhook secret, and `AdminSubs` from GitHub secrets/vars via
 `--parameter-overrides` — so preview can fully exercise payment flows. Setup
@@ -85,24 +100,52 @@ sam delete --config-env preview
 ## Tier-1 hardening parameters
 
 - `WebAclArn`: **prod is subscribed to a CloudFront flat-rate pricing plan
-  (Free tier)**, which requires its protection-pack web ACL
+  (Pro tier, $15/mo)**, which requires its protection-pack web ACL
   (`CreatedByCloudFront-8bb2952d`) to stay associated — CloudFront rejects
   any deploy that removes or replaces it. The samconfig `[default]` value
   must therefore always be that pack's ARN. Preview is not on a plan and
   runs without WAF (`WebAclArn=""`).
-- **WAF rules live in the protection pack, managed via the WAF console/API
-  (us-east-1), not in git** — the pricing plan blocks CloudFormation from
-  swapping the ACL. Current contents (all Count mode until soak completes):
-  3 AWS managed groups (IP reputation, Common, Known Bad Inputs) +
-  `ChoicesRateLimitPerIp` (600 req/5 min/IP, all traffic). Free-plan limits:
-  5 rules max, plain IP rate rules only (no scope-down/URI/body matching),
-  so there is no createPairing-specific rule — the generic cap plus billing
-  alarms are the backstop. Revisit if the app outgrows the plan.
+- **WAF rules are managed by `ops/edge-waf.yaml` (us-east-1, admin-deployed).**
+  Because the plan blocks swapping the association, that stack *imports* the
+  console-created pack rather than creating one; the ARN pinned above never
+  changes. Baseline contents (all Count until each soak completes): 3 AWS
+  managed groups (IP reputation, Common, Known Bad Inputs) +
+  `ChoicesRateLimitPerIp` (600 req/5 min/IP, all traffic; live CloudWatch
+  metric name is `choices-rate-per-ip`), then the Pro-tier bot rules behind
+  `EnableBotRules`. The soak levers are `ManagedRulesMode` (baseline groups)
+  and `BotRuleMode` (bot rules) — both default Count.
+- **What the Pro tier does and doesn't give you.** Unlocked vs Free: 25 WAF
+  rules instead of 5, scope-down statements (so rate limits can target
+  `/api*` writes and `/j/*` separately), header matching, the CAPTCHA action,
+  custom block responses, CloudFront access logs + WAF logs with free
+  CloudWatch Logs ingestion, 10 cache behaviors, and the AI-traffic-analytics
+  console dashboard. Still **Business-tier+** ($200/mo) and therefore still
+  unavailable: AWS WAF Bot Control, the JavaScript challenge, regex match
+  statements, custom cache policies, and custom origin request policies.
+  There is no managed bot ruleset at Pro — `ops/edge-waf.yaml`'s bot defense
+  is hand-built from rate limits, header heuristics, and CAPTCHA.
+- **CAPTCHA precondition (blocks Phase 4).** The frontend has no AWS WAF
+  CAPTCHA integration — no `aws-waf-integration` SDK, no challenge handling
+  in `lib/api.js`. A WAF CAPTCHA interstitial served to a `fetch()` cannot be
+  solved without it, and `CreatePairingCaptcha` matches *every* createPairing
+  request — so flipping `BotRuleMode=Enforce` today would break pairing
+  creation for all users. Integrate the SDK (or change that rule's enforce
+  action) before enforcing.
+- **Business upgrade trigger.** Move to Business when either (a) `/j/*`
+  scraping survives the rate + CAPTCHA rules for two consecutive weeks in the
+  WAF logs, or (b) `getState` polling volume makes a 1s-TTL edge cache worth
+  more than the $185/mo delta. Both are the same purchase: (a) buys Bot
+  Control and the JS challenge, (b) buys custom cache policies.
 - The `/api*` cache behavior uses the AWS managed `CachingDisabled` policy:
   custom cache policies are Business-tier+ under pricing plans, and the
   managed caching-enabled alternatives put `host` in the cache key, which
   Lambda Function URLs reject when forwarded. No edge caching on the API —
   adaptive polling and the rate limit are the load/cost controls.
+- The default and `/j/*` behaviors carry the AWS managed
+  `SecurityHeadersPolicy` (HSTS, X-Frame-Options, X-Content-Type-Options,
+  Referrer-Policy). *Managed* response-headers policies work on every tier;
+  only custom ones are Business-tier+. `/api*` is deliberately left off it so
+  the Lambda's own response headers stay authoritative.
 - `OriginVerifySecret`: same handling as the VAPID private key — pass once
   via `--parameter-overrides` on a fresh deploy (e.g. `openssl rand -hex 32`),
   never commit; later deploys reuse the stored value. Blank = CloudFront

@@ -47,7 +47,7 @@ flowchart TD
     subgraph Edge
         cfd["CloudFront + OAC<br>private S3 origin"]
         spafn["SpaRewriteFunction<br>viewer-request"]
-        waf["WAF protection pack<br>attached by the Free plan"]
+        waf["WAF protection pack<br>attached by the Pro plan"]
     end
 
     subgraph Compute["Lambda — one function, action-dispatched"]

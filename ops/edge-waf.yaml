@@ -1,0 +1,549 @@
+AWSTemplateFormatVersion: "2010-09-09"
+# (CloudFormation caps Description at 1024 chars, so the rollout runbook
+# lives in this comment block instead.)
+Description: >
+  Edge protection for choices-webapp prod: IMPORTS the CloudFront pricing-plan
+  protection pack (CreatedByCloudFront-8bb2952d) so its WAF rules become git
+  artifacts, plus edge logging. The plan forbids swapping the ACL association,
+  so this stack never creates or replaces the ACL. Admin-deployed, us-east-1.
+
+# This stack does NOT create the web ACL. prod is on a CloudFront flat-rate
+# pricing plan (Pro, $15/mo), and a plan-subscribed distribution cannot have
+# its web ACL removed or replaced — so a CloudFormation-authored ACL can never
+# be swapped in. Instead this stack IMPORTS the console-created pack
+# (CreatedByCloudFront-8bb2952d) so its rules become reviewable git artifacts
+# while the association stays untouched. ChoicesWebApp's WebAclArn parameter
+# keeps pinning the same ARN throughout.
+#
+# Admin-deployed, us-east-1 (CLOUDFRONT-scope WAF and CloudFront log delivery
+# both live there), same as ops/billing-alarms.yaml and ops/ops-dashboard.yaml
+# — the CI deploy role has no wafv2:PutLoggingConfiguration or logs:*Delivery*.
+#
+# ---------------------------------------------------------------------------
+# PHASED ROLLOUT. The parameter gates exist so each phase is a separate,
+# reversible operation. Never combine them.
+#
+# Phase 0 - reconcile the transcription. The rules below were first
+# transcribed from docs/feature-deploys.md without AWS access. Before
+# importing, diff them against reality:
+#
+#   aws wafv2 get-web-acl --scope CLOUDFRONT --region us-east-1 \
+#     --name CreatedByCloudFront-8bb2952d \
+#     --id 76c07143-4d9e-4fd0-bc59-e7e1d641fe87 > /tmp/pack.json
+#
+# Rule names, priorities, and VisibilityConfig MetricNames must match exactly
+# or the import change set will fail. Fix this template, not the live ACL.
+# Reconciled 2026-07-31 against the live ACL (admin creds): baseline rules,
+# default action, and the ACL-level VisibilityConfig all matched; three
+# transcription errors were found and fixed in this template — the rate
+# rule's live MetricName is choices-rate-per-ip (not the rule name), the
+# live ACL has an empty Description, and it has no CustomResponseBodies.
+# Re-run the diff anyway before importing; the console pack can drift.
+#
+# Phase 1 - rehearse the import against a throwaway CLOUDFRONT-scope ACL (or
+# the preview distribution's pack) with all gates off, then run it for real:
+#
+#   aws cloudformation create-change-set --region us-east-1 \
+#     --stack-name ChoicesEdgeWaf --change-set-name import-pack \
+#     --change-set-type IMPORT --template-body file://ops/edge-waf.yaml \
+#     --resources-to-import '[{"ResourceType":"AWS::WAFv2::WebACL",
+#       "LogicalResourceId":"EdgeWebAcl",
+#       "ResourceIdentifier":{"Name":"CreatedByCloudFront-8bb2952d",
+#         "Id":"76c07143-4d9e-4fd0-bc59-e7e1d641fe87","Scope":"CLOUDFRONT"}}]'
+#
+# Then confirm `detect-stack-drift` reports IN_SYNC before going further.
+#
+# Phase 2 - turn on logging (EnableEdgeLogging=true, DistributionArn=...).
+# Phase 3 - add the bot rules in Count (EnableBotRules=true).
+# Phase 4 - after a soak, flip BotRuleMode=Enforce; separately, flip
+# ManagedRulesMode=Enforce when the managed groups' Count soak is done.
+#
+#   aws cloudformation deploy --template-file ops/edge-waf.yaml \
+#     --stack-name ChoicesEdgeWaf --region us-east-1 \
+#     --parameter-overrides EnableEdgeLogging=true DistributionArn=arn:...
+#
+# Two caveats, both untested until their phase runs:
+#
+# - Phase 2/3 is the first UpdateWebACL against a plan-managed pack ACL.
+#   Whether AWS permits API updates to CreatedByCloudFront-* ACLs at all is
+#   an assumption (the console's security editor does it, the plan docs only
+#   forbid removing/replacing the association). If the update is rejected,
+#   rules can only be managed in the console and this stack stays a mirror.
+# - Phase 4 PRECONDITION: the frontend has NO AWS WAF CAPTCHA integration
+#   (no aws-waf-integration JS SDK, no challenge handling in lib/api.js).
+#   CreatePairingCaptcha matches EVERY createPairing request, and a CAPTCHA
+#   interstitial served to a fetch() cannot be solved without the SDK — so
+#   flipping BotRuleMode=Enforce today would break pairing creation for all
+#   users. Integrate the SDK (or downgrade rule 13's enforce action) first.
+# ---------------------------------------------------------------------------
+
+Parameters:
+  WebAclName:
+    Type: String
+    Default: CreatedByCloudFront-8bb2952d
+    Description: >
+      Name of the imported protection pack. WAFv2 treats Name and Scope as
+      create-only, so changing either would ask CloudFormation to replace the
+      ACL — which the pricing plan forbids. Never edit this on a live stack.
+
+  RateLimitPerIp:
+    Type: Number
+    Default: 600
+    Description: Baseline all-traffic requests per IP per 5 min (existing rule).
+
+  ApiWriteRateLimitPerIp:
+    Type: Number
+    Default: 120
+    Description: Requests per IP per 5 min for mutating /api* calls.
+
+  SharePreviewRateLimitPerIp:
+    Type: Number
+    Default: 300
+    Description: Requests per IP per 5 min for /j/* share-link previews.
+
+  EnableBotRules:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Phase 3 gate. Must be "false" for the import (the resolved template has
+      to describe the pack exactly as it exists today).
+
+  BotRuleMode:
+    Type: String
+    Default: Count
+    AllowedValues: [Count, Enforce]
+    Description: >
+      Phase 4 gate. Count logs matches without acting; Enforce switches the
+      rate rules to Block and the heuristics to CAPTCHA. Soak in Count and read
+      AWS/WAFV2 CountedRequests on the ops dashboard before flipping. See the
+      CAPTCHA precondition in the rollout notes above before ever enforcing.
+
+  ManagedRulesMode:
+    Type: String
+    Default: Count
+    AllowedValues: [Count, Enforce]
+    Description: >
+      Count keeps the three AWS managed groups in override-Count (the state
+      the console pack has soaked in since 2026-07-04); Enforce removes the
+      override so each group's own rule actions apply. Must stay Count for
+      the import; flip it once the soak has actually been read.
+
+  EnableEdgeLogging:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Phase 2 gate. Must be "false" for the import. CloudWatch Logs ingestion
+      for CloudFront access logs and WAF logs is included in the Pro plan;
+      storage and queries are not, hence LogRetentionDays.
+
+  DistributionArn:
+    Type: String
+    Default: ""
+    Description: >
+      ARN of the choices-webapp prod distribution, e.g.
+      arn:aws:cloudfront::549883968767:distribution/EXXXXXXXXXXXX. Required
+      when EnableEdgeLogging is true. Build it from the ChoicesWebApp stack's
+      DistributionId output.
+
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    Description: Retention for both log groups. Storage is not covered by the plan.
+
+Conditions:
+  BotRules: !Equals [!Ref EnableBotRules, "true"]
+  EdgeLogging: !Equals [!Ref EnableEdgeLogging, "true"]
+  Enforcing: !Equals [!Ref BotRuleMode, Enforce]
+  ManagedEnforcing: !Equals [!Ref ManagedRulesMode, Enforce]
+
+Resources:
+  # Retain on both policies is load-bearing, not boilerplate: prod's pricing
+  # plan requires this ACL to stay associated with the distribution, so a
+  # rollback that deleted it would take the site down and the plan with it.
+  EdgeWebAcl:
+    Type: AWS::WAFv2::WebACL
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      # No Description: the live pack's is empty, and the import-time template
+      # has to match it property for property or drift breaks the Phase 1 gate.
+      Name: !Ref WebAclName
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Ref WebAclName
+      # Pro unlocks custom block responses. Without this the SPA's fetch()
+      # gets CloudFront's default HTML 403 and surfaces a JSON parse error
+      # instead of something a user can act on. Gated on BotRules because the
+      # live pack has no CustomResponseBodies and only the bot rules reference
+      # the body — with the gate off, the template must match the pack as-is.
+      CustomResponseBodies: !If
+        - BotRules
+        - RateLimited:
+            ContentType: APPLICATION_JSON
+            Content: '{"error":"Too many requests. Wait a minute and try again."}'
+        - !Ref "AWS::NoValue"
+      Rules:
+        # ------------------------------------------------------------------
+        # Baseline: the pack as the console created it. Do not reorder or
+        # renumber — priorities are part of the import identity.
+        # ------------------------------------------------------------------
+        - Name: AWS-AWSManagedRulesAmazonIpReputationList
+          Priority: 0
+          OverrideAction: !If [ManagedEnforcing, {None: {}}, {Count: {}}]
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWS-AWSManagedRulesAmazonIpReputationList
+
+        - Name: AWS-AWSManagedRulesCommonRuleSet
+          Priority: 1
+          OverrideAction: !If [ManagedEnforcing, {None: {}}, {Count: {}}]
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWS-AWSManagedRulesCommonRuleSet
+
+        - Name: AWS-AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 2
+          OverrideAction: !If [ManagedEnforcing, {None: {}}, {Count: {}}]
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWS-AWSManagedRulesKnownBadInputsRuleSet
+
+        - Name: ChoicesRateLimitPerIp
+          Priority: 3
+          Action:
+            Count: {}
+          Statement:
+            RateBasedStatement:
+              Limit: !Ref RateLimitPerIp
+              EvaluationWindowSec: 300
+              AggregateKeyType: IP
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            # The live rule's metric name differs from the rule name — it was
+            # created in the console before the naming settled. Keep it: the
+            # CloudWatch Rule dimension is this string, and changing it would
+            # orphan the metric history and drift the import.
+            MetricName: choices-rate-per-ip
+
+        # ------------------------------------------------------------------
+        # Pro-tier bot defense (EnableBotRules). Hand-built on purpose: AWS
+        # WAF Bot Control, the JavaScript challenge, and regex match
+        # statements are all Business-tier+ ($200/mo) and cannot be used here.
+        # What Pro does give us and what these rules spend it on: scope-down
+        # statements (10, 11), header matching (12), the CAPTCHA action
+        # (12, 13), and 25 rule slots instead of 5 — 8 used, 17 spare.
+        # See the Business upgrade trigger in
+        # apps/choices-webapp/docs/feature-deploys.md.
+        # ------------------------------------------------------------------
+
+        # Writes are the expensive, abusable half of the API. The baseline
+        # 600/5min cap is sized for a polling SPA, which makes it far too
+        # loose for POSTs; this is the createPairing/claimSeat flood control
+        # that the Free plan's no-scope-down restriction made impossible.
+        - !If
+          - BotRules
+          - Name: ApiWriteRateLimitPerIp
+            Priority: 10
+            Action: !If
+              - Enforcing
+              - Block:
+                  CustomResponse:
+                    ResponseCode: 429
+                    CustomResponseBodyKey: RateLimited
+              - Count: {}
+            Statement:
+              RateBasedStatement:
+                Limit: !Ref ApiWriteRateLimitPerIp
+                EvaluationWindowSec: 300
+                AggregateKeyType: IP
+                ScopeDownStatement:
+                  AndStatement:
+                    Statements:
+                      - ByteMatchStatement:
+                          FieldToMatch:
+                            UriPath: {}
+                          SearchString: /api
+                          PositionalConstraint: STARTS_WITH
+                          TextTransformations:
+                            - Priority: 0
+                              Type: NONE
+                      - OrStatement:
+                          Statements:
+                            - ByteMatchStatement:
+                                FieldToMatch:
+                                  Method: {}
+                                SearchString: POST
+                                PositionalConstraint: EXACTLY
+                                TextTransformations:
+                                  - Priority: 0
+                                    Type: NONE
+                            - ByteMatchStatement:
+                                FieldToMatch:
+                                  Method: {}
+                                SearchString: PUT
+                                PositionalConstraint: EXACTLY
+                                TextTransformations:
+                                  - Priority: 0
+                                    Type: NONE
+                            - ByteMatchStatement:
+                                FieldToMatch:
+                                  Method: {}
+                                SearchString: PATCH
+                                PositionalConstraint: EXACTLY
+                                TextTransformations:
+                                  - Priority: 0
+                                    Type: NONE
+                            - ByteMatchStatement:
+                                FieldToMatch:
+                                  Method: {}
+                                SearchString: DELETE
+                                PositionalConstraint: EXACTLY
+                                TextTransformations:
+                                  - Priority: 0
+                                    Type: NONE
+            VisibilityConfig:
+              SampledRequestsEnabled: true
+              CloudWatchMetricsEnabled: true
+              MetricName: ApiWriteRateLimitPerIp
+          - !Ref "AWS::NoValue"
+
+        # /j/{code} renders a prerendered OG page per share code and is
+        # CachingDisabled, so every hit reaches Lambda. It is the obvious
+        # enumeration surface for anyone walking the code space.
+        - !If
+          - BotRules
+          - Name: SharePreviewRateLimitPerIp
+            Priority: 11
+            Action: !If
+              - Enforcing
+              - Block:
+                  CustomResponse:
+                    ResponseCode: 429
+                    CustomResponseBodyKey: RateLimited
+              - Count: {}
+            Statement:
+              RateBasedStatement:
+                Limit: !Ref SharePreviewRateLimitPerIp
+                EvaluationWindowSec: 300
+                AggregateKeyType: IP
+                ScopeDownStatement:
+                  ByteMatchStatement:
+                    FieldToMatch:
+                      UriPath: {}
+                    SearchString: /j/
+                    PositionalConstraint: STARTS_WITH
+                    TextTransformations:
+                      - Priority: 0
+                        Type: NONE
+            VisibilityConfig:
+              SampledRequestsEnabled: true
+              CloudWatchMetricsEnabled: true
+              MetricName: SharePreviewRateLimitPerIp
+          - !Ref "AWS::NoValue"
+
+        # Crude but cheap stand-in for Bot Control's unverified-bot signal:
+        # an absent User-Agent (NotStatement over a size check, since regex
+        # is Business-tier+) or one of the common scripted-client tokens.
+        # CAPTCHA rather than Block — a real browser with an odd UA can still
+        # get through, which matters because there is no allowlist here.
+        - !If
+          - BotRules
+          - Name: SuspectUserAgentOnApi
+            Priority: 12
+            Action: !If
+              - Enforcing
+              - Captcha: {}
+              - Count: {}
+            Statement:
+              AndStatement:
+                Statements:
+                  - ByteMatchStatement:
+                      FieldToMatch:
+                        UriPath: {}
+                      SearchString: /api
+                      PositionalConstraint: STARTS_WITH
+                      TextTransformations:
+                        - Priority: 0
+                          Type: NONE
+                  - OrStatement:
+                      Statements:
+                        - NotStatement:
+                            Statement:
+                              SizeConstraintStatement:
+                                FieldToMatch:
+                                  SingleHeader:
+                                    Name: user-agent
+                                ComparisonOperator: GT
+                                Size: 0
+                                TextTransformations:
+                                  - Priority: 0
+                                    Type: NONE
+                        - ByteMatchStatement:
+                            FieldToMatch:
+                              SingleHeader:
+                                Name: user-agent
+                            SearchString: python-requests
+                            PositionalConstraint: CONTAINS
+                            TextTransformations:
+                              - Priority: 0
+                                Type: LOWERCASE
+                        - ByteMatchStatement:
+                            FieldToMatch:
+                              SingleHeader:
+                                Name: user-agent
+                            SearchString: go-http-client
+                            PositionalConstraint: CONTAINS
+                            TextTransformations:
+                              - Priority: 0
+                                Type: LOWERCASE
+                        - ByteMatchStatement:
+                            FieldToMatch:
+                              SingleHeader:
+                                Name: user-agent
+                            SearchString: headlesschrome
+                            PositionalConstraint: CONTAINS
+                            TextTransformations:
+                              - Priority: 0
+                                Type: LOWERCASE
+                        - ByteMatchStatement:
+                            FieldToMatch:
+                              SingleHeader:
+                                Name: user-agent
+                            SearchString: scrapy
+                            PositionalConstraint: CONTAINS
+                            TextTransformations:
+                              - Priority: 0
+                                Type: LOWERCASE
+            VisibilityConfig:
+              SampledRequestsEnabled: true
+              CloudWatchMetricsEnabled: true
+              MetricName: SuspectUserAgentOnApi
+          - !Ref "AWS::NoValue"
+
+        # createPairing is the one unauthenticated write that creates durable
+        # state, so it is the rule feature-deploys.md flagged as missing under
+        # the Free plan. Body inspection (16 KB at Pro) plus CAPTCHA covers it
+        # without touching the read paths the SPA polls.
+        - !If
+          - BotRules
+          - Name: CreatePairingCaptcha
+            Priority: 13
+            Action: !If
+              - Enforcing
+              - Captcha: {}
+              - Count: {}
+            Statement:
+              ByteMatchStatement:
+                FieldToMatch:
+                  JsonBody:
+                    MatchPattern:
+                      IncludedPaths:
+                        - /action
+                    MatchScope: VALUE
+                    OversizeHandling: CONTINUE
+                SearchString: createPairing
+                PositionalConstraint: EXACTLY
+                TextTransformations:
+                  - Priority: 0
+                    Type: NONE
+            VisibilityConfig:
+              SampledRequestsEnabled: true
+              CloudWatchMetricsEnabled: true
+              MetricName: CreatePairingCaptcha
+          - !Ref "AWS::NoValue"
+
+  # --------------------------------------------------------------------------
+  # Edge logging. The distribution had no access logging of any kind before the
+  # Pro swap, which is why the pack's rules have been soaking in Count without
+  # anything to read. Pro covers CloudWatch Logs ingestion for both streams.
+  # Real-time logs are deliberately absent: they are an unsupported feature on
+  # every pricing-plan tier and would break the subscription.
+  # --------------------------------------------------------------------------
+  AccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: EdgeLogging
+    Properties:
+      LogGroupName: /aws/cloudfront/choices-webapp
+      RetentionInDays: !Ref LogRetentionDays
+
+  AccessLogDeliverySource:
+    Type: AWS::Logs::DeliverySource
+    Condition: EdgeLogging
+    Properties:
+      Name: choices-webapp-access-logs
+      LogType: ACCESS_LOGS
+      ResourceArn: !Ref DistributionArn
+
+  AccessLogDeliveryDestination:
+    Type: AWS::Logs::DeliveryDestination
+    Condition: EdgeLogging
+    Properties:
+      Name: choices-webapp-access-logs-cwl
+      DestinationResourceArn: !GetAtt AccessLogGroup.Arn
+      OutputFormat: json
+
+  AccessLogDelivery:
+    Type: AWS::Logs::Delivery
+    Condition: EdgeLogging
+    Properties:
+      DeliverySourceName: !Ref AccessLogDeliverySource
+      DeliveryDestinationArn: !GetAtt AccessLogDeliveryDestination.Arn
+
+  # WAF insists the destination log group name starts with "aws-waf-logs-".
+  WafLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: EdgeLogging
+    Properties:
+      LogGroupName: aws-waf-logs-choices
+      RetentionInDays: !Ref LogRetentionDays
+
+  WafLoggingConfiguration:
+    Type: AWS::WAFv2::LoggingConfiguration
+    Condition: EdgeLogging
+    Properties:
+      ResourceArn: !GetAtt EdgeWebAcl.Arn
+      # Not !GetAtt WafLogGroup.Arn — that carries a trailing ":*" that WAF
+      # rejects.
+      LogDestinationConfigs:
+        - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${WafLogGroup}"
+
+Outputs:
+  WebAclArn:
+    Description: >
+      Pin this in apps/choices-webapp/samconfig.toml as WebAclArn. It is the
+      pack that was imported, so the value does not change — the output exists
+      to make a mismatch obvious.
+    Value: !GetAtt EdgeWebAcl.Arn
+  WebAclId:
+    Description: Web ACL id (for aws wafv2 get-web-acl)
+    Value: !GetAtt EdgeWebAcl.Id
+  AccessLogGroupName:
+    Condition: EdgeLogging
+    Description: CloudFront standard (v2) access logs
+    Value: !Ref AccessLogGroup
+  WafLogGroupName:
+    Condition: EdgeLogging
+    Description: WAF request logs
+    Value: !Ref WafLogGroup

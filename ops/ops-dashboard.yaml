@@ -6,7 +6,8 @@ Description: >
   because the least-privilege CI deploy role has no cloudwatch:PutDashboard.
   Deploy ONCE, manually, with admin credentials, in the app's region:
     aws cloudformation deploy --template-file ops/ops-dashboard.yaml \
-      --stack-name ChoicesOpsDashboard --region us-west-2
+      --stack-name ChoicesOpsDashboard --region us-west-2 \
+      --parameter-overrides DistributionId=EXXXXXXXXXXXX
   Metrics only appear once the app has served traffic. Dashboards are free
   (first 3/account); the underlying custom metrics are low-cardinality.
 
@@ -17,6 +18,25 @@ Parameters:
   Namespace:
     Type: String
     Default: ChoicesApp
+  DistributionId:
+    Type: String
+    Default: ""
+    Description: >
+      choices-webapp prod CloudFront distribution id (the ChoicesWebApp stack's
+      DistributionId output). Feeds the edge row. CloudFront and CLOUDFRONT-scope
+      WAF metrics are only published in us-east-1, so those widgets pin that
+      region explicitly even though the dashboard itself lives in us-west-2.
+  WebAclName:
+    Type: String
+    Default: CreatedByCloudFront-8bb2952d
+    Description: >
+      Protection pack imported by ops/edge-waf.yaml. Note the AWS/WAFV2 metric
+      shape (verified via list-metrics 2026-07-31): CLOUDFRONT-scope metrics
+      carry only WebACL + Rule dimensions — no Region dimension, unlike
+      AWS/CloudFront — and the Rule dimension value is each rule's
+      VisibilityConfig MetricName, which is why the baseline rate rule appears
+      as choices-rate-per-ip. Rate rules emit CountedRequests only when the
+      limit trips, so a flat-zero line there is normal.
 
 Resources:
   OpsDashboard:
@@ -109,6 +129,38 @@ Resources:
                   [ "${Namespace}", "GameJoined", { "id": "joined", "stat": "Sum", "visible": false } ],
                   [ "${Namespace}", "GameCompleted", { "id": "completed", "stat": "Sum", "visible": false } ],
                   [ "${Namespace}", "ShareReveal", { "id": "shared", "stat": "Sum", "visible": false } ]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 0, "y": 18, "width": 12, "height": 6,
+              "properties": {
+                "title": "Edge: CloudFront requests + error rates",
+                "region": "us-east-1",
+                "period": 300, "view": "timeSeries",
+                "metrics": [
+                  [ "AWS/CloudFront", "Requests", "DistributionId", "${DistributionId}", "Region", "Global", { "stat": "Sum", "yAxis": "right" } ],
+                  [ "AWS/CloudFront", "TotalErrorRate", "DistributionId", "${DistributionId}", "Region", "Global", { "stat": "Average" } ],
+                  [ "AWS/CloudFront", "5xxErrorRate", "DistributionId", "${DistributionId}", "Region", "Global", { "stat": "Average" } ]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 12, "y": 18, "width": 12, "height": 6,
+              "properties": {
+                "title": "WAF: counted vs blocked (Count-mode rules read here before enforcing)",
+                "region": "us-east-1",
+                "stat": "Sum", "period": 300, "view": "timeSeries",
+                "metrics": [
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "AWS-AWSManagedRulesAmazonIpReputationList" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "AWS-AWSManagedRulesCommonRuleSet" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "AWS-AWSManagedRulesKnownBadInputsRuleSet" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "choices-rate-per-ip" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "ApiWriteRateLimitPerIp" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "SharePreviewRateLimitPerIp" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "SuspectUserAgentOnApi" ],
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "${WebAclName}", "Rule", "CreatePairingCaptcha" ],
+                  [ "AWS/WAFV2", "BlockedRequests", "WebACL", "${WebAclName}", "Rule", "ALL" ]
                 ]
               }
             }
