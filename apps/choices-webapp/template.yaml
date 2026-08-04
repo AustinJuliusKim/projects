@@ -33,6 +33,52 @@ Parameters:
     Type: String
     Default: ""
     Description: ACM certificate ARN in us-east-1 for CustomDomain (required if CustomDomain is set)
+  CreateDistribution:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >
+      false = this stack has no CloudFront distribution, OAC, or site bucket
+      policy of its own -- just the S3 bucket, Lambda Function URL, and data
+      resources. It's reached via the shared prod distribution's Lambda@Edge
+      origin router instead (ops/edge-preview-router.yaml). Requires
+      CustomDomain to be set to this stack's own subdomain (used directly in
+      the ApiBaseUrl/SiteUrl outputs, since there's no SiteDistribution to
+      read a domain name from) and SharedDistributionId to be set (so the
+      DistributionId output -- used by deploy-frontend.sh for invalidation
+      -- resolves to the shared distribution). Default true preserves
+      today's single-stack behavior for a standalone deploy of this
+      template.
+  PreviewAliasHostname:
+    Type: String
+    Default: ""
+    Description: >
+      Only meaningful on the stack that owns the shared distribution (prod,
+      CreateDistribution=true): an extra Alias/CNAME for the preview
+      subdomain (e.g. preview.choices.austinjuliuskim.com) and the Host
+      value the SPA-rewrite CloudFront Function and the edge router key off
+      of. Must match the preview stack's own CustomDomain and
+      ops/edge-preview-router.yaml's PreviewAliasHostname exactly. Blank =
+      no preview alias, no routing logic added.
+  PreviewEdgeFunctionArn:
+    Type: String
+    Default: ""
+    Description: >
+      Published Version ARN (never $LATEST or an alias -- CloudFront
+      rejects both) of the Lambda@Edge origin-request function from
+      ops/edge-preview-router.yaml (us-east-1), associated on this stack's
+      cache behaviors to route PreviewAliasHostname requests to the preview
+      stack's own origins. Only meaningful alongside PreviewAliasHostname.
+      Re-paste after every redeploy of that function -- Lambda@Edge requires
+      a newly published version per code change.
+  SharedDistributionId:
+    Type: String
+    Default: ""
+    Description: >
+      Only meaningful when CreateDistribution=false (preview): the prod
+      stack's CloudFront distribution id, so this stack's DistributionId
+      output resolves to the shared distribution instead of one this stack
+      never creates.
   TableName:
     Type: String
     Default: choices-games
@@ -169,6 +215,11 @@ Conditions:
   HasCognito: !Not [!Equals [!Ref GoogleClientId, ""]]
   HasPlacesKey: !Not [!Equals [!Ref PlacesApiKey, ""]]
   HasBedrock: !Not [!Equals [!Ref BedrockModelId, ""]]
+  ShouldCreateDistribution: !Equals [!Ref CreateDistribution, "true"]
+  IsPreviewOnlyStack: !Not [!Condition ShouldCreateDistribution]
+  IsPreviewOnlyStackWithSecret: !And [!Condition IsPreviewOnlyStack, !Condition HasOriginSecret]
+  HasPreviewAlias: !Not [!Equals [!Ref PreviewAliasHostname, ""]]
+  HasPreviewEdgeFunction: !Not [!Equals [!Ref PreviewEdgeFunctionArn, ""]]
 
 Globals:
   Function:
@@ -546,12 +597,24 @@ Resources:
     Properties:
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: true
         IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+        # Relaxed only for stacks with no distribution of their own
+        # (preview): its bucket is reached by the shared distribution's
+        # edge router as a Referer-gated custom origin (see
+        # PreviewSiteBucketPolicy below), which S3 Block Public Access's
+        # public-policy detector does NOT recognize as non-public --
+        # aws:Referer isn't in the documented list of condition keys that
+        # keep a Principal:"*" policy from being classified public (verified
+        # against the "meaning of public" section of the S3 BPA docs).
+        # ShouldCreateDistribution stacks (prod) keep both blocks on,
+        # unaffected -- prod's bucket policy uses OAC, a real principal
+        # grant, not a Principal:"*" + condition.
+        BlockPublicPolicy: !If [IsPreviewOnlyStack, false, true]
+        RestrictPublicBuckets: !If [IsPreviewOnlyStack, false, true]
 
   SiteOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
+    Condition: ShouldCreateDistribution
     Properties:
       OriginAccessControlConfig:
         Name: !Sub "${AWS::StackName}-oac"
@@ -564,23 +627,36 @@ Resources:
   # corrupt API error bodies now that /api* shares the distribution.
   SpaRewriteFunction:
     Type: AWS::CloudFront::Function
+    Condition: ShouldCreateDistribution
     Properties:
       Name: !Sub "${AWS::StackName}-spa-rewrite"
       AutoPublish: true
       FunctionConfig:
-        Comment: Serve index.html for extension-less SPA routes
+        Comment: >-
+          Serve index.html for extension-less SPA routes; also prefixes the
+          cache key for the preview Host so a warm cache never leaks prod
+          content onto the preview subdomain (CachingOptimized doesn't vary
+          by Host) -- see ops/edge-preview-router.yaml, which strips the
+          prefix back off before contacting preview's own S3 origin.
         Runtime: cloudfront-js-2.0
-      FunctionCode: |
-        function handler(event) {
-          var request = event.request;
-          if (!request.uri.includes(".")) {
-            request.uri = "/index.html";
+      FunctionCode: !Sub
+        - |
+          function handler(event) {
+            var request = event.request;
+            if (!request.uri.includes(".")) {
+              request.uri = "/index.html";
+            }
+            var previewHost = "${PreviewHost}";
+            if (previewHost && request.headers.host && request.headers.host.value === previewHost) {
+              request.uri = "/__preview" + request.uri;
+            }
+            return request;
           }
-          return request;
-        }
+        - PreviewHost: !Ref PreviewAliasHostname
 
   SiteDistribution:
     Type: AWS::CloudFront::Distribution
+    Condition: ShouldCreateDistribution
     Properties:
       DistributionConfig:
         Enabled: true
@@ -590,7 +666,16 @@ Resources:
         # serving http1.1), so it has to be asked for explicitly.
         HttpVersion: http2and3
         WebACLId: !If [HasWebAcl, !Ref WebAclArn, !Ref "AWS::NoValue"]
-        Aliases: !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
+        # Both hostnames on one distribution when a preview alias is set --
+        # PreviewAliasHostname's traffic gets routed to the preview stack's
+        # own origins by the Lambda@Edge association below (ops/edge-preview-router.yaml).
+        Aliases: !If
+          - HasCustomDomain
+          - !If
+            - HasPreviewAlias
+            - [!Ref CustomDomain, !Ref PreviewAliasHostname]
+            - [!Ref CustomDomain]
+          - !Ref "AWS::NoValue"
         ViewerCertificate: !If
           - HasCustomDomain
           - AcmCertificateArn: !Ref CertificateArn
@@ -630,6 +715,13 @@ Resources:
           FunctionAssociations:
             - EventType: viewer-request
               FunctionARN: !GetAtt SpaRewriteFunction.FunctionMetadata.FunctionARN
+          # Routes PreviewAliasHostname's requests to preview's own S3
+          # origin instead of SiteS3Origin; no-ops for every other Host.
+          LambdaFunctionAssociations: !If
+            - HasPreviewEdgeFunction
+            - - EventType: origin-request
+                LambdaFunctionARN: !Ref PreviewEdgeFunctionArn
+            - !Ref "AWS::NoValue"
         CacheBehaviors:
           - PathPattern: "/api*"
             TargetOriginId: ApiFunctionOrigin
@@ -656,6 +748,11 @@ Resources:
             # the Free -> Pro swap did NOT unlock this — Places location bias
             # still comes from browser geolocation in the request body.
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            LambdaFunctionAssociations: !If
+              - HasPreviewEdgeFunction
+              - - EventType: origin-request
+                  LambdaFunctionARN: !Ref PreviewEdgeFunctionArn
+              - !Ref "AWS::NoValue"
           # Share-link OG previews prerendered at origin (GET /j/{code}).
           # Must bypass the SPA-rewrite function (default behavior only), and
           # per-code pages must never cross-cache -> CachingDisabled.
@@ -665,6 +762,11 @@ Resources:
             AllowedMethods: [GET, HEAD, OPTIONS]
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            LambdaFunctionAssociations: !If
+              - HasPreviewEdgeFunction
+              - - EventType: origin-request
+                  LambdaFunctionARN: !Ref PreviewEdgeFunctionArn
+              - !Ref "AWS::NoValue"
             # Viewer-facing page, so it gets the same managed security headers
             # as the SPA. No Compress here: CloudFront only compresses when
             # the cache policy enables gzip/brotli, and CachingDisabled has
@@ -673,6 +775,7 @@ Resources:
 
   SiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
+    Condition: ShouldCreateDistribution
     Properties:
       Bucket: !Ref SiteBucket
       PolicyDocument:
@@ -688,6 +791,42 @@ Resources:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution.Id}"
 
+  # For stacks with no distribution of their own (preview): the shared prod
+  # distribution's Lambda@Edge origin router reaches this bucket as a plain
+  # HTTPS custom origin (not an S3-type origin), gated by the same shared
+  # secret-header pattern this app already uses for its API origin
+  # (OriginVerifySecret / x-origin-verify) -- sent here as Referer, S3's one
+  # native bucket-policy condition key for this. Tried OAC and OAI first;
+  # both are dead ends for an origin Lambda@Edge constructs at request time:
+  # OAC isn't supported by the Lambda@Edge origin object at all (confirmed
+  # in AWS docs), and OAI's "same OAI" reuse rule requires the distribution's
+  # own STATIC origin to already be OAI-based, which prod's correctly isn't
+  # (it uses OAC) -- making that work would mean regressing prod's own
+  # origin security just to accommodate this preview feature.
+  #
+  # This is a real, AWS-documented-as-weaker mechanism than OAC/OAI: the
+  # secret is a bearer value, not a cryptographic binding, so a leaked
+  # secret is directly usable against the bucket's own S3 REST endpoint,
+  # bypassing CloudFront/WAF entirely. Accepted here because (a) this is
+  # preview/test data, not prod, and (b) it's the identical trust model the
+  # API origin already uses in this codebase -- not a new risk category.
+  PreviewSiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: IsPreviewOnlyStackWithSecret
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEdgeRouterReadWithSecret
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${SiteBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                "aws:Referer": !Ref OriginVerifySecret
+
   # NOTE: the CloudWatch ops dashboard (fed by these EMF metrics) lives in a
   # separate admin-deployed stack — ops/ops-dashboard.yaml — because the CI
   # deploy role has no cloudwatch:PutDashboard (same reason as ops/billing-alarms.yaml).
@@ -699,10 +838,15 @@ Outputs:
     Value: !GetAtt ApiFunctionUrl.FunctionUrl
   ApiBaseUrl:
     Description: API endpoint behind CloudFront (same-origin /api path)
+    # Nested inside ShouldCreateDistribution first so SiteDistribution.DomainName
+    # is only ever referenced within the same condition that creates it.
     Value: !If
-      - HasCustomDomain
+      - ShouldCreateDistribution
+      - !If
+        - HasCustomDomain
+        - !Sub "https://${CustomDomain}/api"
+        - !Sub "https://${SiteDistribution.DomainName}/api"
       - !Sub "https://${CustomDomain}/api"
-      - !Sub "https://${SiteDistribution.DomainName}/api"
   TableName:
     Description: DynamoDB table name
     Value: !Ref GamesTable
@@ -715,15 +859,25 @@ Outputs:
   SiteUrl:
     Description: Your web app URL (open this!)
     Value: !If
-      - HasCustomDomain
+      - ShouldCreateDistribution
+      - !If
+        - HasCustomDomain
+        - !Sub "https://${CustomDomain}"
+        - !Sub "https://${SiteDistribution.DomainName}"
       - !Sub "https://${CustomDomain}"
-      - !Sub "https://${SiteDistribution.DomainName}"
   DistributionDomainName:
-    Description: CloudFront domain to point your DNS CNAME/alias at
-    Value: !GetAtt SiteDistribution.DomainName
+    Description: >
+      CloudFront domain to point your DNS CNAME/alias at. Empty when this
+      stack has no distribution of its own (preview, CreateDistribution=false)
+      -- its DNS record points at PROD's distribution domain instead; read
+      that from the prod stack's own output (see docs/feature-deploys.md).
+    Value: !If [ShouldCreateDistribution, !GetAtt SiteDistribution.DomainName, ""]
   DistributionId:
-    Description: CloudFront distribution ID (for cache invalidations)
-    Value: !Ref SiteDistribution
+    Description: >
+      CloudFront distribution ID (for cache invalidations). Resolves to
+      SharedDistributionId on stacks with no distribution of their own
+      (preview) so deploy-frontend.sh still invalidates the right one.
+    Value: !If [ShouldCreateDistribution, !Ref SiteDistribution, !Ref SharedDistributionId]
   CognitoDomain:
     Description: Hosted-UI domain for the frontend (VITE_COGNITO_DOMAIN)
     Condition: HasCognito

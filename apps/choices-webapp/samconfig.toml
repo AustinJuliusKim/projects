@@ -12,19 +12,33 @@ image_repositories = []
 [default.global.parameters]
 region = "us-west-2"
 
+# --- Bootstrap TODO (docs/feature-deploys.md) ---
+# Once ops/edge-preview-router.yaml (us-east-1, admin-deployed) exists and
+# the dual-SAN ACM cert covering both choices.austinjuliuskim.com and
+# preview.choices.austinjuliuskim.com is issued, add to the parameter_overrides
+# string above:
+#   PreviewAliasHostname="preview.choices.austinjuliuskim.com"
+#   PreviewEdgeFunctionArn="<PreviewEdgeRouterVersionArn output from that stack>"
+# and swap CertificateArn to the new cert's ARN. Until then this stack behaves
+# exactly as it does today (no preview alias, no edge routing).
+
 # Preview stack for feature branches (docs/feature-deploys.md). Fully separate
-# resources: own table, bucket, distribution, Lambda; no custom domain (use the
-# CloudFront URL from stack outputs). VAPID keys are a dedicated preview-only
-# pair — never used by prod. The PRIVATE key is deliberately not committed
-# (public repo): pass it via --parameter-overrides on first stack creation;
-# updates reuse the stored value (same as prod).
+# backend resources: own table, bucket, Lambda; no distribution of its own
+# (CreateDistribution=false) -- reached at preview.choices.austinjuliuskim.com,
+# served by prod's shared distribution via the Lambda@Edge router in
+# ops/edge-preview-router.yaml. VAPID keys are a dedicated preview-only pair —
+# never used by prod. The PRIVATE key is deliberately not committed (public
+# repo): pass it via --parameter-overrides on first stack creation; updates
+# reuse the stored value (same as prod). OriginVerifySecret similarly must be
+# set once out-of-band (see docs/feature-deploys.md) -- it gates both the API
+# origin's x-origin-verify header and the S3 bucket's Referer-based policy.
 [preview.deploy.parameters]
 stack_name = "ChoicesWebApp-preview"
 resolve_s3 = true
 s3_prefix = "ChoicesWebApp-preview"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "TableName=\"choices-games-preview\" GlueDatabaseName=\"choices_events_preview\" VapidPublicKey=\"BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"*\" GoogleClientId=\"240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com\" CognitoDomainPrefix=\"choices-auth-preview\" CognitoCallbackUrl=\"https://d3r33durbg7s1k.cloudfront.net/\" StripePriceMonthly=\"price_1TpzGYIVveMhKb5YH2DIAGcr\" StripePriceAnnual=\"price_1TpzGjIVveMhKb5YRATUAc1o\" BedrockModelId=\"us.anthropic.claude-haiku-4-5-20251001-v1:0\""
+parameter_overrides = "CreateDistribution=\"false\" CustomDomain=\"preview.choices.austinjuliuskim.com\" TableName=\"choices-games-preview\" GlueDatabaseName=\"choices_events_preview\" VapidPublicKey=\"BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"*\" GoogleClientId=\"240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com\" CognitoDomainPrefix=\"choices-auth-preview\" CognitoCallbackUrl=\"https://preview.choices.austinjuliuskim.com/\" StripePriceMonthly=\"price_1TpzGYIVveMhKb5YH2DIAGcr\" StripePriceAnnual=\"price_1TpzGjIVveMhKb5YRATUAc1o\" BedrockModelId=\"us.anthropic.claude-haiku-4-5-20251001-v1:0\""
 
 [preview.global.parameters]
 region = "us-west-2"
