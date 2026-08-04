@@ -91,26 +91,49 @@ credentials (the CI roles deliberately can't do any of this).
 
 ## 3. Similarity (phase 3 — first real embedding run)
 
-- [ ] Confirm the deploy role carries the `BedrockEmbed` statement (it does
+- [x] Confirm the deploy role carries the `BedrockEmbed` statement (it does
   if the role was created from the current `iam-policy.json`; if the role
   predates phase 3, re-apply the policy). Ensure Bedrock model access for
   Titan Text Embeddings V2 is enabled in the us-west-2 console.
+  Confirmed both 2026-08-04: `iam get-role-policy` shows the `BedrockEmbed`
+  statement, and a real `bedrock-runtime invoke-model` call against
+  `amazon.titan-embed-text-v2:0` in us-west-2 returned a live embedding.
 - [x] Set repo **variable** `MTG_EMBED_ENABLED=true`. Done 2026-08-04T17:55Z
   (verified via `gh variable list`).
-- [ ] Actions → "mtg ingest" → Run workflow. First embed covers all ~35k
+- [x] Actions → "mtg ingest" → Run workflow. First embed covers all ~35k
   cards: ~1h runtime, **≈$0.50 one-time**. (Later runs only re-embed
   changed cards — pennies.)
-- [ ] Fit the confidence calibration against the real embeddings and check
-  the quality gate:
+  Done 2026-08-04: [run 30936211788](https://github.com/AustinJuliusKim/projects/actions/runs/30936211788),
+  succeeded — 34,931 cards embedded in 3496s (~58 min).
+- [x] Fit the confidence calibration against the real embeddings:
 
   ```bash
   DATABASE_URL='<session pooler :5432>' make eval-calibration
   # paste printed CALIBRATION into src/mtg_api/similar/scoring.py
-  DATABASE_URL='<session pooler :5432>' make eval-similar
-  # gate: recall@10 >= 0.5 before showing /similar in the webapp
   ```
 
-- [ ] Commit the refreshed constants (ordinary PR).
+  Done 2026-08-04: `CALIBRATION = {"mean": 0.525, "std": 0.121, "slope": 1.6}`,
+  committed in `src/mtg_api/similar/scoring.py`.
+- [ ] **Quality gate NOT met** — `docs/PLAN.md`'s locked gate is
+  `recall@10 >= 0.5` before `/similar` ships publicly in the webapp:
+
+  ```bash
+  DATABASE_URL='<session pooler :5432>' make eval-similar
+  ```
+
+  Measured 2026-08-04 against the real embed run: **recall@10: 0.23**,
+  recall@25: 0.27, MRR (found): 0.586, bad-pair leakage (top 25): 0/10. The
+  engine finds the right partner card often enough when it does show up
+  (decent MRR, zero false-positive leakage on the known-bad set), but
+  misses it out of the top 10/25 more than half the time — needs
+  investigation (candidate-pool depth, hybrid scoring weights, or
+  `embed_text.py`'s text transformation) before phase 4's similar-cards
+  panel can go live. **Do not surface `/similar` in the webapp until this
+  is re-run and passes.**
+- [x] Commit the refreshed constants (ordinary PR) — regardless of the gate
+  result, the calibration fit is still the correct one for the real
+  embeddings (calibration maps raw scores to confidence %, independent of
+  whether the underlying candidates are the right ones).
 
 ## 4. Webapp (phase 4 — search/deck-builder frontend)
 

@@ -17,13 +17,12 @@ WEIGHTS = {
     "resources": 0.10,  # overlap of produced/consumed-resource features
 }
 
-# PROVISIONAL calibration: logistic over the hybrid score's z-score against
-# the candidate-pool score distribution. Fit for real with
-#   python scripts/eval_similar.py --fit-calibration
-# once actual Titan embeddings exist, then update these constants (the values
-# below assume cosine ~0.5±0.15 among top-200 candidates, which fake/random
-# vectors do not reproduce).
-CALIBRATION = {"mean": 0.42, "std": 0.12, "slope": 1.6}
+# Calibration: logistic over the hybrid score's z-score against the
+# candidate-pool score distribution. Fit against the first real Titan V2
+# embed run (34,931 cards, 2026-08-04) via
+#   make eval-calibration
+# Re-fit whenever the embedding model or scoring weights change materially.
+CALIBRATION = {"mean": 0.525, "std": 0.121, "slope": 1.6}
 
 BANDS = [(0.75, "high"), (0.5, "medium"), (0.0, "low")]
 
