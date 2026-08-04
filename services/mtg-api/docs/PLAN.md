@@ -14,7 +14,7 @@ Build and maintain an MTG card database (à la Scryfall/Gatherer) with a differe
 
 ## Status
 
-Plan approved 2026-08-03. Phases 1–3 implemented (data layer + ingest merged in PR #74; FastAPI service merged in PR #75; similarity engine in this branch — confidence calibration provisional until the first real Bedrock embed run). Phase 4 (webapp) is next.
+Plan approved 2026-08-03. Phases 1–4 implemented (data layer + ingest PR #74; FastAPI service PR #75; similarity engine PR #76 — confidence calibration provisional until the first real Bedrock embed run; webapp + suggestion-feedback logging in this branch). Phase 5 (third-party API access) is next. Consolidated ops checklist: docs/OPS.md.
 
 ## Layout decision
 

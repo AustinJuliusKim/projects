@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from mtg_api.routes import cards, health, sets, similar
+from mtg_api.routes import cards, feedback, health, sets, similar
 
 ATTRIBUTION = (
     "Card data © Wizards of the Coast, provided by Scryfall. Unofficial Fan "
@@ -19,17 +19,18 @@ def create_app() -> FastAPI:
             f"rulings, and sets. {ATTRIBUTION}"
         ),
     )
-    # Public, read-only, cookie-less API — nothing to protect from cross-origin
-    # reads.
+    # Public, cookie-less API — nothing to protect from cross-origin reads.
+    # POST exists only for the anonymous suggestion-feedback log.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_methods=["GET", "OPTIONS"],
+        allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
     app.include_router(cards.router, prefix="/v1")
     app.include_router(similar.router, prefix="/v1")
     app.include_router(sets.router, prefix="/v1")
+    app.include_router(feedback.router, prefix="/v1")
     app.include_router(health.router, prefix="/v1")
 
     @app.get("/", include_in_schema=False)
