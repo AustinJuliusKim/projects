@@ -7,6 +7,7 @@ import {
   Group,
   Skeleton,
   Text,
+  Title,
   Tooltip,
   useComputedColorScheme,
   useMantineColorScheme,
@@ -75,7 +76,9 @@ export function App() {
       <AppShell header={{ height: 56 }} padding="md">
         <AppShell.Header>
           <Group h="100%" px="md" gap="lg">
-            <Text fw={650}>mtg-tools</Text>
+            <Title order={5} c="bronze.6">
+              ✦ mtg-tools
+            </Title>
             {[70, 52, 40, 58].map((width, i) => (
               <Skeleton key={i} height={11} width={width} radius="sm" />
             ))}
