@@ -21,6 +21,8 @@ credentials (the CI roles deliberately can't do any of this).
   ```
 
 - [x] Run the first migrations **as `mtg_ingest`** so it owns the tables
+  (in practice the first run went in under the wrong role — see the
+  ownership fix in section 2's notes)
   (later `ALTER`s in the deploy job then need no superuser):
 
   ```bash
@@ -31,7 +33,8 @@ credentials (the CI roles deliberately can't do any of this).
 
 - [x] Set the GitHub repo **secret** `MTG_DATABASE_URL` = that session-pooler
   URI (port **5432**). Done 2026-08-04T05:39:36Z (audit-verified via
-  `gh api repos/.../actions/secrets/MTG_DATABASE_URL`).
+  `gh api repos/.../actions/secrets/MTG_DATABASE_URL`); later rotated after
+  the `mtg_ingest` password reset (section 2 notes).
 - [x] Actions → "mtg ingest" → Run workflow (defaults). First
   `workflow_dispatch` run completed successfully 2026-08-04T05:45:23Z
   ([run 30881411085](https://github.com/AustinJuliusKim/projects/actions/runs/30881411085),
@@ -45,11 +48,11 @@ credentials (the CI roles deliberately can't do any of this).
 
 ## 2. API deploy (phase 2 — puts the FastAPI service live)
 
-- [ ] Create IAM role `mtg-api-github-deploy`: policy from
+- [x] Create IAM role `mtg-api-github-deploy`: policy from
   `services/mtg-api/docs/iam-policy.json` (already includes the Bedrock
   statement for step 3), trust policy = the repo's GitHub OIDC pattern used
   by the other `*-github-deploy` roles.
-- [ ] First stack creation, manual, with full overrides:
+- [x] First stack creation, manual, with full overrides:
 
   ```bash
   cd services/mtg-api
@@ -61,9 +64,32 @@ credentials (the CI roles deliberately can't do any of this).
 
   Note the **transaction pooler, port 6543** here (Lambda), vs 5432 for
   ingest/migrations.
-- [ ] Smoke: `curl https://<ApiEndpoint output>/v1/healthz` and open
-  `/docs`.
-- [ ] Set repo **variable** `MTG_DEPLOY_ENABLED=true` — the CI deploy job on
+
+  Local build needed `sam build --use-container` (no Python 3.12 on PATH) —
+  with Docker Desktop, also needs
+  `DOCKER_HOST=unix:///Users/aukim/.docker/run/docker.sock` since the SAM CLI
+  looks for the default `/var/run/docker.sock` context, not
+  `desktop-linux`.
+
+  Hit two credential issues fixed along the way, worth knowing for next
+  time: (1) Supabase's pooler username is `<role>.<project-ref>` —
+  `mtg_ingest.<ref>`, not `mtg_ingest` — easy to conflate with the default
+  `postgres.<ref>` connection string from the dashboard's Connect dialog.
+  (2) The `mtg_ingest` password from step 1 wasn't retrievable (Postgres
+  never stores plaintext), so it was reset via `ALTER ROLE mtg_ingest WITH
+  PASSWORD '...'` and the `MTG_DATABASE_URL` secret updated to match. That
+  surfaced a deeper issue: `cards` and friends were owned by `postgres`, not
+  `mtg_ingest` (the phase-1 migration likely ran under the wrong
+  connection string too), causing `permission denied for table cards` from
+  the Lambda. Fixed with `GRANT mtg_ingest TO postgres;` (Supabase's
+  `postgres` role needs membership before it can hand off ownership) then
+  `ALTER TABLE ... OWNER TO mtg_ingest` / `ALTER SEQUENCE ... OWNER TO
+  mtg_ingest` looped over everything in `public`.
+- [x] Smoke: `curl https://<ApiEndpoint output>/v1/healthz` and open
+  `/docs`. Endpoint: `voxxyxdyu9.execute-api.us-west-2.amazonaws.com`.
+  `/v1/healthz` → `{"ok":true}`, `/docs` → 200, `/v1/cards/random` returns a
+  real card.
+- [x] Set repo **variable** `MTG_DEPLOY_ENABLED=true` — the CI deploy job on
   main is armed from now on.
 
 ## 3. Similarity (phase 3 — first real embedding run)
@@ -72,7 +98,8 @@ credentials (the CI roles deliberately can't do any of this).
   if the role was created from the current `iam-policy.json`; if the role
   predates phase 3, re-apply the policy). Ensure Bedrock model access for
   Titan Text Embeddings V2 is enabled in the us-west-2 console.
-- [ ] Set repo **variable** `MTG_EMBED_ENABLED=true`.
+- [x] Set repo **variable** `MTG_EMBED_ENABLED=true`. Done 2026-08-04T17:55Z
+  (verified via `gh variable list`).
 - [ ] Actions → "mtg ingest" → Run workflow. First embed covers all ~35k
   cards: ~1h runtime, **≈$0.50 one-time**. (Later runs only re-embed
   changed cards — pennies.)
