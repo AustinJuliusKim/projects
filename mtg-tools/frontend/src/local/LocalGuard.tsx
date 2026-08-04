@@ -22,7 +22,7 @@ import { api } from '../api/client'
 import { saveDownload } from '../api/download'
 import { importLocalDatabase } from '../api/transport-local'
 
-const useLocal = import.meta.env.VITE_BACKEND === 'local'
+export const useLocal = import.meta.env.VITE_BACKEND === 'local'
 const LOCK = 'mtg-tools-db'
 export const LAST_BUNDLE_KEY = 'mtg-tools-last-bundle-export'
 const DISMISS_KEY = 'mtg-tools-first-run-dismissed'
@@ -78,15 +78,15 @@ export function LocalGuard({ children }: { children: React.ReactNode }) {
     )
   }
   if (state === 'acquiring') return null
-  return (
-    <>
-      {useLocal && <LocalStatus />}
-      {children}
-    </>
-  )
+  return <>{children}</>
 }
 
-function LocalStatus() {
+// Rendered by App inside AppShell.Main, not here — LocalGuard wraps the
+// whole app from outside AppShell (it needs to gate the tab lock before
+// anything, including the header, mounts), but these alerts need to
+// participate in AppShell's own layout to land below the fixed header
+// rather than being covered by it.
+export function LocalStatus() {
   const [persisted, setPersisted] = useState<boolean | null>(null)
   const [firstRun, setFirstRun] = useState(false)
   const [rows, setRows] = useState<number | null>(null)

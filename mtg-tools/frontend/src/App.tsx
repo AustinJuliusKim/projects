@@ -6,7 +6,6 @@ import {
   Button,
   Group,
   Skeleton,
-  Text,
   Title,
   Tooltip,
   useComputedColorScheme,
@@ -15,6 +14,7 @@ import {
 import { notifications } from '@mantine/notifications'
 
 import { api, ApiError, type Operation } from './api/client'
+import { LocalStatus, useLocal } from './local/LocalGuard'
 import { Collection } from './routes/Collection'
 import { Imports } from './routes/Imports'
 import { Review } from './routes/Review'
@@ -94,7 +94,7 @@ export function App() {
     <AppShell header={{ height: 56 }} padding="md">
       <AppShell.Header>
         <Group h="100%" px="md" gap="lg">
-          <Text fw={650}>mtg-tools</Text>
+          <Title order={5}>mtg-tools</Title>
           {[
             ['/', 'Collection'],
             ['/sealed', 'Sealed'],
@@ -133,6 +133,7 @@ export function App() {
       </AppShell.Header>
 
       <AppShell.Main>
+        {useLocal && <LocalStatus />}
         <Routes>
           <Route path="/" element={<Collection revision={revision} onChange={bump} />} />
           <Route
