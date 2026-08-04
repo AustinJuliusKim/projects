@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: MTG card database read API (FastAPI + Mangum on Lambda behind HttpApi)
+
+Parameters:
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: Postgres connection string (Supabase transaction pooler, port 6543)
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 512 # CPU scales with memory; keeps FastAPI cold starts ~1s
+
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: mtg-api
+      Runtime: python3.12
+      Handler: mtg_api.lambda_handler.handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Description: mtg-api gateway (public; CloudFront fronting arrives with the webapp)
+
+  # Explicit log group so retention is bounded (cost control) instead of the
+  # Lambda-created never-expiring default.
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/mtg-api
+      RetentionInDays: 30
+
+Outputs:
+  ApiEndpoint:
+    Description: HttpApi endpoint
+    Value: !Sub "${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"

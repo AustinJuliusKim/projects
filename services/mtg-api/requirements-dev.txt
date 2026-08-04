@@ -1,9 +1,10 @@
 # Dev + ingest dependencies, pinned (this file is the lockfile for CI and the
-# ingest workflow). Runtime deps for the Lambda API land in src/requirements.txt
-# in phase 2.
+# ingest workflow). Runtime deps for the Lambda API are pinned in
+# src/requirements.txt (the file sam build installs) and included here.
+-r src/requirements.txt
 # The package itself, editable, so `python -m mtg_api.ingest.run` resolves.
 -e .
-psycopg[binary]==3.2.9
 httpx==0.28.1
 pytest==8.4.1
 ruff==0.12.5
+uvicorn==0.52.1
