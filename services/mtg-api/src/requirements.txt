@@ -1,0 +1,6 @@
+# Lambda runtime deps only — sam build installs this from CodeUri (src/).
+# Dev/test/ingest tooling lives in ../requirements-dev.txt, which includes
+# this file.
+fastapi==0.141.1
+mangum==0.21.0
+psycopg[binary]==3.2.9
