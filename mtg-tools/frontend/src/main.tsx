@@ -12,11 +12,12 @@ import 'mantine-datatable/styles.css'
 
 import { App } from './App'
 import { LocalGuard } from './local/LocalGuard'
+import { theme } from './theme'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* `auto` follows the OS; the header exposes a toggle that overrides it. */}
-    <MantineProvider defaultColorScheme="auto">
+    <MantineProvider theme={theme} defaultColorScheme="auto">
       <Notifications position="bottom-right" />
       <BrowserRouter>
         <LocalGuard>
