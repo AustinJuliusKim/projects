@@ -1,0 +1,710 @@
+{
+ "meta": {
+  "date": "2026-07-27",
+  "version": "5.2.2-fixture"
+ },
+ "data": [
+  {
+   "code": "40K",
+   "name": "Warhammer 40,000 Commander",
+   "releaseDate": "2022-10-07",
+   "sealedProduct": [
+    {
+     "name": "Warhammer 40000 Commander Deck Forces of the Imperium",
+     "uuid": "94158efc-0ea1-5cf7-91f2-22f84caaef3c",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2243012",
+      "cardKingdomId": "265676",
+      "cardtraderId": "211578",
+      "csiId": "339078",
+      "mcmId": "657336",
+      "scgId": "SLD-MTG-MLT-40K-EN-IMPERIUM",
+      "tcgplayerProductId": "272320",
+      "tntId": "1751742"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/40b50ceb4b4bf47b"
+     },
+     "releaseDate": "2022-10-07",
+     "cardCount": 100
+    },
+    {
+     "name": "Warhammer 40000 Commander Deck Forces of the Imperium Collectors Edition",
+     "uuid": "9dd4bff1-35ac-5703-b646-de93c5713887",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2243047",
+      "cardKingdomId": "265680",
+      "cardtraderId": "211579",
+      "csiId": "339083",
+      "mcmId": "657351",
+      "scgId": "SLD-MTG-MLT-40KCOLLECTOR-EN-IMPERIUM",
+      "tcgplayerProductId": "272318",
+      "tntId": "1751773"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/e16e01ff9c2618cd"
+     },
+     "releaseDate": "2022-10-07",
+     "cardCount": 100
+    },
+    {
+     "name": "Warhammer 40000 Commander Deck Necron Dynasties",
+     "uuid": "79a81dce-2546-5cbb-9b1f-4806d4a65204",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2243003",
+      "cardKingdomId": "265677",
+      "cardtraderId": "211580",
+      "csiId": "339080",
+      "mcmId": "657353",
+      "scgId": "SLD-MTG-MLT-40K-EN-NECRON",
+      "tcgplayerProductId": "272308",
+      "tntId": "1751744"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/c2ed24d512b7354c"
+     },
+     "releaseDate": "2022-10-07",
+     "cardCount": 100
+    },
+    {
+     "name": "Warhammer 40000 Commander Deck Necron Dynasties Collectors Edition",
+     "uuid": "97bb3015-fc6e-52d5-940d-ce5f2f4a5c9d",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2243046",
+      "cardKingdomId": "265681",
+      "cardtraderId": "211581",
+      "csiId": "339085",
+      "mcmId": "657352",
+      "scgId": "SLD-MTG-MLT-40KCOLLECTOR-EN-NECRON",
+      "tcgplayerProductId": "272311",
+      "tntId": "1751749"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/14fb3948cea4f13e"
+     },
+     "releaseDate": "2022-10-07",
+     "cardCount": 100
+    },
+    {
+     "name": "Warhammer 40000 Commander Deck The Ruinous Powers",
+     "uuid": "b99b36b2-d9db-5c60-bcc4-710f6c7cc601",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2242992",
+      "cardKingdomId": "265678",
+      "cardtraderId": "211574",
+      "csiId": "339081",
+      "mcmId": "657325",
+      "scgId": "SLD-MTG-MLT-40K-EN-POWERS",
+      "tcgplayerProductId": "272315",
+      "tntId": "1751743"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/d9229fca72a04953"
+     },
+     "releaseDate": "2022-10-07",
+     "cardCount": 100
+    },
+    {
+     "name": "Warhammer 40000 Commander Deck The Ruinous Powers Collectors Edition",
+     "uuid": "3e9933ef-fb48-5d3e-bc1c-4ce53db331d3",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2243036",
+      "cardKingdomId": "265682",
+      "cardtraderId": "211575",
+      "csiId": "339086",
+      "mcmId": "657305",
+      "scgId": "SLD-MTG-MLT-40KCOLLECTOR-EN-POWERS",
+      "tcgplayerProductId": "272317",
+      "tntId": "1751748"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/5bec625fffdd6e45"
+     },
+     "releaseDate": "2022-10-07",
+     "cardCount": 100
+    },
+    {
+     "name": "Warhammer 40000 Commander Deck Tyranid Swarm",
+     "uuid": "9321e73d-7e9d-5c63-b356-e3cc1919d045",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2243018",
+      "cardKingdomId": "265679",
+      "cardtraderId": "211576",
+      "csiId": "339079",
+      "mcmId": "657354",
+      "scgId": "SLD-MTG-MLT-40K-EN-TYRANID",
+      "tcgplayerProductId": "272314",
+      "tntId": "1751741"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/7ee07f693bf2cf21"
+     },
+     "releaseDate": "2022-10-07",
+     "cardCount": 100
+    },
+    {
+     "name": "Warhammer 40000 Commander Deck Tyranid Swarm Collectors Edition",
+     "uuid": "850a5232-bbbc-524c-8353-0c50cc1c169a",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2243048",
+      "cardKingdomId": "265683",
+      "cardtraderId": "211577",
+      "csiId": "339084",
+      "mcmId": "657355",
+      "scgId": "SLD-MTG-MLT-40KCOLLECTOR-EN-TYRANID",
+      "tcgplayerProductId": "272312",
+      "tntId": "1751746"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/f0673196b26aeb37"
+     },
+     "releaseDate": "2022-10-07",
+     "cardCount": 100
+    }
+   ]
+  },
+  {
+   "code": "CMA",
+   "name": "Commander Anthology",
+   "releaseDate": "2017-06-09",
+   "sealedProduct": [
+    {
+     "name": "Commander Anthology Commander Deck Evasive Maneuvers",
+     "uuid": "68cf5577-5cd1-51ca-be9f-33309c88d55f",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "cardtraderId": "48541",
+      "mcmId": "298276"
+     },
+     "purchaseUrls": {},
+     "releaseDate": "2017-06-01",
+     "cardCount": 100
+    },
+    {
+     "name": "Commander Anthology Commander Deck Guided by Nature",
+     "uuid": "28690cea-9be7-5a1c-9097-553700512c5d",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "cardtraderId": "48538",
+      "mcmId": "298277"
+     },
+     "purchaseUrls": {},
+     "releaseDate": "2017-06-01",
+     "cardCount": 100
+    },
+    {
+     "name": "Commander Anthology Commander Deck Heavenly Inferno",
+     "uuid": "d0c617ee-b56c-5176-baee-4dbec2c1a972",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "cardtraderId": "48539",
+      "mcmId": "298278"
+     },
+     "purchaseUrls": {},
+     "releaseDate": "2017-06-01",
+     "cardCount": 100
+    },
+    {
+     "name": "Commander Anthology Commander Deck Plunder the Graves",
+     "uuid": "600c4590-87fb-5181-ae88-e2c2952c0f74",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "cardtraderId": "48540",
+      "mcmId": "298279"
+     },
+     "purchaseUrls": {},
+     "releaseDate": "2017-06-01",
+     "cardCount": 100
+    }
+   ]
+  },
+  {
+   "code": "CMD",
+   "name": "Commander 2011",
+   "releaseDate": "2011-06-17",
+   "sealedProduct": [
+    {
+     "name": "Commander 2011 Commander Deck Counterpunch",
+     "uuid": "0be07f70-3930-59a3-9dff-6c46eaafc4c3",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "1100345",
+      "cardKingdomId": "184649",
+      "cardtraderId": "44776",
+      "csiId": "97499",
+      "mcmId": "246718",
+      "scgId": "SLD-MTG-MLT-CMD-EN-COUNTERPUNCH",
+      "tcgplayerProductId": "42095",
+      "tntId": "319876"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/d5244f40d2522e02"
+     },
+     "cardCount": 100
+    },
+    {
+     "name": "Commander 2011 Commander Deck Devour for Power",
+     "uuid": "252f4267-91d4-54f0-b49a-8b65a014d1c4",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "1100346",
+      "cardKingdomId": "184651",
+      "cardtraderId": "44777",
+      "csiId": "97500",
+      "mcmId": "246720",
+      "scgId": "SLD-MTG-MLT-CMD-EN-DEVOUR",
+      "tcgplayerProductId": "42097",
+      "tntId": "319877"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/c587c1102fc4353e"
+     },
+     "cardCount": 100
+    },
+    {
+     "name": "Commander 2011 Commander Deck Heavenly Inferno",
+     "uuid": "28ec7023-333f-5768-a8e2-061d16847766",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "1100347",
+      "cardKingdomId": "184647",
+      "cardtraderId": "44778",
+      "csiId": "97501",
+      "mcmId": "246716",
+      "scgId": "SLD-MTG-MLT-CMD-EN-HEAVENLY",
+      "tcgplayerProductId": "42093",
+      "tntId": "319878"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/9ac469fa5196510e"
+     },
+     "cardCount": 100
+    },
+    {
+     "name": "Commander 2011 Commander Deck Mirror Mastery",
+     "uuid": "778214f1-3da3-5550-9504-acadae1203da",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "1100348",
+      "cardKingdomId": "184648",
+      "cardtraderId": "44779",
+      "csiId": "97502",
+      "mcmId": "246717",
+      "scgId": "SLD-MTG-MLT-CMD-EN-MIRROR",
+      "tcgplayerProductId": "42094",
+      "tntId": "319879"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/726db4a95a361f51"
+     },
+     "cardCount": 100
+    },
+    {
+     "name": "Commander 2011 Commander Deck Political Puppets",
+     "uuid": "0adbf7af-d90b-51a9-a32a-ee7049d09b17",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "1100350",
+      "cardKingdomId": "184650",
+      "cardtraderId": "44780",
+      "csiId": "97503",
+      "mcmId": "246719",
+      "scgId": "SLD-MTG-MLT-CMD-EN-POLITICAL",
+      "tcgplayerProductId": "42096",
+      "tntId": "319880"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/01b00218a5aaf9af"
+     },
+     "cardCount": 100
+    },
+    {
+     "name": "Commander 2011 Booster Box",
+     "uuid": "fixture-booster-box-0001",
+     "category": "booster_box",
+     "subtype": "default",
+     "identifiers": {}
+    },
+    {
+     "name": "Commander 2011 Theme Deck Fake",
+     "uuid": "fixture-theme-deck-0002",
+     "category": "deck",
+     "subtype": "theme",
+     "identifiers": {}
+    },
+    {
+     "name": "Commander 2011 Duel Deck Fake",
+     "uuid": "fixture-duel-deck-0003",
+     "category": "deck",
+     "subtype": "duel",
+     "identifiers": {}
+    }
+   ]
+  },
+  {
+   "code": "MSC",
+   "name": "Marvel Super Heroes Commander",
+   "releaseDate": "2026-06-26",
+   "sealedProduct": [
+    {
+     "name": "Marvel Super Heroes Commander Deck Avengers Assemble",
+     "uuid": "05ebe68c-1df0-5e31-aa20-2a898f266289",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2686964",
+      "cardKingdomId": "327059",
+      "cardtraderId": "370631",
+      "mcmId": "869497",
+      "miniaturemarketId": "019c06a1f11c73dba2cca502adc63b40",
+      "scgId": "SLD-MTG-CMD-MSC-EN-AVENGERS",
+      "tcgplayerProductId": "675634"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/284446caba1f4245"
+     },
+     "releaseDate": "2026-06-26",
+     "cardCount": 99
+    },
+    {
+     "name": "Marvel Super Heroes Commander Deck Avengers Assemble Collector's Edition",
+     "uuid": "d308be8a-b2c5-5a3f-8896-3bf1cb5bbdb1",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2686994",
+      "cardKingdomId": "327054",
+      "cardtraderId": "370635",
+      "mcmId": "869503",
+      "miniaturemarketId": "019c06a22bb272e88501eb7ba620fb3f",
+      "scgId": "SLD-MTG-CMD-MSCCOLLECTOR-EN-AVENGERS",
+      "tcgplayerProductId": "675627"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/d57771d3d6fb3675"
+     },
+     "releaseDate": "2026-06-26",
+     "cardCount": 99
+    },
+    {
+     "name": "Marvel Super Heroes Commander Deck Doom Prevails",
+     "uuid": "aa82de23-8dbe-563f-a5b7-e401d445b1cf",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2686977",
+      "cardKingdomId": "327062",
+      "cardtraderId": "370633",
+      "mcmId": "869500",
+      "miniaturemarketId": "019c06a1fc6d70e7a0d0fb8ef7f1551b",
+      "scgId": "SLD-MTG-CMD-MSC-EN-DOOM",
+      "tcgplayerProductId": "675631"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/5bcce97e042ddfc9"
+     },
+     "releaseDate": "2026-06-26",
+     "cardCount": 99
+    },
+    {
+     "name": "Marvel Super Heroes Commander Deck Doom Prevails Collector's Edition",
+     "uuid": "de76444b-1e67-58ce-a186-747cbb631046",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2687005",
+      "cardKingdomId": "327057",
+      "cardtraderId": "370636",
+      "mcmId": "869506",
+      "miniaturemarketId": "019c06a237aa71c6bc8cdf67515e1be8",
+      "scgId": "SLD-MTG-CMD-MSCCOLLECTOR-EN-DOOM",
+      "tcgplayerProductId": "675630"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/e0add5ee07c01364"
+     },
+     "releaseDate": "2026-06-26",
+     "cardCount": 99
+    },
+    {
+     "name": "Marvel Super Heroes Commander Deck The Fantastic Four",
+     "uuid": "6c97f171-b139-5365-a4e2-51ee652f10c7",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2686972",
+      "cardKingdomId": "327061",
+      "cardtraderId": "370632",
+      "mcmId": "869499",
+      "miniaturemarketId": "019c06a2052773b283b4a79f8ecfe5f8",
+      "scgId": "SLD-MTG-CMD-MSC-EN-FANTASTIC",
+      "tcgplayerProductId": "675632"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/b4cab97f5c8b6285"
+     },
+     "releaseDate": "2026-06-26",
+     "cardCount": 99
+    },
+    {
+     "name": "Marvel Super Heroes Commander Deck The Fantastic Four Collector's Edition",
+     "uuid": "8df7848c-9899-5bab-88cd-73c21659095b",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2687004",
+      "cardKingdomId": "327056",
+      "cardtraderId": "370637",
+      "mcmId": "869505",
+      "miniaturemarketId": "019c06a24184702d9373b99728a33b0b",
+      "scgId": "SLD-MTG-CMD-MSCCOLLECTOR-EN-FANTASTIC",
+      "tcgplayerProductId": "675629"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/f8dc1a637addb13f"
+     },
+     "releaseDate": "2026-06-26",
+     "cardCount": 99
+    },
+    {
+     "name": "Marvel Super Heroes Commander Deck Wakanda Forever",
+     "uuid": "393e3767-0029-53b0-96c1-c2c9d3e79ce7",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2686971",
+      "cardKingdomId": "327060",
+      "cardtraderId": "370630",
+      "mcmId": "869498",
+      "miniaturemarketId": "019c06a20f94733fb73677030b636312",
+      "scgId": "SLD-MTG-CMD-MSC-EN-WAKANDA",
+      "tcgplayerProductId": "675633"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/2b7fc72b6c5052f9"
+     },
+     "releaseDate": "2026-06-26",
+     "cardCount": 99
+    },
+    {
+     "name": "Marvel Super Heroes Commander Deck Wakanda Forever Collector's Edition",
+     "uuid": "ed6578ff-0ad5-5024-aeda-98a153b832ed",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2687006",
+      "cardKingdomId": "327055",
+      "cardtraderId": "370634",
+      "mcmId": "869504",
+      "miniaturemarketId": "019c06a24ca470758c6b18aab43f3d6e",
+      "scgId": "SLD-MTG-CMD-MSCCOLLECTOR-EN-WAKANDA",
+      "tcgplayerProductId": "675628"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/ff54c53558aaca1a"
+     },
+     "releaseDate": "2026-06-26",
+     "cardCount": 99
+    }
+   ]
+  },
+  {
+   "code": "SCD",
+   "name": "Starter Commander Decks",
+   "releaseDate": "2022-12-02",
+   "sealedProduct": [
+    {
+     "name": "Starter Commander Deck Chaos Incarnate",
+     "uuid": "b6ea4890-4f5a-5db8-b67b-c554f054b52d",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2275525",
+      "cardKingdomId": "270186",
+      "cardtraderId": "224264",
+      "csiId": "349030",
+      "hareruyaId": "125325",
+      "mcmId": "678615",
+      "miniaturemarketId": "0190f5912fc871eaa3abef26e2012b1c",
+      "scgId": "SLD-MTG-MLT-SCD-EN-CHAOS",
+      "tcgplayerProductId": "448435",
+      "tntId": "1770669"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/639c362620b5c690"
+     },
+     "releaseDate": "2022-12-02",
+     "cardCount": 100
+    },
+    {
+     "name": "Starter Commander Deck Draconic Destruction",
+     "uuid": "eda5f16c-19f2-517e-80b7-0a50d48a91d9",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2275526",
+      "cardKingdomId": "270187",
+      "cardtraderId": "224265",
+      "csiId": "349031",
+      "hareruyaId": "125326",
+      "mcmId": "678617",
+      "miniaturemarketId": "0190f5912fcc72a3bc245d05194a1fa7",
+      "scgId": "SLD-MTG-MLT-SCD-EN-DRACONIC",
+      "tcgplayerProductId": "448436",
+      "tntId": "1770667"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/5bcce06dba9bff00"
+     },
+     "releaseDate": "2022-12-02",
+     "cardCount": 100
+    },
+    {
+     "name": "Starter Commander Deck First Flight",
+     "uuid": "bd1bb123-37d6-5961-ad5b-f14453add9b0",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2275523",
+      "cardKingdomId": "270176",
+      "cardtraderId": "224262",
+      "csiId": "349028",
+      "hareruyaId": "125323",
+      "mcmId": "678611",
+      "miniaturemarketId": "0190f5912fc073c69e14ba524343d15c",
+      "scgId": "SLD-MTG-MLT-SCD-EN-FLIGHT",
+      "tcgplayerProductId": "448434",
+      "tntId": "1770665"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/99e8a5ae830cb5c6"
+     },
+     "releaseDate": "2022-12-02",
+     "cardCount": 100
+    },
+    {
+     "name": "Starter Commander Deck Grave Danger",
+     "uuid": "a3e4cfc8-ace6-5518-affc-1331aa2c5ac3",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2275524",
+      "cardKingdomId": "270185",
+      "cardtraderId": "224263",
+      "csiId": "349029",
+      "hareruyaId": "125324",
+      "mcmId": "678614",
+      "miniaturemarketId": "0190f5912fc473798ffd63a91143774c",
+      "scgId": "SLD-MTG-MLT-SCD-EN-GRAVE",
+      "tcgplayerProductId": "448432",
+      "tntId": "1770668"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/95f518089053e5c4"
+     },
+     "releaseDate": "2022-12-02",
+     "cardCount": 100
+    },
+    {
+     "name": "Starter Commander Deck Token Triumph",
+     "uuid": "c9e98362-8c81-5f65-bf35-faeb51d5961f",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "2275527",
+      "cardKingdomId": "270188",
+      "cardtraderId": "224266",
+      "csiId": "349033",
+      "hareruyaId": "125327",
+      "mcmId": "678623",
+      "miniaturemarketId": "0190f5912fd1707f87fbee00ad95e891",
+      "scgId": "SLD-MTG-MLT-SCD-EN-TOKEN",
+      "tcgplayerProductId": "448433",
+      "tntId": "1770666"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/69dce1cfe69f7ff0"
+     },
+     "releaseDate": "2022-12-02",
+     "cardCount": 100
+    }
+   ]
+  },
+  {
+   "code": "ZNC",
+   "name": "Zendikar Rising Commander",
+   "releaseDate": "2020-09-25",
+   "sealedProduct": [
+    {
+     "name": "Zendikar Rising Commander Deck Lands Wrath",
+     "uuid": "e52b4295-49ef-507a-ab56-023ab7b0d0a4",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "1899536",
+      "cardKingdomId": "236839",
+      "cardtraderId": "146527",
+      "csiId": "302497",
+      "hareruyaId": "110459",
+      "mcmId": "495244",
+      "scgId": "SLD-MTG-MLT-ZNC-EN-LANDS",
+      "tcgplayerProductId": "221917",
+      "tntId": "1672299"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/a58b075c531dd9ef"
+     },
+     "releaseDate": "2020-09-25",
+     "cardCount": 100
+    },
+    {
+     "name": "Zendikar Rising Commander Deck Sneak Attack",
+     "uuid": "b01552aa-529f-5924-a54e-a28fdf866a55",
+     "category": "deck",
+     "subtype": "commander",
+     "identifiers": {
+      "abuId": "1899537",
+      "cardKingdomId": "236840",
+      "cardtraderId": "146528",
+      "csiId": "302498",
+      "hareruyaId": "110460",
+      "mcmId": "495239",
+      "scgId": "SLD-MTG-MLT-ZNC-EN-SNEAK",
+      "tcgplayerProductId": "221916",
+      "tntId": "1672298"
+     },
+     "purchaseUrls": {
+      "tcgplayer": "https://mtgjson.com/links/75b79ceb31e71bcb"
+     },
+     "releaseDate": "2020-09-25",
+     "cardCount": 100
+    }
+   ]
+  }
+ ]
+}

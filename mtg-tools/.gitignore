@@ -1,0 +1,44 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+
+# Generated outputs — regenerate from the exports rather than committing them.
+# The repo is public and these embed the full inventory with valuations.
+#
+# Anchored with a leading slash on purpose: an unanchored `dashboard.html`
+# also matches binders/assets/dashboard.html, which is the page template and
+# must stay tracked.
+/buylist.csv
+/ledger.csv
+/mtg_collection_tracker.csv
+/all.csv
+/sell-list.csv
+/dashboard.html
+/*.html
+
+# Your actual sealed inventory and its dated snapshots. The catalog under
+# binders/data/ IS tracked — that's reference data, not holdings.
+/sealed.csv
+/sealed_ledger.csv
+/snapshots/
+
+# Web app: the venv and the database. The database holds real holdings and
+# valuations, and this repo is public.
+/.venv/
+*.db
+*.db-wal
+*.db-shm
+
+# Front end
+node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# Playwright: the scratch database the e2e server runs against, plus its
+# artifacts. The database is deleted and recreated on every run.
+/frontend/e2e/.tmp/
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/
+/frontend/.playwright/

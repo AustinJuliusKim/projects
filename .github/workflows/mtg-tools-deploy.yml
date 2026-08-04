@@ -1,0 +1,61 @@
+name: mtg-tools deploy
+
+# Ship the SPA (local backend) to Cloudflare Pages on every push to main.
+# No-ops politely until the two secrets exist — one-time setup:
+#   1. Cloudflare dashboard → Workers & Pages → create a Pages project named
+#      `mtg-tools` (direct upload).
+#   2. Repo settings → secrets: CLOUDFLARE_API_TOKEN (Pages:Edit) and
+#      CLOUDFLARE_ACCOUNT_ID.
+# mtg-tools/docs/hosting.md has the full story (incl. why no COOP/COEP headers).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mtg-tools/**"
+      - ".github/workflows/mtg-tools-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
+    steps:
+      - name: Check for Cloudflare credentials
+        id: gate
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          echo "go=${TOKEN:+yes}" >> "$GITHUB_OUTPUT"
+          [ -n "$TOKEN" ] || echo "No CLOUDFLARE_API_TOKEN secret — skipping deploy."
+
+      - uses: actions/checkout@v7
+        if: steps.gate.outputs.go == 'yes'
+
+      - uses: actions/setup-node@v6
+        if: steps.gate.outputs.go == 'yes'
+        with:
+          node-version-file: mtg-tools/.nvmrc
+          cache: npm
+          cache-dependency-path: mtg-tools/frontend/package-lock.json
+
+      - name: Build the SPA
+        if: steps.gate.outputs.go == 'yes'
+        run: |
+          npm --prefix frontend ci
+          VITE_BACKEND=local npm --prefix frontend run build
+
+      - name: Deploy to Cloudflare Pages
+        if: steps.gate.outputs.go == 'yes'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # wrangler-action runs from the repo root regardless of this job's
+          # working-directory default, so the deploy path is spelled out.
+          command: pages deploy mtg-tools/frontend/dist --project-name=mtg-tools --branch=main

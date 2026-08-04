@@ -1,0 +1,318 @@
+name: mtg-tools tests
+
+on:
+  pull_request:
+    # `opened` alone would only test a PR's first commit — later pushes would
+    # merge untested. `synchronize` covers those, `reopened` covers revivals.
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - "mtg-tools/**"
+      - ".github/workflows/mtg-tools-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "mtg-tools/**"
+      - ".github/workflows/mtg-tools-tests.yml"
+  workflow_dispatch:
+
+# A new push to a PR makes the in-flight run obsolete. Cancelling it keeps the
+# private-repo Actions minutes down.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.9 is the floor — it is the system Python this is developed against,
+        # so it must keep working. The others catch anything that only breaks
+        # on newer runtimes.
+        python-version: ["3.9", "3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # There is deliberately no install step. The package is stdlib-only, so
+      # if it runs on a bare interpreter that claim is still true. Adding a
+      # `pip install` here would quietly let a dependency creep in.
+
+      - name: Byte-compile
+        run: python -m compileall -q binders tests run_tests.py
+
+      - name: Run tests
+        # ResourceWarning as an error catches unclosed file handles, which are
+        # easy to introduce in a package that is mostly file I/O.
+        run: python -W error::ResourceWarning run_tests.py -v
+
+      - name: Smoke-test the CLI
+        run: |
+          set -euo pipefail
+          python -m binders --help > /dev/null
+          python -m binders summary tests/fixtures/sample.csv tests/fixtures/sample2.csv
+          python -m binders tiers tests/fixtures/sample.csv tests/fixtures/sample2.csv --markdown
+          python -m binders dupes tests/fixtures/sample.csv tests/fixtures/sample2.csv --min-qty 10
+          python -m binders validate tests/fixtures/sample2.csv
+
+  webapp:
+    name: webapp
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # This job DOES install, because the web layer has dependencies. The
+      # `test` job above still runs on a bare interpreter, which is what keeps
+      # the one-way dependency arrow honest: `binders` never needs any of this.
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Byte-compile
+        run: python -m compileall -q webapp tests_webapp run_webapp_tests.py
+
+      # This suite is also where the one-way dependency is enforced, and it
+      # matters that it runs *here* — in the one job that has Flask installed.
+      # A library module that quietly imported Flask would still pass the `test`
+      # job above, because that job never has it to import.
+      #
+      # tests_webapp/test_boundary.py does the checking: it parses every binders
+      # module's AST for third-party imports, and spawns a subprocess to confirm
+      # importing the library leaves sys.modules free of flask/werkzeug/jinja2.
+      # An earlier version of this workflow repeated that as an inline `python
+      # -c`, which YAML folded onto one line and broke; one assertion with a
+      # single home beats two copies that drift.
+      - name: Run the webapp suite
+        run: python -W error::ResourceWarning run_webapp_tests.py -v
+
+  # The SPA-port gates: the local backend must (a) run the whole app against
+  # real browser OPFS, and (b) stay byte-identical with Flask on a scripted
+  # scenario covering imports, mutations, undo and every export.
+  e2e-local:
+    name: e2e-local
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: mtg-tools/.nvmrc
+          cache: npm
+          cache-dependency-path: mtg-tools/frontend/package-lock.json
+
+      - name: Install Node deps
+        run: npm --prefix frontend ci
+
+      - name: Resolve the Playwright version
+        id: pw
+        run: |
+          echo "version=$(node -p "require('./frontend/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install Chromium
+        run: npx --prefix frontend playwright install --with-deps chromium
+
+      - name: Build the local backend
+        run: VITE_BACKEND=local npm --prefix frontend run build
+
+      - name: Run the OPFS journey
+        working-directory: mtg-tools/frontend
+        run: npm run test:e2e:local
+
+  parity:
+    name: parity
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: mtg-tools/.nvmrc
+          cache: npm
+          cache-dependency-path: mtg-tools/frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          npm --prefix frontend ci
+
+      - name: Resolve the Playwright version
+        id: pw
+        run: |
+          echo "version=$(node -p "require('./frontend/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install Chromium
+        run: npx --prefix frontend playwright install --with-deps chromium
+
+      - name: Build the local backend
+        run: VITE_BACKEND=local npm --prefix frontend run build
+
+      # Boot + phase-1 endpoints + first-run + one-tab rule, in real Chromium.
+      - name: Boot smoke
+        run: node scripts/check-local-boot.mjs
+
+      # The importer: fixtures staged through webapp.importer and through the
+      # TS importer must produce deep-equal rows, then a deep-equal collection.
+      - name: Importer parity
+        run: |
+          python scripts/dump-import-parity.py /tmp/p3 \
+            tests/fixtures/sample.csv tests/fixtures/sample2.csv tests/fixtures/sealed_sample.csv
+          EXPECTED_DIR=/tmp/p3 node scripts/check-phase3-parity.mjs \
+            tests/fixtures/sample.csv tests/fixtures/sample2.csv tests/fixtures/sealed_sample.csv
+
+      # The full frozen-clock scenario: mutations, sales, undo, every export.
+      - name: Scenario parity
+        run: |
+          python scripts/dump-mutations-parity.py /tmp/p4
+          EXPECTED_DIR=/tmp/p4 node scripts/check-phase4-parity.mjs
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Pinned by .nvmrc so CI and the laptop agree. Node 20 went EOL in April
+      # 2026 and is below Vite's floor of ^20.19 || >=22.12.
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: mtg-tools/.nvmrc
+          cache: npm
+          cache-dependency-path: mtg-tools/frontend/package-lock.json
+
+      - name: Install
+        run: npm --prefix frontend ci
+
+      - name: Unit tests
+        # Covers the selection hook: the one place a UI bug becomes a data bug.
+        run: npm --prefix frontend test
+
+      - name: Build
+        # A broken front end should fail the PR, not the first `serve`.
+        run: npm --prefix frontend run build
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: mtg-tools/.nvmrc
+          cache: npm
+          cache-dependency-path: mtg-tools/frontend/package-lock.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      # Both halves, because this job runs the *whole* app: Flask serving the
+      # real build, driven through a real browser. That combination is the
+      # point — the unit suites have twice been green while the app was broken,
+      # and both times a browser against a live server would have caught it.
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Install Node deps
+        run: npm --prefix frontend ci
+
+      # ~90s of download otherwise, on every run. Keyed by the Playwright
+      # version so a bump fetches the matching browser instead of reusing a
+      # stale one.
+      - name: Resolve the Playwright version
+        id: pw
+        run: |
+          echo "version=$(node -p "require('./frontend/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install Chromium
+        # `--with-deps` needs root and installs system libraries, so it runs
+        # even on a cache hit — the cache holds the browser, not the libs.
+        run: npx --prefix frontend playwright install --with-deps chromium
+
+      - name: Build the front end
+        # The server serves `frontend/dist`, so the tests exercise what ships
+        # rather than a dev-server approximation.
+        run: npm --prefix frontend run build
+
+      - name: Run the end-to-end suite
+        working-directory: mtg-tools/frontend
+        env:
+          # CI installs into the job's own environment; there is no venv here.
+          E2E_PYTHON: python
+        run: npx playwright test
+
+      - name: Upload the report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: mtg-tools/frontend/playwright-report/
+          retention-days: 7

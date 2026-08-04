@@ -2,9 +2,9 @@
 
 ## Repo shape
 
-A monorepo of independently deployed pieces: `apps/` (choices-webapp, guided-repl, portfolio), `packages/` (shared libraries), `services/` (Lambda/API backends), `ops/` (CloudFormation for alarms, dashboards, canaries), `foundry/`.
+A monorepo of independently deployed pieces: `apps/` (choices-webapp, guided-repl, portfolio), `packages/` (shared libraries), `services/` (Lambda/API backends), `ops/` (CloudFormation for alarms, dashboards, canaries), `foundry/`, `mtg-tools/` (a self-contained MTG collection tool — stdlib-only library + Flask API + React/Mantine SPA — imported from a standalone repo with its own `CLAUDE.md` and conventions intact; deploys to Cloudflare Pages, not AWS).
 
-There is no workspace root. Each area owns its own `package.json`, deploy workflow, and AWS stack — `cd` into the area you're working in and run its scripts there. Each area's workflow runs `npm ci` plus whichever of `test`, `build`, and `check` that area actually has; several areas have no `build` script and `apps/portfolio` has no `test`.
+There is no workspace root. Each area owns its own `package.json`, deploy workflow, and cloud stack (AWS for everything except `mtg-tools/`, which is Cloudflare) — `cd` into the area you're working in and run its scripts there. Each area's workflow runs `npm ci` plus whichever of `test`, `build`, and `check` that area actually has; several areas have no `build` script and `apps/portfolio` has no `test`.
 
 Don't create an `ARCHITECTURE.md`. Repo conventions live here and project decisions live in the vault; a third source would immediately drift.
 
