@@ -110,7 +110,7 @@ jobs:
   deploy:
     # Gated on a repo variable so main stays green until the one-time ops
     # setup exists (IAM role + first manual sam deploy — see
-    # services/mtg-api/docs/OPS.md). Set MTG_DEPLOY_ENABLED=true to arm.
+    # services/mtg-api/OPS.md). Set MTG_DEPLOY_ENABLED=true to arm.
     if: >-
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
       vars.MTG_DEPLOY_ENABLED == 'true' &&
@@ -164,7 +164,7 @@ jobs:
             --no-fail-on-empty-changeset
 
   app-deploy:
-    # Same variable-gate pattern; bootstrap steps in docs/OPS.md section 4.
+    # Same variable-gate pattern; bootstrap steps in services/mtg-api/OPS.md section 4.
     if: >-
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
       vars.MTG_WEBAPP_DEPLOY_ENABLED == 'true' &&
@@ -196,7 +196,7 @@ jobs:
         run: |
           API_ORIGIN=$(node -pe "require('./deploy-params.json').ApiOriginDomain")
           if [ "$API_ORIGIN" = "FILL_AFTER_API_DEPLOY" ]; then
-            echo "::error::deploy-params.json ApiOriginDomain is still FILL_AFTER_API_DEPLOY. See services/mtg-api/docs/OPS.md section 4." >&2
+            echo "::error::deploy-params.json ApiOriginDomain is still FILL_AFTER_API_DEPLOY. See services/mtg-api/OPS.md section 4." >&2
             exit 1
           fi
       - name: Deploy CloudFormation stack

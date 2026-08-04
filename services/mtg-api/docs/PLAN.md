@@ -14,7 +14,7 @@ Build and maintain an MTG card database (à la Scryfall/Gatherer) with a differe
 
 ## Status
 
-Plan approved 2026-08-03. Phases 1–4 implemented (data layer + ingest PR #74; FastAPI service PR #75; similarity engine PR #76 — confidence calibration provisional until the first real Bedrock embed run; webapp + suggestion-feedback logging in this branch). Phase 5 (third-party API access) is next. Consolidated ops checklist: docs/OPS.md.
+Plan approved 2026-08-03. Phases 1–4 merged (data layer + ingest PR #74; FastAPI service PR #75; similarity engine PR #76 — confidence calibration provisional until the first real Bedrock embed run; webapp + suggestion-feedback logging PR #77). Phase 5 (third-party API access — hashed keys, per-key/per-IP Postgres rate limiting, consumer-facing licensing docs) in this branch. Consolidated ops checklist: OPS.md.
 
 ## Layout decision
 
@@ -80,6 +80,7 @@ Files: `migrations/0004_embeddings.sql`, `src/mtg_api/similar/{embed_text.py, sc
 - Keys: `api_keys` table storing **sha256 only** (sessions.js precedent), format `mtg_live_<32hex>`, tiers `free|supporter`, issued manually via `scripts/issue_key.py` until demand exists.
 - Rate limiting on budget: **no new WAF ACL** ($6+/mo). (a) Anonymous ceiling via the existing `ops/edge-waf.yaml` ACL associated to the distribution; (b) per-key fixed-window Postgres counter (`INSERT ... ON CONFLICT DO UPDATE SET count=count+1 RETURNING count`) in FastAPI middleware, 429 + Retry-After. Move to DynamoDB counters only if Postgres writes become the bottleneck.
 - **Licensing-compliant tiers:** anonymous unkeyed access to all card-data endpoints always exists at a modest limit; paid tiers sell only higher limits + recommendation value-add. Attribution requirements documented in `docs/third-party-api.md`.
+- **Correction (2026-08-04, phase-5 code review):** bullet (a) above assumed there was already an existing ACL to associate. There isn't one this project can use — the only ACL in the account, `CreatedByCloudFront-8bb2952d` (`ops/edge-waf.yaml`), is choices-webapp's CloudFront pricing-plan pack, import-locked to that distribution, and must not be shared. So (b), the Postgres per-key/per-IP counter, is the *only* anonymous ceiling shipped in this PR — there is no edge-level backstop yet. A real one means provisioning a new, dedicated CLOUDFRONT-scope WAF ACL for `MtgWebapp` (~$6/mo), a paid-inflection-point decision left to the user; `apps/mtg-webapp/template.yaml`'s `WebAclArn` parameter already exists to receive it whenever that happens. Details: `OPS.md` §5.
 
 ## Later / optional — RAG + trained model (honest assessment)
 
