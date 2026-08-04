@@ -64,21 +64,22 @@ human-readable reasons.
 ## Develop
 
 ```bash
-python3 -m venv .venv && . .venv/bin/activate
-pip install -r requirements-dev.txt
+make install       # create .venv, install pinned dev+ingest deps
+make up             # local pgvector Postgres on :54329
+make migrate        # apply migrations to the local db
 
-docker compose up -d      # local pgvector Postgres on :54329
-export DATABASE_URL=postgres://postgres:postgres@localhost:54329/postgres
-python scripts/migrate.py
-
-ruff check .
-pytest                    # DB-backed suites skip without TEST_DATABASE_URL
-TEST_DATABASE_URL=$DATABASE_URL pytest
+make lint
+make test           # DB-backed suites skip without TEST_DATABASE_URL
+make test-db        # same, but starts the db and includes DB-backed tests
 
 # Full local ingest of real Scryfall data, then browse the API
-python -m mtg_api.ingest.run
-python scripts/serve-local.py   # http://127.0.0.1:8000/docs
+make ingest
+make serve           # http://127.0.0.1:8000/docs
 ```
+
+Run `make help` for the full target list, including the admin/deploy
+targets (Supabase bootstrap, `sam build`/`deploy`) — those mutate real AWS
+and Supabase resources and should only ever be run manually.
 
 ## Deploy
 
@@ -102,18 +103,18 @@ across all phases lives in [`docs/OPS.md`](docs/OPS.md); summary:
 4. First stack creation is manual with full overrides:
 
    ```bash
-   sam build && sam deploy \
-     --stack-name MtgApi --region us-west-2 --resolve-s3 \
-     --capabilities CAPABILITY_IAM \
-     --parameter-overrides "DatabaseUrl=<transaction pooler URI, :6543>"
+   make deploy-bootstrap DatabaseUrl="<transaction pooler URI, :6543>"
    ```
+
+   (Runs `sam build` then `sam deploy --parameter-overrides`; use
+   `make deploy` for later, CI-mirroring updates — see `make help`.)
 
 5. Set the repo variable `MTG_DEPLOY_ENABLED=true` to arm the CI deploy job.
 6. For similarity: the role policy includes `bedrock:InvokeModel` on Titan
    Text Embeddings V2; set `MTG_EMBED_ENABLED=true` to add the embed step to
    the ingest cron (first run embeds all ~35k cards, ≈$0.50 one-time), then
-   run `scripts/eval_similar.py --fit-calibration` and commit the refreshed
-   constants in `src/mtg_api/similar/scoring.py`.
+   run `DATABASE_URL='<session pooler :5432>' make eval-calibration` and
+   commit the refreshed constants in `src/mtg_api/similar/scoring.py`.
 
 ## Attribution
 
