@@ -87,7 +87,8 @@ only once the one-time bootstrap below is done and the repo variable
 `MTG_DEPLOY_ENABLED` is `true`. CI passes no `--parameter-overrides`; the
 stack's existing `DatabaseUrl` is reused via `UsePreviousValue`.
 
-One-time bootstrap (admin credentials):
+One-time bootstrap (admin credentials) — the consolidated, ordered checklist
+across all phases lives in [`docs/OPS.md`](docs/OPS.md); summary:
 
 1. Create the Supabase project (Free tier). In SQL editor create the
    `mtg_ingest` role; run the first `scripts/migrate.py` **as that role** so

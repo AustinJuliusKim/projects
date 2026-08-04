@@ -185,3 +185,44 @@ def test_docs_and_openapi_are_public(client):
     assert client.get("/docs").status_code == 200
     spec = client.get("/openapi.json").json()
     assert "/v1/cards/search" in spec["paths"]
+
+
+def test_feedback_stores_events(client):
+    events = [
+        {
+            "event": "impression",
+            "seed_oracle_id": oracle_id_of("Sanguine Bond"),
+            "suggested_oracle_id": oracle_id_of("Exquisite Blood"),
+            "confidence": 0.8,
+            "context": "card_page",
+        },
+        {
+            "event": "click",
+            "seed_oracle_id": oracle_id_of("Sanguine Bond"),
+            "suggested_oracle_id": oracle_id_of("Exquisite Blood"),
+        },
+    ]
+    resp = client.post("/v1/feedback/suggestions", json=events)
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True, "stored": 2}
+
+
+def test_feedback_drops_unknown_cards_silently(client):
+    resp = client.post(
+        "/v1/feedback/suggestions",
+        json=[
+            {
+                "event": "impression",
+                "seed_oracle_id": oracle_id_of("Sanguine Bond"),
+                "suggested_oracle_id": "00000000-0000-0000-0000-000000000000",
+            }
+        ],
+    )
+    assert resp.status_code == 200
+    assert resp.json()["stored"] == 0
+
+
+def test_feedback_validates(client):
+    assert client.post("/v1/feedback/suggestions", json=[]).status_code == 422
+    bad = [{"event": "nope", "seed_oracle_id": "x", "suggested_oracle_id": "y"}]
+    assert client.post("/v1/feedback/suggestions", json=bad).status_code == 422

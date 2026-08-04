@@ -36,27 +36,27 @@ Full plan + costs: `projects/services/mtg-api/docs/PLAN.md`.
 
 ## Status (2026-08-04)
 
-- Phase 1 (schema + ingest) merged — PR #74. Phase 2 (FastAPI service)
-  merged — PR #75. Phase 3 (similarity engine) in review.
+- Merged: phase 1 schema+ingest (PR #74), phase 2 FastAPI service (PR #75),
+  phase 3 similarity engine (PR #76). Phase 4 webapp
+  (`apps/mtg-webapp`: search, card pages with similar-panel above the fold,
+  localStorage deck builder with deck-level suggestions, suggestion-feedback
+  logging) in review.
 - Ingest cron Mon+Thu (also keeps Supabase Free from pausing).
-- Nothing deployed to AWS yet: deploy job gated on `MTG_DEPLOY_ENABLED`.
+- Nothing deployed to AWS yet: deploys gated on `MTG_DEPLOY_ENABLED` /
+  `MTG_WEBAPP_DEPLOY_ENABLED` repo variables.
 
 ## Pending ops (blocking go-live)
 
-1. Supabase project + `mtg_ingest` role (owns the mtg tables — run first
-   migrate as that role); `MTG_DATABASE_URL` repo secret (session pooler
-   :5432); dispatch first ingest.
-2. IAM role `mtg-api-github-deploy` from `services/mtg-api/docs/iam-policy.json`
-   (includes Bedrock Titan invoke); first manual `sam deploy` with
-   `DatabaseUrl=<transaction pooler :6543>`; set `MTG_DEPLOY_ENABLED=true`.
-3. Set `MTG_EMBED_ENABLED=true` → next ingest runs the first real embed;
-   then `scripts/eval_similar.py --fit-calibration` and commit refreshed
-   confidence constants.
+Full ordered checklist with commands:
+`projects/services/mtg-api/docs/OPS.md`. Summary: (1) Supabase project +
+`mtg_ingest` role + `MTG_DATABASE_URL` secret + first ingest; (2) IAM
+deploy role + first manual `sam deploy` + `MTG_DEPLOY_ENABLED=true`;
+(3) `MTG_EMBED_ENABLED=true` → first real embed (~$0.50) → refit confidence
+calibration; (4) webapp stack + `MTG_WEBAPP_DEPLOY_ENABLED=true`.
 
 ## Roadmap
 
-Phase 4: `apps/mtg-webapp` (Vite/React 19, S3+CloudFront, search + card
-pages + deck builder skeleton; similar-cards panel above the fold; log
-suggestion feedback). Phase 5: third-party API keys/tiers (hashed keys in
-Postgres, per-key rate limiting, licensing-compliant free tier). Later:
-offline LLM re-rank batch (~$10–30) when heuristic recall plateaus.
+Phase 5: third-party API keys/tiers (hashed keys in Postgres, per-key rate
+limiting, licensing-compliant free tier). Later: offline LLM re-rank batch
+(~$10–30) when heuristic recall plateaus; no trained model before ~10k
+suggestion-feedback events (logging live since phase 4).

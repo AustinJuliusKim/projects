@@ -12,7 +12,8 @@ below.
 .
 ├── apps/        # Deployable applications (web apps, personal site)
 │   ├── choices-webapp/   # Vite/React frontend + Node.js Lambda backend (AWS SAM)
-│   └── guided-repl/      # Vite/React SPA: fixture-replayed walkthrough of using Claude Code
+│   ├── guided-repl/      # Vite/React SPA: fixture-replayed walkthrough of using Claude Code
+│   └── mtg-webapp/       # Vite/React SPA: MTG card search + deck builder over services/mtg-api
 ├── packages/    # Shared, reusable libraries
 │   └── guided-repl-protocol/  # Frame vocabulary + fixture schema shared by guided-repl + its seeder
 ├── services/    # Standalone, long-lived backends/scripts
@@ -74,6 +75,7 @@ something more permissive. Anything not listed below is reserved.
 | `apps/portfolio` | MIT for code, All Rights Reserved for written content |
 | `apps/choices-webapp` | All Rights Reserved |
 | `services/mtg-api` | All Rights Reserved |
+| `apps/mtg-webapp` | All Rights Reserved |
 | `ops/`, `foundry/`, `.claude/`, `docs/` | All Rights Reserved (root LICENSE) |
 
 Two things worth stating plainly:

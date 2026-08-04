@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - "services/mtg-api/**"
+      - "apps/mtg-webapp/**"
       - ".github/workflows/mtg.yml"
   pull_request:
     paths:
       - "services/mtg-api/**"
+      - "apps/mtg-webapp/**"
       - ".github/workflows/mtg.yml"
 
 jobs:
@@ -44,14 +46,76 @@ jobs:
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:54329/postgres
 
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mtg-webapp
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.15
+          cache: npm
+          cache-dependency-path: apps/mtg-webapp/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  # GitHub Actions has no job-level path filter, and the workflow-level paths
+  # match both the API and the webapp — these jobs diff the push range so
+  # each deploy only runs when its own directory actually changed.
+  api-changed:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: diff
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BEFORE" "${{ github.sha }}" \
+              | grep -qE '^services/mtg-api/'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  app-changed:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: diff
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BEFORE" "${{ github.sha }}" \
+              | grep -qE '^apps/mtg-webapp/'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
     # Gated on a repo variable so main stays green until the one-time ops
     # setup exists (IAM role + first manual sam deploy — see
-    # services/mtg-api/README.md). Set MTG_DEPLOY_ENABLED=true to arm.
+    # services/mtg-api/docs/OPS.md). Set MTG_DEPLOY_ENABLED=true to arm.
     if: >-
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      vars.MTG_DEPLOY_ENABLED == 'true'
-    needs: [api]
+      vars.MTG_DEPLOY_ENABLED == 'true' &&
+      needs.api-changed.outputs.changed == 'true'
+    needs: [api, api-changed]
     runs-on: ubuntu-latest
     permissions:
       id-token: write # for OIDC role assumption
@@ -98,3 +162,55 @@ jobs:
             --capabilities CAPABILITY_IAM \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
+
+  app-deploy:
+    # Same variable-gate pattern; bootstrap steps in docs/OPS.md section 4.
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      vars.MTG_WEBAPP_DEPLOY_ENABLED == 'true' &&
+      needs.app-changed.outputs.changed == 'true'
+    needs: [app, app-changed]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for OIDC role assumption
+      contents: read
+    concurrency:
+      group: mtg-webapp-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/mtg-webapp
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.15
+          cache: npm
+          cache-dependency-path: apps/mtg-webapp/package-lock.json
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::549883968767:role/mtg-api-github-deploy
+          aws-region: us-west-2
+      - run: npm ci
+      - name: Check deploy-params.json is filled in
+        run: |
+          API_ORIGIN=$(node -pe "require('./deploy-params.json').ApiOriginDomain")
+          if [ "$API_ORIGIN" = "FILL_AFTER_API_DEPLOY" ]; then
+            echo "::error::deploy-params.json ApiOriginDomain is still FILL_AFTER_API_DEPLOY. See services/mtg-api/docs/OPS.md section 4." >&2
+            exit 1
+          fi
+      - name: Deploy CloudFormation stack
+        run: |
+          STACK_NAME=$(node -pe "require('./deploy-params.json').StackName")
+          REGION=$(node -pe "require('./deploy-params.json').Region")
+          CUSTOM_DOMAIN=$(node -pe "require('./deploy-params.json').CustomDomain ?? ''")
+          CERT_ARN=$(node -pe "require('./deploy-params.json').CertificateArn ?? ''")
+          API_ORIGIN=$(node -pe "require('./deploy-params.json').ApiOriginDomain")
+          WEB_ACL_ARN=$(node -pe "require('./deploy-params.json').WebAclArn ?? ''")
+          aws cloudformation deploy \
+            --template-file template.yaml \
+            --stack-name "$STACK_NAME" \
+            --region "$REGION" \
+            --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" "ApiOriginDomain=$API_ORIGIN" "WebAclArn=$WEB_ACL_ARN" \
+            --no-fail-on-empty-changeset
+      - run: ./deploy-frontend.sh

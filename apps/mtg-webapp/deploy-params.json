@@ -1,0 +1,8 @@
+{
+  "StackName": "MtgWebapp",
+  "Region": "us-west-2",
+  "CustomDomain": "",
+  "CertificateArn": "",
+  "ApiOriginDomain": "FILL_AFTER_API_DEPLOY",
+  "WebAclArn": ""
+}

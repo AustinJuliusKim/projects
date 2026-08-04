@@ -1,0 +1,266 @@
+:root {
+  color-scheme: dark;
+  --bg: #14151a;
+  --panel: #1d1f26;
+  --text: #e8e6e3;
+  --muted: #9a97a0;
+  --accent: #d4a94f;
+  --border: #2c2e38;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, sans-serif;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1rem 3rem;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.topbar-search {
+  flex: 1;
+}
+.topbar-search input {
+  width: 100%;
+  max-width: 480px;
+  padding: 0.45rem 0.7rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
+
+button,
+select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.filters {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.chip {
+  width: 2.1rem;
+  font-weight: 700;
+}
+.chip-on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.card-tile img {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+}
+.card-placeholder {
+  aspect-ratio: 5 / 7;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.card-tile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.pager {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.2rem;
+}
+
+.card-page {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 1.6rem;
+}
+@media (max-width: 720px) {
+  .card-page {
+    grid-template-columns: 1fr;
+  }
+}
+.card-page-left img {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 0.6rem;
+}
+.card-page-left button {
+  width: 100%;
+}
+.type-line {
+  color: var(--muted);
+}
+.oracle-text {
+  white-space: pre-line;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.8rem;
+}
+.mana {
+  font-size: 0.8em;
+  color: var(--muted);
+}
+
+.similar-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.similar-list li {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+.similar-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.similar-head a {
+  flex: 1;
+}
+.reasons {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+.confidence {
+  font-size: 0.78rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+.confidence-high {
+  color: #7fd18a;
+  border-color: #2e5c36;
+}
+.confidence-medium {
+  color: var(--accent);
+  border-color: #5c4b1e;
+}
+.confidence-low {
+  color: var(--muted);
+}
+
+.printings {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.printings th,
+.printings td {
+  text-align: left;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.rulings {
+  padding-left: 1.1rem;
+}
+.rulings li {
+  margin-bottom: 0.5rem;
+}
+
+.deck-page {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.6rem;
+}
+@media (max-width: 820px) {
+  .deck-page {
+    grid-template-columns: 1fr;
+  }
+}
+.deck-list {
+  list-style: none;
+  padding: 0;
+}
+.deck-list li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.15rem 0;
+}
+.qty {
+  color: var(--muted);
+  min-width: 2rem;
+}
+.deck-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.3rem;
+}
+
+.attribution {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--muted);
+}

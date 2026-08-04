@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  MTG webapp: static site (Vite build) served via private S3 + CloudFront
+  (OAC, SPA fallback), with /api/* forwarded to the mtg-api HttpApi.
+  Plain CloudFormation (not SAM) — mirrors apps/guided-repl/template.yaml.
+
+Parameters:
+  CustomDomain:
+    Type: String
+    Default: ""
+    Description: Optional custom domain (leave blank to use the CloudFront URL)
+  CertificateArn:
+    Type: String
+    Default: ""
+    Description: ACM certificate ARN in us-east-1 for CustomDomain (required if CustomDomain is set)
+  ApiOriginDomain:
+    Type: String
+    Default: ""
+    Description: >
+      Domain of the mtg-api HttpApi endpoint (services/mtg-api ApiEndpoint
+      output, e.g. abc123.execute-api.us-west-2.amazonaws.com). Leave blank to
+      deploy the static site without the /api/* behavior.
+  WebAclArn:
+    Type: String
+    Default: ""
+    Description: >
+      Pin for a WAF web ACL already attached to the distribution (the
+      CloudFront Free plan attaches a protection-pack ACL out of band and
+      refuses updates that would remove it — same situation as
+      apps/guided-repl). Leave "" until that applies.
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
+  HasApiOrigin: !Not [!Equals [!Ref ApiOriginDomain, ""]]
+  HasWebAcl: !Not [!Equals [!Ref WebAclArn, ""]]
+
+Resources:
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  SiteOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  SiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        WebACLId: !If [HasWebAcl, !Ref WebAclArn, !Ref "AWS::NoValue"]
+        Aliases: !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasCustomDomain
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins: !If
+          - HasApiOrigin
+          - - Id: SiteS3Origin
+              DomainName: !GetAtt SiteBucket.RegionalDomainName
+              OriginAccessControlId: !GetAtt SiteOriginAccessControl.Id
+              S3OriginConfig:
+                OriginAccessIdentity: ""
+            - Id: ApiOrigin
+              DomainName: !Ref ApiOriginDomain
+              CustomOriginConfig:
+                OriginProtocolPolicy: https-only
+                OriginSSLProtocols: [TLSv1.2]
+          - - Id: SiteS3Origin
+              DomainName: !GetAtt SiteBucket.RegionalDomainName
+              OriginAccessControlId: !GetAtt SiteOriginAccessControl.Id
+              S3OriginConfig:
+                OriginAccessIdentity: ""
+        CacheBehaviors: !If
+          - HasApiOrigin
+          - # Same-origin /api/* → mtg-api (Mangum strips the /api prefix).
+            # Never cached; all viewer headers/query forwarded except Host
+            # (API Gateway needs its own Host). POST is for the anonymous
+            # suggestion-feedback log.
+            - PathPattern: "/api/*"
+              TargetOriginId: ApiOrigin
+              ViewerProtocolPolicy: https-only
+              # AWS managed "CachingDisabled" policy
+              CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+              # AWS managed "AllViewerExceptHostHeader" origin request policy
+              OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+              AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          - !Ref "AWS::NoValue"
+        DefaultCacheBehavior:
+          TargetOriginId: SiteS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          # AWS managed "CachingOptimized" policy
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          AllowedMethods: [GET, HEAD, OPTIONS]
+        CustomErrorResponses:
+          # SPA fallback: serve index.html for client-side routes
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${SiteBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution.Id}"
+
+Outputs:
+  SiteBucketName:
+    Description: S3 bucket to upload the built frontend (aws s3 sync dist/)
+    Value: !Ref SiteBucket
+  DistributionId:
+    Description: CloudFront distribution ID (for cache invalidations)
+    Value: !Ref SiteDistribution
+  DistributionDomainName:
+    Description: CloudFront domain to point your DNS CNAME/alias at
+    Value: !GetAtt SiteDistribution.DomainName
+  SiteUrl:
+    Description: Your web app URL (open this!)
+    Value: !If
+      - HasCustomDomain
+      - !Sub "https://${CustomDomain}"
+      - !Sub "https://${SiteDistribution.DomainName}"
