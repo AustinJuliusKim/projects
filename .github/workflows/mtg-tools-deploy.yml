@@ -28,6 +28,9 @@ jobs:
     steps:
       - name: Check for Cloudflare credentials
         id: gate
+        # Runs before checkout, so mtg-tools/ doesn't exist yet — override
+        # the job's working-directory default (this step touches no files).
+        working-directory: .
         env:
           TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
