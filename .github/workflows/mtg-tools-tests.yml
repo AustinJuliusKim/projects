@@ -5,7 +5,9 @@ on:
     # `opened` alone would only test a PR's first commit — later pushes would
     # merge untested. `synchronize` covers those, `reopened` covers revivals.
     types: [opened, synchronize, reopened]
-    branches: [main]
+    # No `branches:` filter here on purpose — `paths:` below already scopes
+    # this to mtg-tools changes regardless of the PR's base branch, which
+    # matters for a stacked PR (base isn't `main` until the base PR merges).
     paths:
       - "mtg-tools/**"
       - ".github/workflows/mtg-tools-tests.yml"
