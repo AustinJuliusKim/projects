@@ -1,0 +1,53 @@
+# Golden set for the similarity engine. `pairs` are famous mechanical
+# synergies — for each direction, the partner should appear high in the
+# other's /similar results. `bad_pairs` are mechanically unrelated staples
+# that must NOT look synergistic. Curated by mechanism (combo pieces, twin
+# effects, near-functional reprints), deliberately not by decklist
+# co-occurrence — that's the EDHREC bias this engine exists to avoid.
+#
+# scripts/eval_similar.py reports recall@10/25, MRR, and bad-pair leakage.
+# Gate from docs/PLAN.md: recall@10 >= 0.5 before the endpoint ships publicly.
+
+pairs:
+  - ["Exquisite Blood", "Sanguine Bond"]
+  - ["Sanguine Bond", "Vito, Thorn of the Dusk Rose"]
+  - ["Basalt Monolith", "Rings of Brighthearth"]
+  - ["Heliod, Sun-Crowned", "Walking Ballista"]
+  - ["Kiki-Jiki, Mirror Breaker", "Zealous Conscripts"]
+  - ["Splinter Twin", "Deceiver Exarch"]
+  - ["Grave Pact", "Dictate of Erebos"]
+  - ["Mikaeus, the Unhallowed", "Triskelion"]
+  - ["Isochron Scepter", "Dramatic Reversal"]
+  - ["Thassa's Oracle", "Jace, Wielder of Mysteries"]
+  - ["Lightning Bolt", "Lightning Strike"]
+  - ["Counterspell", "Cancel"]
+  - ["Llanowar Elves", "Elvish Mystic"]
+  - ["Rampant Growth", "Cultivate"]
+  - ["Ashnod's Altar", "Phyrexian Altar"]
+  - ["Blood Artist", "Zulaport Cutthroat"]
+  - ["Impact Tremors", "Purphoros, God of the Forge"]
+  - ["Panharmonicon", "Yarok, the Desecrated"]
+  - ["Deadeye Navigator", "Peregrine Drake"]
+  - ["Niv-Mizzet, Parun", "Curiosity"]
+  - ["Doubling Season", "Parallel Lives"]
+  - ["Anointed Procession", "Parallel Lives"]
+  - ["Aetherflux Reservoir", "Bolas's Citadel"]
+  - ["Sword of the Meek", "Thopter Foundry"]
+  - ["Karmic Guide", "Reveillark"]
+  - ["Devoted Druid", "Vizier of Remedies"]
+  - ["Archangel of Thune", "Spike Feeder"]
+  - ["Earthcraft", "Squirrel Nest"]
+  - ["Sensei's Divining Top", "Counterbalance"]
+  - ["Deathrite Shaman", "Wasteland"]
+
+bad_pairs:
+  - ["Lightning Bolt", "Doubling Season"]
+  - ["Counterspell", "Llanowar Elves"]
+  - ["Sol Ring", "Craterhoof Behemoth"]
+  - ["Swords to Plowshares", "Rhystic Study"]
+  - ["Brainstorm", "Blood Artist"]
+  - ["Cultivate", "Thassa's Oracle"]
+  - ["Path to Exile", "Impact Tremors"]
+  - ["Dark Ritual", "Panharmonicon"]
+  - ["Giant Growth", "Grave Pact"]
+  - ["Opt", "Ashnod's Altar"]

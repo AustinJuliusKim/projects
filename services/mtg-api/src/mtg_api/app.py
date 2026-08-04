@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from mtg_api.routes import cards, health, sets
+from mtg_api.routes import cards, health, sets, similar
 
 ATTRIBUTION = (
     "Card data © Wizards of the Coast, provided by Scryfall. Unofficial Fan "
@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(cards.router, prefix="/v1")
+    app.include_router(similar.router, prefix="/v1")
     app.include_router(sets.router, prefix="/v1")
     app.include_router(health.router, prefix="/v1")
 
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
                 "/v1/cards/autocomplete",
                 "/v1/cards/random",
                 "/v1/cards/{oracle_id}",
+                "/v1/cards/{oracle_id}/similar",
                 "/v1/cards/{oracle_id}/rulings",
                 "/v1/cards/{oracle_id}/printings",
                 "/v1/sets",

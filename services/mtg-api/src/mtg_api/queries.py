@@ -151,6 +151,50 @@ def printings_for(conn: psycopg.Connection, oracle_id: str) -> list[dict[str, An
     ).fetchall()
 
 
+def embedding_exists(conn: psycopg.Connection, oracle_id: str) -> bool:
+    return (
+        conn.execute(
+            "SELECT 1 FROM card_embeddings WHERE oracle_id = %s", (oracle_id,)
+        ).fetchone()
+        is not None
+    )
+
+
+def similar_candidates(
+    conn: psycopg.Connection,
+    oracle_id: str,
+    *,
+    seed_name: str,
+    pool: int = 200,
+    format_: str | None = None,
+    identity: str | None = None,
+) -> list[dict[str, Any]]:
+    """Top candidates by embedding cosine similarity, with the card fields the
+    hybrid scorer needs. Excludes the seed and same-name variants; optional
+    commander-identity and format-legality prefilters."""
+    # HNSW's default ef_search (40) silently caps results below our candidate
+    # pool; raise it above pool so the LIMIT is what actually limits.
+    conn.execute("SELECT set_config('hnsw.ef_search', %s, false)", (str(max(pool + 50, 100)),))
+    where = ["NOT c.is_removed", "e.oracle_id != %(seed)s", "c.name != %(seed_name)s"]
+    params: dict[str, Any] = {"seed": oracle_id, "seed_name": seed_name, "pool": pool}
+    if format_:
+        where.append("c.legalities ->> %(format)s = 'legal'")
+        params["format"] = format_.lower()
+    if identity is not None:
+        where.append("c.color_identity <@ %(identity)s")
+        params["identity"] = [ch for ch in identity.upper() if ch != "C"]
+    sql = (
+        "WITH seed AS (SELECT embedding FROM card_embeddings WHERE oracle_id = %(seed)s) "
+        "SELECT c.oracle_id, c.name, c.type_line, c.oracle_text, c.keywords, "
+        "rep.image_normal, "
+        "1 - (e.embedding <=> (SELECT embedding FROM seed)) AS cosine "
+        f"FROM card_embeddings e JOIN cards c ON c.oracle_id = e.oracle_id {REP_IMAGE_JOIN} "
+        f"WHERE {' AND '.join(where)} AND EXISTS (SELECT 1 FROM seed) "
+        "ORDER BY e.embedding <=> (SELECT embedding FROM seed) LIMIT %(pool)s"
+    )
+    return conn.execute(sql, params).fetchall()
+
+
 def all_sets(conn: psycopg.Connection) -> list[dict[str, Any]]:
     return conn.execute(
         "SELECT code, name, set_type, released_at, card_count, icon_svg_uri "

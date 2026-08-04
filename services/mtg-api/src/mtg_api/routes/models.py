@@ -43,6 +43,18 @@ class Autocomplete(BaseModel):
     names: list[str]
 
 
+class SimilarCard(BaseModel):
+    oracle_id: uuid.UUID
+    name: str
+    type_line: str | None = None
+    image_normal: str | None = None
+    # Calibrated confidence of *mechanical synergy relative to the card
+    # pool* — not a win-rate or power-level claim.
+    confidence: float
+    band: str
+    reasons: list[str]
+
+
 class Ruling(BaseModel):
     published_at: datetime.date | None = None
     comment: str

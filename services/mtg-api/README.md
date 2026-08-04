@@ -35,6 +35,25 @@ named lookup, autocomplete, random, card detail with representative printing
 images, rulings, printings with prices, sets, healthz. Interactive docs at
 `/docs`, spec at `/openapi.json`, both public.
 
+## Similarity
+
+`GET /v1/cards/{oracle_id}/similar` — mechanically synergistic suggestions,
+deliberately not decklist co-occurrence. Pipeline: Bedrock Titan V2
+embeddings (`halfvec(512)` + HNSW, `migrations/0004`) over canonical card
+text (`similar/embed_text.py`: self-references → CARDNAME, reminder text
+stripped) → top-200 cosine candidates → hybrid rescore
+(`similar/scoring.py`: 0.55 cosine + 0.25 mechanic jaccard + 0.10 type
+overlap + 0.10 resource signals) → calibrated confidence with bands and
+human-readable reasons.
+
+- `scripts/embed.py` (re-)embeds only cards whose `embed_hash` changed; runs
+  in the ingest workflow behind `MTG_EMBED_ENABLED` (needs Bedrock IAM).
+  `--fake` uses a deterministic offline embedder for tests/local dev.
+- `scripts/eval_similar.py` scores the engine against
+  `eval/golden_synergies.yaml` (recall@10 gate: ≥ 0.5);
+  `--fit-calibration` refreshes the confidence constants in `scoring.py`
+  (shipped provisional until the first real embed run).
+
 ## Environment
 
 | Var | Purpose |
@@ -89,6 +108,11 @@ One-time bootstrap (admin credentials):
    ```
 
 5. Set the repo variable `MTG_DEPLOY_ENABLED=true` to arm the CI deploy job.
+6. For similarity: the role policy includes `bedrock:InvokeModel` on Titan
+   Text Embeddings V2; set `MTG_EMBED_ENABLED=true` to add the embed step to
+   the ingest cron (first run embeds all ~35k cards, ≈$0.50 one-time), then
+   run `scripts/eval_similar.py --fit-calibration` and commit the refreshed
+   constants in `src/mtg_api/similar/scoring.py`.
 
 ## Attribution
 
