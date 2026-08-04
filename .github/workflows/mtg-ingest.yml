@@ -21,6 +21,9 @@ on:
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC role assumption for the Bedrock embed step
+      contents: read
     concurrency:
       group: mtg-ingest
       cancel-in-progress: false
@@ -59,3 +62,14 @@ jobs:
           python -m mtg_api.ingest.run
           --sources "${{ github.event.inputs.sources || 'oracle,default,rulings' }}"
           ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+      # Embedding is separately gated: it needs bedrock:InvokeModel on the
+      # deploy role (see docs/iam-policy.json). Set MTG_EMBED_ENABLED=true
+      # once that's granted; until then the cron stays green without it.
+      - uses: aws-actions/configure-aws-credentials@v6
+        if: steps.guard.outputs.configured == 'true' && vars.MTG_EMBED_ENABLED == 'true'
+        with:
+          role-to-assume: arn:aws:iam::549883968767:role/mtg-api-github-deploy
+          aws-region: us-west-2
+      - name: Embed changed cards
+        if: steps.guard.outputs.configured == 'true' && vars.MTG_EMBED_ENABLED == 'true'
+        run: python scripts/embed.py

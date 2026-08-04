@@ -4,7 +4,11 @@
 -r src/requirements.txt
 # The package itself, editable, so `python -m mtg_api.ingest.run` resolves.
 -e .
+# boto3 is dev/workflow-only: embedding runs in GitHub Actions, never in the
+# Lambda bundle.
+boto3==1.43.63
 httpx==0.28.1
 pytest==8.4.1
+pyyaml==6.0.3
 ruff==0.12.5
 uvicorn==0.52.1
