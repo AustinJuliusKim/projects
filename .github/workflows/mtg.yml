@@ -1,0 +1,45 @@
+name: mtg CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/mtg-api/**"
+      - ".github/workflows/mtg.yml"
+  pull_request:
+    paths:
+      - "services/mtg-api/**"
+      - ".github/workflows/mtg.yml"
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/mtg-api
+    services:
+      # pgvector image so 0001_extensions.sql (vector extension) applies.
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/mtg-api/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: python scripts/migrate.py --dry-run
+      - run: pytest
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:54329/postgres

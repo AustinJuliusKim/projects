@@ -14,7 +14,7 @@ Build and maintain an MTG card database (à la Scryfall/Gatherer) with a differe
 
 ## Status
 
-Plan approved 2026-08-03. Phase 1 not yet started.
+Plan approved 2026-08-03. Phase 1 (data layer + ingest) implemented; Phase 2 (FastAPI on Lambda) is next.
 
 ## Layout decision
 

@@ -1,0 +1,11 @@
+# Local Postgres for development and the integration tests. pgvector image so
+# migrations (0001 enables the vector extension) apply cleanly.
+#   docker compose up -d
+#   DATABASE_URL=postgres://postgres:postgres@localhost:54329/postgres python scripts/migrate.py
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54329:5432"

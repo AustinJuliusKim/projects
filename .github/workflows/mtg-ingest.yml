@@ -1,0 +1,61 @@
+name: mtg ingest
+
+# Scheduled Scryfall bulk ingest. Twice weekly on purpose: Supabase Free
+# pauses projects after ~7 idle days and a weekly cron races that window
+# exactly — Mon+Thu keeps the database warm with margin and refreshes prices.
+# Scheduled workflows ignore paths: filters, hence a separate file from
+# mtg.yml.
+on:
+  schedule:
+    - cron: "17 9 * * 1,4"
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: "Comma-separated: oracle, default, rulings (order matters)"
+        default: "oracle,default,rulings"
+      force:
+        description: "Ingest even if bulk files are unchanged"
+        type: boolean
+        default: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: mtg-ingest
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: services/mtg-api
+    env:
+      DATABASE_URL: ${{ secrets.MTG_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v7
+      # Until the MTG_DATABASE_URL secret is configured (see the phase-1 ops
+      # tasks), the cron would fail twice a week and spam failure emails —
+      # no-op cleanly instead.
+      - name: Check database secret is configured
+        id: guard
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "MTG_DATABASE_URL secret not configured — skipping ingest." >> "$GITHUB_STEP_SUMMARY"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.configured == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/mtg-api/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+        if: steps.guard.outputs.configured == 'true'
+      - run: python scripts/migrate.py
+        if: steps.guard.outputs.configured == 'true'
+      - name: Ingest
+        if: steps.guard.outputs.configured == 'true'
+        run: >-
+          python -m mtg_api.ingest.run
+          --sources "${{ github.event.inputs.sources || 'oracle,default,rulings' }}"
+          ${{ github.event.inputs.force == 'true' && '--force' || '' }}

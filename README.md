@@ -16,7 +16,8 @@ below.
 ├── packages/    # Shared, reusable libraries
 │   └── guided-repl-protocol/  # Frame vocabulary + fixture schema shared by guided-repl + its seeder
 ├── services/    # Standalone, long-lived backends/scripts
-│   └── guided-repl-seeder/    # Node CLI that records real Claude Code runs into fixtures
+│   ├── guided-repl-seeder/    # Node CLI that records real Claude Code runs into fixtures
+│   └── mtg-api/               # MTG card database: Scryfall ingest + Postgres (FastAPI service to come)
 └── docs/        # Cross-cutting repo documentation
 ```
 
@@ -72,6 +73,7 @@ something more permissive. Anything not listed below is reserved.
 | `services/guided-repl-seeder` | MIT |
 | `apps/portfolio` | MIT for code, All Rights Reserved for written content |
 | `apps/choices-webapp` | All Rights Reserved |
+| `services/mtg-api` | All Rights Reserved |
 | `ops/`, `foundry/`, `.claude/`, `docs/` | All Rights Reserved (root LICENSE) |
 
 Two things worth stating plainly:
