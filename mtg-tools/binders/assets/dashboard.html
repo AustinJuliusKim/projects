@@ -1,0 +1,132 @@
+<title>__TITLE__</title>
+<style>
+/*__CSS__*/
+</style>
+<!--__HEAD_END__-->
+
+<div class="wrap">
+  <header class="bar">
+    <div class="hero">
+      <span class="hero-label">Marked to sell</span>
+      <span class="hero-value" id="sell-total">$0.00</span>
+      <span class="hero-sub" id="sell-sub">Nothing marked yet — start with the top rows.</span>
+    </div>
+    <div class="tiles">
+      <div class="tile">
+        <span class="tile-label">Collection</span>
+        <span class="tile-value" id="tile-total"></span>
+      </div>
+      <div class="tile">
+        <span class="tile-label">Cards</span>
+        <span class="tile-value" id="tile-cards"></span>
+      </div>
+      <div class="tile">
+        <span class="tile-label">Sell → cash</span>
+        <span class="tile-value" id="tile-cash">$0.00</span>
+      </div>
+      <div class="tile">
+        <span class="tile-label">Sell → credit</span>
+        <span class="tile-value" id="tile-credit">$0.00</span>
+      </div>
+    </div>
+    <div class="bar-actions">
+      <button class="btn" id="theme-toggle" type="button">Dark</button>
+      <button class="btn" id="reset" type="button">Clear verdicts</button>
+      <button class="btn btn-primary" id="export" type="button" disabled>Export sell list</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="filters" aria-label="Filters">
+    <label>Price ≥ <input type="number" id="f-price" min="0" step="1" placeholder="0" /></label>
+    <label>Rarity <select id="f-rarity"><option value="">any</option></select></label>
+    <label>Set <select id="f-set"><option value="">any</option></select></label>
+    <label>Binder <select id="f-source"><option value="">any</option></select></label>
+    <label>Verdict <select id="f-verdict">
+      <option value="">any</option>
+      <option value="undecided">undecided</option>
+      <option value="sell">sell</option>
+      <option value="keep">keep</option>
+    </select></label>
+    <label><input type="checkbox" id="f-foil" /> Foil only</label>
+    <label><input type="checkbox" id="f-flagged" /> Flagged only</label>
+    <label>Name <input type="text" id="f-name" placeholder="search" /></label>
+    <button class="btn" id="clear-filters" type="button">Clear</button>
+    <span class="scope" id="scope"></span>
+  </section>
+
+  <section class="charts">
+    <article class="card">
+      <div class="card-head">
+        <h2>Where the value sits</h2>
+        <button class="card-toggle" type="button" data-table="chart-conc">Table</button>
+      </div>
+      <p id="conc-caption"></p>
+      <div class="plot" id="chart-conc"></div>
+      <div hidden id="chart-conc-table"></div>
+    </article>
+
+    <article class="card">
+      <div class="card-head">
+        <h2>What a buylist pays</h2>
+        <button class="card-toggle" type="button" data-table="chart-tiers">Table</button>
+      </div>
+      <p>Market value against estimated cash and store credit, per price band.</p>
+      <div class="legend" id="tiers-legend"></div>
+      <div class="plot" id="chart-tiers"></div>
+      <div hidden id="chart-tiers-table"></div>
+    </article>
+
+    <article class="card">
+      <div class="card-head">
+        <h2>Value by binder</h2>
+        <button class="card-toggle" type="button" data-table="chart-sources">Table</button>
+      </div>
+      <p>As scanned, before merging — so a card in two binders counts once each.</p>
+      <div class="plot" id="chart-sources"></div>
+      <div hidden id="chart-sources-table"></div>
+    </article>
+
+    <article class="card">
+      <div class="card-head">
+        <h2>Top sets by value</h2>
+        <button class="card-toggle" type="button" data-table="chart-sets">Table</button>
+      </div>
+      <p id="sets-caption"></p>
+      <div class="plot" id="chart-sets"></div>
+      <div hidden id="chart-sets-table"></div>
+    </article>
+  </section>
+
+  <section class="table-wrap">
+    <table class="triage" id="triage">
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="display">Card</th>
+          <th class="sortable" data-sort="setCode">Set</th>
+          <th>Rarity</th>
+          <th class="sortable num" data-sort="qty">Qty</th>
+          <th class="sortable num" data-sort="cents">Each</th>
+          <th class="sortable num" data-sort="totalCents">Total</th>
+          <th>Flags</th>
+          <th>Verdict</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>No cards match these filters.</div>
+  </section>
+
+  <footer>
+    Generated __GENERATED__ from <code id="files"></code> ·
+    <span id="storage-note"></span>
+  </footer>
+</div>
+
+<div class="tip" id="tip" hidden></div>
+
+<script type="application/json" id="payload">__PAYLOAD__</script>
+<script>
+/*__JS__*/
+</script>

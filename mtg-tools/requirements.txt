@@ -1,0 +1,9 @@
+# Dependencies for the `webapp` package ONLY.
+#
+# `binders` itself stays stdlib-only and must keep passing `run_tests.py` with
+# nothing installed — that is what makes the dependency arrow one-way, and it is
+# asserted by tests_webapp/test_boundary.py.
+#
+# The stdlib route for the web layer is genuinely closed: `cgi`, the stdlib's
+# multipart parser, was removed in Python 3.13 under PEP 594, and CI tests 3.13.
+Flask>=2.3,<4

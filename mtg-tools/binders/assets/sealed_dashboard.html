@@ -1,0 +1,136 @@
+<title>__TITLE__</title>
+<style>
+/*__CSS__*/
+</style>
+<!--__HEAD_END__-->
+
+<div class="wrap">
+  <header class="bar">
+    <div class="hero">
+      <span class="hero-label">Marked to sell</span>
+      <span class="hero-value" id="sell-total">$0.00</span>
+      <span class="hero-sub" id="sell-sub">Nothing marked yet — start with the top rows.</span>
+    </div>
+    <div class="tiles">
+      <div class="tile">
+        <span class="tile-label">Shelf value</span>
+        <span class="tile-value" id="tile-total"></span>
+      </div>
+      <div class="tile">
+        <span class="tile-label">Decks</span>
+        <span class="tile-value" id="tile-decks"></span>
+      </div>
+      <div class="tile">
+        <span class="tile-label">Unpriced</span>
+        <span class="tile-value" id="tile-unpriced"></span>
+      </div>
+      <div class="tile" id="tile-gain-wrap" hidden>
+        <span class="tile-label">Gain vs cost</span>
+        <span class="tile-value" id="tile-gain"></span>
+      </div>
+    </div>
+    <div class="bar-actions">
+      <button class="btn" id="theme-toggle" type="button">Dark</button>
+      <button class="btn" id="reset" type="button">Clear verdicts</button>
+      <button class="btn btn-primary" id="export" type="button" disabled>Export sell list</button>
+    </div>
+  </header>
+
+  <div class="banner" id="coverage-banner" hidden></div>
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="filters" aria-label="Filters">
+    <label>Price ≥ <input type="number" id="f-price" min="0" step="1" placeholder="0" /></label>
+    <label>Year <select id="f-year"><option value="">any</option></select></label>
+    <label>Set <select id="f-set"><option value="">any</option></select></label>
+    <label>Verdict <select id="f-verdict">
+      <option value="">any</option>
+      <option value="undecided">undecided</option>
+      <option value="sell">sell</option>
+      <option value="keep">keep</option>
+    </select></label>
+    <label><input type="checkbox" id="f-unpriced" /> Needs a price</label>
+    <label><input type="checkbox" id="f-flagged" /> Flagged only</label>
+    <label>Name <input type="text" id="f-name" placeholder="search" /></label>
+    <button class="btn" id="clear-filters" type="button">Clear</button>
+    <span class="scope" id="scope"></span>
+  </section>
+
+  <section class="charts">
+    <article class="card">
+      <div class="card-head">
+        <h2>Where the value sits</h2>
+        <button class="card-toggle" type="button" data-table="chart-conc">Table</button>
+      </div>
+      <p id="conc-caption"></p>
+      <div class="plot" id="chart-conc"></div>
+      <div hidden id="chart-conc-table"></div>
+    </article>
+
+    <article class="card">
+      <div class="card-head">
+        <h2>Value by release year</h2>
+        <button class="card-toggle" type="button" data-table="chart-years">Table</button>
+      </div>
+      <p>Older precons climb; recent ones sit near their release price.</p>
+      <div class="plot" id="chart-years"></div>
+      <div hidden id="chart-years-table"></div>
+    </article>
+
+    <article class="card">
+      <div class="card-head">
+        <h2>Top decks by value</h2>
+        <button class="card-toggle" type="button" data-table="chart-top">Table</button>
+      </div>
+      <p id="top-caption"></p>
+      <div class="plot" id="chart-top"></div>
+      <div hidden id="chart-top-table"></div>
+    </article>
+
+    <article class="card">
+      <div class="card-head">
+        <h2>How much is actually priced</h2>
+        <button class="card-toggle" type="button" data-table="chart-coverage">Table</button>
+      </div>
+      <p id="coverage-caption"></p>
+      <div class="plot" id="chart-coverage"></div>
+      <div hidden id="chart-coverage-table"></div>
+    </article>
+  </section>
+
+  <section class="table-wrap">
+    <table class="triage" id="triage">
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="display">Deck</th>
+          <th class="sortable" data-sort="setCode">Set</th>
+          <th class="sortable" data-sort="year">Year</th>
+          <th class="sortable num" data-sort="qty">Qty</th>
+          <th class="sortable num" data-sort="cents">Each</th>
+          <th class="sortable num" data-sort="totalCents">Total</th>
+          <th class="num">Gain</th>
+          <th>Flags</th>
+          <th>Price</th>
+          <th>Verdict</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>No decks match these filters.</div>
+  </section>
+
+  <footer>
+    Generated __GENERATED__ from <code id="file"></code> ·
+    <span id="storage-note"></span>
+    <br />
+    Prices are entered by hand — no free source publishes realized sale prices for
+    sealed product. Figures cover priced decks only.
+  </footer>
+</div>
+
+<div class="tip" id="tip" hidden></div>
+
+<script type="application/json" id="payload">__PAYLOAD__</script>
+<script>
+/*__JS__*/
+</script>
