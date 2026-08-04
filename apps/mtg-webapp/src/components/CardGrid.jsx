@@ -1,31 +1,38 @@
 import { Link } from "react-router-dom";
+import { SimpleGrid, Card, Image, Text, Group, ActionIcon, Stack } from "@mantine/core";
 
 export default function CardGrid({ cards, onAdd }) {
-  if (!cards.length) return <p className="muted">No cards.</p>;
+  if (!cards.length) return <Text c="dimmed">No cards.</Text>;
   return (
-    <div className="card-grid">
+    <SimpleGrid cols={{ base: 2, xs: 3, sm: 4, md: 5 }} spacing="md" mt="md">
       {cards.map((card) => (
-        <div key={card.oracle_id} className="card-tile">
-          <Link to={`/card/${card.oracle_id}`}>
-            {card.image_normal || card.image_small ? (
-              <img src={card.image_normal || card.image_small} alt={card.name} loading="lazy" />
-            ) : (
-              <div className="card-placeholder">
-                <strong>{card.name}</strong>
-                <span>{card.type_line}</span>
-              </div>
-            )}
-          </Link>
-          <div className="card-tile-row">
-            <Link to={`/card/${card.oracle_id}`}>{card.name}</Link>
+        <Card key={card.oracle_id} withBorder padding="sm" radius="md">
+          <Card.Section>
+            <Link to={`/card/${card.oracle_id}`}>
+              {card.image_normal || card.image_small ? (
+                <Image src={card.image_normal || card.image_small} alt={card.name} loading="lazy" />
+              ) : (
+                <Stack p="md" gap={4} mih={200} justify="center">
+                  <Text fw={700}>{card.name}</Text>
+                  <Text size="sm" c="dimmed">
+                    {card.type_line}
+                  </Text>
+                </Stack>
+              )}
+            </Link>
+          </Card.Section>
+          <Group justify="space-between" wrap="nowrap" mt="xs" gap="xs">
+            <Text component={Link} to={`/card/${card.oracle_id}`} size="sm" fw={600} lineClamp={1}>
+              {card.name}
+            </Text>
             {onAdd && (
-              <button onClick={() => onAdd(card)} title="Add to deck">
+              <ActionIcon onClick={() => onAdd(card)} variant="light" title="Add to deck" size="sm">
                 +
-              </button>
+              </ActionIcon>
             )}
-          </div>
-        </div>
+          </Group>
+        </Card>
       ))}
-    </div>
+    </SimpleGrid>
   );
 }

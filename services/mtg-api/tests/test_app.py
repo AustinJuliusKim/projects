@@ -147,6 +147,20 @@ def test_search_page_size_cap(client):
     assert client.get("/v1/cards/search", params={"page_size": 101}).status_code == 422
 
 
+def test_search_q_min_length(client):
+    # A single leftover character (debounced live typing mid-backspace)
+    # is rejected — the webapp itself is expected to skip firing this case
+    # (see apps/mtg-webapp/src/App.jsx), this is the backend-side floor
+    # matching /autocomplete's existing min_length=2.
+    assert client.get("/v1/cards/search", params={"q": "a"}).status_code == 422
+
+
+def test_search_omitted_q_is_still_unfiltered_browsing(client):
+    # Omitting q entirely (not "too short") must stay legal — filter-only
+    # searches (color/format/etc, no text) are a real, common case.
+    assert client.get("/v1/cards/search").status_code == 200
+
+
 def test_autocomplete(client):
     body = client.get("/v1/cards/autocomplete", params={"q": "light"}).json()
     assert "Lightning Bolt" in body["names"]

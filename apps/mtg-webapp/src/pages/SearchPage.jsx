@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Chip, Group, Select, Pagination, Text, Stack, Alert } from "@mantine/core";
 
-import { searchCards } from "../api.js";
+import { isAbortError, searchCards } from "../api.js";
 import { addCard, loadDeck, saveDeck } from "../deck.js";
 import CardGrid from "../components/CardGrid.jsx";
 
@@ -24,13 +25,16 @@ export default function SearchPage() {
       setResult(null);
       return;
     }
-    let alive = true;
-    searchCards({ q: q || null, identity: identity || null, format: format || null, order, page })
-      .then((r) => alive && setResult(r))
-      .catch((e) => alive && setError(e.message));
-    return () => {
-      alive = false;
-    };
+    const controller = new AbortController();
+    searchCards(
+      { q: q || null, identity: identity || null, format: format || null, order, page },
+      { signal: controller.signal },
+    )
+      .then(setResult)
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message);
+      });
+    return () => controller.abort();
   }, [q, identity, format, order, page]);
 
   function patch(next) {
@@ -40,12 +44,10 @@ export default function SearchPage() {
     );
   }
 
-  function toggleColor(c) {
-    patch({
-      identity: identity.includes(c)
-        ? identity.replace(c, "")
-        : COLORS.filter((x) => identity.includes(x) || x === c).join(""),
-    });
+  function toggleIdentity(selected) {
+    // Chip.Group hands back whatever order was clicked; keep canonical
+    // WUBRG order regardless, matching the original toggle behavior.
+    patch({ identity: COLORS.filter((c) => selected.includes(c)).join("") });
   }
 
   function onAdd(card) {
@@ -55,56 +57,59 @@ export default function SearchPage() {
   const pages = result ? Math.max(1, Math.ceil(result.total / result.page_size)) : 1;
 
   return (
-    <div>
-      <div className="filters">
-        {COLORS.map((c) => (
-          <button
-            key={c}
-            className={`chip chip-${c} ${identity.includes(c) ? "chip-on" : ""}`}
-            onClick={() => toggleColor(c)}
-          >
-            {c}
-          </button>
-        ))}
-        <select value={format} onChange={(e) => patch({ format: e.target.value })}>
-          {FORMATS.map((f) => (
-            <option key={f} value={f}>
-              {f || "any format"}
-            </option>
-          ))}
-        </select>
-        <select value={order} onChange={(e) => patch({ order: e.target.value })}>
-          <option value="name">by name</option>
-          <option value="mv">by mana value</option>
-          <option value="edhrec">by popularity</option>
-        </select>
-      </div>
-      {error && <p className="muted">Search failed: {error}</p>}
+    <Stack>
+      <Group gap="sm" wrap="wrap">
+        <Chip.Group multiple value={identity.split("")} onChange={toggleIdentity}>
+          <Group gap={6}>
+            {COLORS.map((c) => (
+              <Chip key={c} value={c} size="sm">
+                {c}
+              </Chip>
+            ))}
+          </Group>
+        </Chip.Group>
+        <Select
+          data={FORMATS.map((f) => ({ value: f, label: f || "any format" }))}
+          value={format}
+          onChange={(v) => patch({ format: v || "" })}
+          w={160}
+          allowDeselect={false}
+          aria-label="Format"
+        />
+        <Select
+          data={[
+            { value: "name", label: "by name" },
+            { value: "mv", label: "by mana value" },
+            { value: "edhrec", label: "by popularity" },
+          ]}
+          value={order}
+          onChange={(v) => patch({ order: v || "name" })}
+          w={170}
+          allowDeselect={false}
+          aria-label="Order"
+        />
+      </Group>
+
+      {error && <Alert color="red">Search failed: {error}</Alert>}
       {!result && !error && (
-        <p className="muted">
+        <Text c="dimmed">
           Search by rules text (“deals damage to each”), name, or type — then filter by color
           identity and format.
-        </p>
+        </Text>
       )}
       {result && (
         <>
-          <p className="muted">{result.total} cards</p>
+          <Text c="dimmed" size="sm">
+            {result.total} cards
+          </Text>
           <CardGrid cards={result.cards} onAdd={onAdd} />
           {pages > 1 && (
-            <div className="pager">
-              <button disabled={page <= 1} onClick={() => patch({ page: page - 1 })}>
-                ‹ prev
-              </button>
-              <span>
-                {page} / {pages}
-              </span>
-              <button disabled={page >= pages} onClick={() => patch({ page: page + 1 })}>
-                next ›
-              </button>
-            </div>
+            <Group justify="center" mt="md">
+              <Pagination value={page} onChange={(p) => patch({ page: p })} total={pages} />
+            </Group>
           )}
         </>
       )}
-    </div>
+    </Stack>
   );
 }

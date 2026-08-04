@@ -340,3 +340,71 @@ def test_fails_open_when_the_rate_check_itself_raises(fresh_schema, monkeypatch)
         resp = c.get("/v1/sets")
     assert resp.status_code == 200
     assert "x-ratelimit-limit" not in resp.headers
+
+
+# ---- search/autocomplete: separate counter, higher ceiling -------------
+
+
+@needs_db
+def test_search_path_gets_the_search_anonymous_limit(db_client):
+    resp = db_client.get("/v1/cards/search")
+    assert resp.status_code == 200
+    assert resp.headers["x-ratelimit-limit"] == str(ratelimit.SEARCH_ANONYMOUS_LIMIT)
+
+
+@needs_db
+def test_autocomplete_path_gets_the_search_anonymous_limit(db_client):
+    resp = db_client.get("/v1/cards/autocomplete", params={"q": "bo"})
+    assert resp.status_code == 200
+    assert resp.headers["x-ratelimit-limit"] == str(ratelimit.SEARCH_ANONYMOUS_LIMIT)
+
+
+@needs_db
+def test_search_key_gets_the_search_free_limit(db_client):
+    key = _insert_key("free")
+    resp = db_client.get("/v1/cards/search", headers={"X-Api-Key": key})
+    assert resp.status_code == 200
+    assert resp.headers["x-ratelimit-limit"] == str(ratelimit.SEARCH_FREE_LIMIT)
+
+
+@needs_db
+def test_search_counter_is_independent_of_the_general_counter(db_client, monkeypatch):
+    # Exhaust the (tiny, patched) general anonymous budget on /v1/sets —
+    # search must be unaffected, since it's a different identifier/row.
+    monkeypatch.setattr(ratelimit, "ANONYMOUS_LIMIT", 1)
+    frozen_window = ratelimit._window_start(datetime.now(UTC))
+    monkeypatch.setattr(ratelimit, "_window_start", lambda now: frozen_window)
+
+    ok = db_client.get("/v1/sets")
+    denied = db_client.get("/v1/sets")
+    assert ok.status_code == 200
+    assert denied.status_code == 429
+
+    # Search traffic on the same caller still goes through — separate
+    # counter, untouched by the general budget being exhausted.
+    still_ok = db_client.get("/v1/cards/search")
+    assert still_ok.status_code == 200
+    assert still_ok.headers["x-ratelimit-limit"] == str(ratelimit.SEARCH_ANONYMOUS_LIMIT)
+
+    with psycopg.connect(TEST_DATABASE_URL) as c:
+        identifiers = {
+            row[0]
+            for row in c.execute(
+                "SELECT identifier FROM rate_counters WHERE window_start = %s", (frozen_window,)
+            )
+        }
+    assert identifiers == {"ip:127.0.0.1", "ip:127.0.0.1:search"}
+
+
+@needs_db
+def test_search_429_shape_at_the_limit(db_client, monkeypatch):
+    monkeypatch.setattr(ratelimit, "SEARCH_ANONYMOUS_LIMIT", 1)
+    frozen_window = ratelimit._window_start(datetime.now(UTC))
+    monkeypatch.setattr(ratelimit, "_window_start", lambda now: frozen_window)
+
+    ok = db_client.get("/v1/cards/search")
+    denied = db_client.get("/v1/cards/search")
+
+    assert ok.status_code == 200
+    assert denied.status_code == 429
+    assert denied.headers["x-ratelimit-limit"] == "1"
