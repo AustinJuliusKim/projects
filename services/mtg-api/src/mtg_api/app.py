@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from mtg_api.ratelimit import RateLimitMiddleware
 from mtg_api.routes import cards, feedback, health, sets, similar
 
 ATTRIBUTION = (
@@ -19,6 +20,10 @@ def create_app() -> FastAPI:
             f"rulings, and sets. {ATTRIBUTION}"
         ),
     )
+    # Added before CORSMiddleware so CORS ends up outermost (Starlette
+    # wraps in reverse-add order): preflight is answered before the rate
+    # check runs, and CORS headers still land on 429 responses.
+    app.add_middleware(RateLimitMiddleware)
     # Public, cookie-less API — nothing to protect from cross-origin reads.
     # POST exists only for the anonymous suggestion-feedback log.
     app.add_middleware(
@@ -26,6 +31,14 @@ def create_app() -> FastAPI:
         allow_origins=["*"],
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
+        # Browsers hide response headers from cross-origin JS by default;
+        # third-party callers need these to implement backoff.
+        expose_headers=[
+            "X-RateLimit-Limit",
+            "X-RateLimit-Remaining",
+            "X-RateLimit-Reset",
+            "Retry-After",
+        ],
     )
     app.include_router(cards.router, prefix="/v1")
     app.include_router(similar.router, prefix="/v1")

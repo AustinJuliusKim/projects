@@ -28,7 +28,7 @@ ingest, `python scripts/serve-local.py`).
 ## Deploy
 
 One-time bootstrap and the CI deploy gate are documented in
-[`../../services/mtg-api/docs/OPS.md`](../../services/mtg-api/docs/OPS.md)
+[`../../services/mtg-api/OPS.md`](../../services/mtg-api/OPS.md)
 (section 4). Summary: fill `deploy-params.json` (`ApiOriginDomain` = the
 MtgApi stack's `ApiEndpoint` output; domain/cert optional), deploy
 `template.yaml`, run `./deploy-frontend.sh`, then set the repo variable

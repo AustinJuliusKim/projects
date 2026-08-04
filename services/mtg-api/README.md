@@ -54,6 +54,15 @@ human-readable reasons.
   `--fit-calibration` refreshes the confidence constants in `scoring.py`
   (shipped provisional until the first real embed run).
 
+## API keys & rate limits
+
+Every endpoint works anonymously; an API key (`mtg_live_...`, issued
+manually — see `scripts/issue_key.py`) only buys a higher per-minute rate
+limit, never access to card data itself. Full consumer-facing reference —
+how to send a key, tier limits, the 429/`Retry-After`/`X-RateLimit-*`
+contract, licensing/attribution — in
+[`docs/third-party-api.md`](docs/third-party-api.md).
+
 ## Environment
 
 | Var | Purpose |
@@ -88,7 +97,7 @@ only once the one-time bootstrap below is done and the repo variable
 stack's existing `DatabaseUrl` is reused via `UsePreviousValue`.
 
 One-time bootstrap (admin credentials) — the consolidated, ordered checklist
-across all phases lives in [`docs/OPS.md`](docs/OPS.md); summary:
+across all phases lives in [`OPS.md`](OPS.md); summary:
 
 1. Create the Supabase project (Free tier). In SQL editor create the
    `mtg_ingest` role; run the first `scripts/migrate.py` **as that role** so

@@ -2,25 +2,27 @@
 
 Every manual step needed to take the MTG card database from merged code to
 live service, consolidated from PRs #74 (plan + phase 1), #75 (phase 2),
-#76 (phase 3), and the phase 4 webapp PR. Steps are ordered — each block
-depends on the ones before it. Check items off here as they're done; this
-file is the living checklist (the per-PR "Ops tasks" sections are the
-historical record).
+#76 (phase 3), #77 (phase 4 webapp), and this PR (phase 5 — third-party API
+keys + rate limiting). Steps are ordered — each block depends on the ones
+before it. Check items off here as they're done; this file is the living
+checklist (the per-PR "Ops tasks" sections are the historical record).
 
 All AWS work is in account `549883968767`, region `us-west-2`, with admin
 credentials (the CI roles deliberately can't do any of this).
 
 ## 1. Database (phase 1 — enables the ingest cron)
 
-- [ ] Create the Supabase project, **Free tier**.
-- [ ] In the SQL editor, create the ingest role and let it own the schema:
+- [x] Create the Supabase project, **Free tier**.
+- [x] In the SQL editor, create the ingest role and let it own the schema:
 
   ```sql
   CREATE ROLE mtg_ingest LOGIN PASSWORD '<generate>';
   GRANT ALL ON SCHEMA public TO mtg_ingest;
   ```
 
-- [ ] Run the first migrations **as `mtg_ingest`** so it owns the tables
+- [x] Run the first migrations **as `mtg_ingest`** so it owns the tables
+  (in practice the first run went in under the wrong role — see the
+  ownership fix in section 2's notes)
   (later `ALTER`s in the deploy job then need no superuser):
 
   ```bash
@@ -29,12 +31,18 @@ credentials (the CI roles deliberately can't do any of this).
     python scripts/migrate.py
   ```
 
-- [ ] Set the GitHub repo **secret** `MTG_DATABASE_URL` = that session-pooler
-  URI (port **5432**).
-- [ ] Actions → "mtg ingest" → Run workflow (defaults). Then verify in the
-  SQL editor: `SELECT count(*) FROM cards;` ≈ 35k,
-  `SELECT * FROM ingest_runs ORDER BY id DESC LIMIT 3;`,
-  `SELECT pg_size_pretty(pg_database_size(current_database()));` (~200MB).
+- [x] Set the GitHub repo **secret** `MTG_DATABASE_URL` = that session-pooler
+  URI (port **5432**). Done 2026-08-04T05:39:36Z (audit-verified via
+  `gh api repos/.../actions/secrets/MTG_DATABASE_URL`); later rotated after
+  the `mtg_ingest` password reset (section 2 notes).
+- [x] Actions → "mtg ingest" → Run workflow (defaults). First
+  `workflow_dispatch` run completed successfully 2026-08-04T05:45:23Z
+  ([run 30881411085](https://github.com/AustinJuliusKim/projects/actions/runs/30881411085),
+  audit-verified via `gh run view`).
+- [ ] Spot-check in the Supabase SQL editor: `SELECT count(*) FROM cards;`
+  ≈ 35k, `SELECT pg_size_pretty(pg_database_size(current_database()));`
+  (~200MB) — the workflow run succeeded but row counts/size haven't been
+  eyeballed in the dashboard yet.
 - The cron (Mon+Thu 09:17 UTC) now runs on its own and keeps the Free-tier
   project from pausing. Failure emails from GitHub are the alarm.
 
@@ -90,7 +98,8 @@ credentials (the CI roles deliberately can't do any of this).
   if the role was created from the current `iam-policy.json`; if the role
   predates phase 3, re-apply the policy). Ensure Bedrock model access for
   Titan Text Embeddings V2 is enabled in the us-west-2 console.
-- [ ] Set repo **variable** `MTG_EMBED_ENABLED=true`.
+- [x] Set repo **variable** `MTG_EMBED_ENABLED=true`. Done 2026-08-04T17:55Z
+  (verified via `gh variable list`).
 - [ ] Actions → "mtg ingest" → Run workflow. First embed covers all ~35k
   cards: ~1h runtime, **≈$0.50 one-time**. (Later runs only re-embed
   changed cards — pennies.)
@@ -133,11 +142,54 @@ credentials (the CI roles deliberately can't do any of this).
 
 - [ ] Set repo **variable** `MTG_WEBAPP_DEPLOY_ENABLED=true`.
 
-## 5. Vault note (any time, from a machine with vault access)
+## 5. Third-party API keys (phase 5)
 
-- [ ] Transpose `services/mtg-api/docs/vault-note-draft.md` →
+Rate limiting ships **enabled by default** — no template or deploy change
+needed; it's live the moment this PR's Lambda deploys.
+
+`RATELIMIT_ENABLED` is a kill-switch, but it's read from the Lambda
+environment, and `template.yaml` deliberately doesn't set it — meaning
+there's no durable way to disable it from the console today. Flipping it
+off there (Lambda console → Configuration → Environment variables) works
+until the **next** `sam deploy`, which redeploys from `template.yaml` and
+silently wipes the console-only override back to "on". A durable
+kill-switch needs a real template parameter — a follow-up if this is ever
+actually needed in a hurry.
+
+- [ ] Mint the first real key once a third party actually needs one:
+
+  ```bash
+  cd services/mtg-api
+  DATABASE_URL='<session pooler :5432>' \
+    python scripts/issue_key.py --tier free --label <who>
+  ```
+
+  The plaintext key prints once — hand it to the requester immediately,
+  it's never recoverable from the database afterward
+  (`scripts/issue_key.py`, `docs/third-party-api.md`).
+- [ ] **Anonymous edge ceiling — not yet possible without a new ACL.**
+  The only existing WAF web ACL in this account
+  (`CreatedByCloudFront-8bb2952d`, `ops/edge-waf.yaml`) is
+  choices-webapp's CloudFront pricing-plan protection pack: it's
+  import-locked to that distribution (the plan forbids swapping a
+  subscribed distribution's ACL) and must not be pointed at anything
+  else. So today, the Postgres per-key/per-IP limiter
+  (`src/mtg_api/ratelimit.py`) is the *only* anonymous ceiling for this
+  API — there is no edge-level backstop. A real edge ceiling means
+  provisioning a **new**, dedicated CLOUDFRONT-scope WAF ACL for
+  `MtgWebapp` (~$6/mo) — a paid-inflection-point decision left to the
+  user, not something to do by default. The `WebAclArn` parameter on
+  `apps/mtg-webapp/template.yaml` (line 23, wired to `WebACLId`) already
+  exists to receive that ACL's ARN whenever that decision is made; leave
+  it blank until then.
+
+## 6. Vault note (any time, from a machine with vault access)
+
+- [x] Transpose `services/mtg-api/docs/vault-note-draft.md` →
   `ObsidianVault/30-projects/MTG Card Database.md`, add a line to
   `10-maps/Projects MOC.md`, then **delete the draft file** from this repo.
+  Vault note has existed since 2026-08-03; the draft file is deleted in
+  this PR.
 
 ## Watch after go-live
 
@@ -149,3 +201,7 @@ credentials (the CI roles deliberately can't do any of this).
 - GitHub Actions failure emails from the "mtg ingest" cron — two consecutive
   failures can let the Free-tier project pause; unpausing is one dashboard
   click, data preserved.
+- The rate limiter opens a second Postgres connection per request (on top
+  of the route's own) — accepted for now; revisit (batch the two, or move
+  the counter off Postgres) if p50 latency climbs or the pooler shows
+  connection pressure once there's real traffic to measure it against.
