@@ -39,10 +39,13 @@ credentials (the CI roles deliberately can't do any of this).
   `workflow_dispatch` run completed successfully 2026-08-04T05:45:23Z
   ([run 30881411085](https://github.com/AustinJuliusKim/projects/actions/runs/30881411085),
   audit-verified via `gh run view`).
-- [ ] Spot-check in the Supabase SQL editor: `SELECT count(*) FROM cards;`
+- [x] Spot-check in the Supabase SQL editor: `SELECT count(*) FROM cards;`
   ≈ 35k, `SELECT pg_size_pretty(pg_database_size(current_database()));`
-  (~200MB) — the workflow run succeeded but row counts/size haven't been
-  eyeballed in the dashboard yet.
+  (~200MB). Done 2026-08-04, post-embed: `cards` 34,931, `printings`
+  110,358, db size **345MB** — within `docs/PLAN.md`'s own projected
+  250–380MB range (embeddings pushed it above the pre-embed ~200MB
+  estimate, as expected), ~155MB headroom before the 500MB Pro-tier
+  trigger.
 - The cron (Mon+Thu 09:17 UTC) now runs on its own and keeps the Free-tier
   project from pausing. Failure emails from GitHub are the alarm.
 
