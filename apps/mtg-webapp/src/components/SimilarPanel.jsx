@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Stack, Paper, Group, ActionIcon, Text } from "@mantine/core";
 
-import { getSimilar } from "../api.js";
+import { getSimilar, isAbortError } from "../api.js";
 import { logAction, logImpressions } from "../feedback.js";
 import ConfidenceBadge from "./ConfidenceBadge.jsx";
 
@@ -13,52 +14,61 @@ export default function SimilarPanel({ oracleId, identity, context = "card_page"
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let alive = true;
     setResults(null);
     setError(null);
-    getSimilar(oracleId, { limit: 12, identity: identity || null })
+    const controller = new AbortController();
+    getSimilar(oracleId, { limit: 12, identity: identity || null }, { signal: controller.signal })
       .then((r) => {
-        if (!alive) return;
         setResults(r);
         logImpressions(oracleId, r, context);
       })
-      .catch((e) => alive && setError(e.message));
-    return () => {
-      alive = false;
-    };
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message);
+      });
+    return () => controller.abort();
   }, [oracleId, identity, context]);
 
-  if (error) return <p className="muted">Similar cards unavailable: {error}</p>;
-  if (results === null) return <p className="muted">Finding similar cards…</p>;
-  if (!results.length) return <p className="muted">No similar cards found.</p>;
+  if (error) return <Text c="dimmed">Similar cards unavailable: {error}</Text>;
+  if (results === null) return <Text c="dimmed">Finding similar cards…</Text>;
+  if (!results.length) return <Text c="dimmed">No similar cards found.</Text>;
 
   return (
-    <ul className="similar-list">
+    <Stack gap="xs">
       {results.map((s) => (
-        <li key={s.oracle_id}>
-          <div className="similar-head">
-            <Link
+        <Paper key={s.oracle_id} withBorder p="xs" radius="sm">
+          <Group wrap="nowrap" gap="xs">
+            <Text
+              component={Link}
               to={`/card/${s.oracle_id}`}
               onClick={() => logAction("click", oracleId, s, context)}
+              style={{ flex: 1 }}
+              size="sm"
+              fw={600}
             >
               {s.name}
-            </Link>
+            </Text>
             <ConfidenceBadge confidence={s.confidence} band={s.band} />
             {onAdd && (
-              <button
+              <ActionIcon
                 onClick={() => {
                   logAction("deck_add", oracleId, s, context);
                   onAdd(s);
                 }}
                 title="Add to deck"
+                variant="light"
+                size="sm"
               >
                 +
-              </button>
+              </ActionIcon>
             )}
-          </div>
-          {s.reasons.length > 0 && <div className="reasons">{s.reasons.join(" · ")}</div>}
-        </li>
+          </Group>
+          {s.reasons.length > 0 && (
+            <Text size="xs" c="dimmed" mt={4}>
+              {s.reasons.join(" · ")}
+            </Text>
+          )}
+        </Paper>
       ))}
-    </ul>
+    </Stack>
   );
 }

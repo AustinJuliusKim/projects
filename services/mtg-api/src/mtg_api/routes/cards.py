@@ -35,7 +35,7 @@ def named(
 @router.get("/search", response_model=SearchPage)
 def search(
     conn: Conn,
-    q: Annotated[str | None, Query(max_length=200)] = None,
+    q: Annotated[str | None, Query(min_length=2, max_length=200)] = None,
     color: Annotated[str | None, Query(pattern=r"^[WUBRGCwubrgc]{1,6}$")] = None,
     identity: Annotated[str | None, Query(pattern=r"^[WUBRGCwubrgc]{1,6}$")] = None,
     type: Annotated[str | None, Query(max_length=60)] = None,  # noqa: A002

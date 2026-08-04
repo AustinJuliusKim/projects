@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Grid, Stack, Title, Text, Group, ActionIcon, Button, Paper } from "@mantine/core";
 
 import { getSimilar } from "../api.js";
 import { logAction } from "../feedback.js";
@@ -64,70 +65,106 @@ export default function DeckPage() {
   }
 
   return (
-    <div className="deck-page">
-      <div>
-        <h1>
-          {deck.name} <span className="muted">({cardCount(deck)} cards{identity ? `, ${identity}` : ""})</span>
-        </h1>
-        {cardCount(deck) === 0 && (
-          <p className="muted">
-            Empty deck — add cards from <Link to="/">search</Link> or any card page.
-          </p>
-        )}
-        {groups.map(({ type, cards }) => (
-          <section key={type}>
-            <h2>{type}</h2>
-            <ul className="deck-list">
-              {cards.map((c) => (
-                <li key={c.oracle_id}>
-                  <span className="qty">{c.qty}×</span>
-                  <Link to={`/card/${c.oracle_id}`}>{c.name}</Link>
-                  <span className="deck-actions">
-                    <button onClick={() => update(addCard(deck, c))}>+</button>
-                    <button onClick={() => update(removeCard(deck, c.oracle_id))}>−</button>
-                  </span>
-                </li>
+    <Grid gutter="xl">
+      <Grid.Col span={{ base: 12, md: 8 }}>
+        <Stack gap="lg">
+          <Title order={1}>
+            {deck.name}{" "}
+            <Text component="span" c="dimmed" fw={400} size="lg">
+              ({cardCount(deck)} cards{identity ? `, ${identity}` : ""})
+            </Text>
+          </Title>
+          {cardCount(deck) === 0 && (
+            <Text c="dimmed">
+              Empty deck — add cards from <Text component={Link} to="/">search</Text> or any card
+              page.
+            </Text>
+          )}
+          {groups.map(({ type, cards }) => (
+            <div key={type}>
+              <Title order={2} size="h4" mb="xs">
+                {type}
+              </Title>
+              <Stack gap={4}>
+                {cards.map((c) => (
+                  <Group key={c.oracle_id} gap="xs" wrap="nowrap">
+                    <Text c="dimmed" w={32}>
+                      {c.qty}×
+                    </Text>
+                    <Text component={Link} to={`/card/${c.oracle_id}`} style={{ flex: 1 }}>
+                      {c.name}
+                    </Text>
+                    <Group gap={4} wrap="nowrap">
+                      <ActionIcon size="sm" variant="light" onClick={() => update(addCard(deck, c))}>
+                        +
+                      </ActionIcon>
+                      <ActionIcon
+                        size="sm"
+                        variant="light"
+                        onClick={() => update(removeCard(deck, c.oracle_id))}
+                      >
+                        −
+                      </ActionIcon>
+                    </Group>
+                  </Group>
+                ))}
+              </Stack>
+            </div>
+          ))}
+        </Stack>
+      </Grid.Col>
+      <Grid.Col span={{ base: 12, md: 4 }}>
+        <Stack gap="sm">
+          <Title order={2} size="h4">
+            Suggestions
+          </Title>
+          <Button onClick={suggest} disabled={busy || cardCount(deck) === 0} loading={busy}>
+            {busy ? "Thinking…" : "Suggest cards for this deck"}
+          </Button>
+          {suggestions !== null && suggestions.length === 0 && (
+            <Text c="dimmed" size="sm">
+              No suggestions (are embeddings loaded yet?).
+            </Text>
+          )}
+          {suggestions?.length > 0 && (
+            <Stack gap="xs">
+              {suggestions.map((s) => (
+                <Paper key={s.oracle_id} withBorder p="xs" radius="sm">
+                  <Group gap="xs" wrap="nowrap">
+                    <Text
+                      component={Link}
+                      to={`/card/${s.oracle_id}`}
+                      onClick={() => logAction("click", s.seed, s, "deck_builder")}
+                      style={{ flex: 1 }}
+                      size="sm"
+                      fw={600}
+                    >
+                      {s.name}
+                    </Text>
+                    <ConfidenceBadge confidence={s.confidence} band={s.band} />
+                    <ActionIcon
+                      size="sm"
+                      variant="light"
+                      title="Add to deck"
+                      onClick={() => {
+                        logAction("deck_add", s.seed, s, "deck_builder");
+                        update(addCard(deck, s));
+                      }}
+                    >
+                      +
+                    </ActionIcon>
+                  </Group>
+                  {s.reasons.length > 0 && (
+                    <Text size="xs" c="dimmed" mt={4}>
+                      {s.reasons.join(" · ")}
+                    </Text>
+                  )}
+                </Paper>
               ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-      <aside>
-        <h2>Suggestions</h2>
-        <button onClick={suggest} disabled={busy || cardCount(deck) === 0}>
-          {busy ? "Thinking…" : "Suggest cards for this deck"}
-        </button>
-        {suggestions !== null && suggestions.length === 0 && (
-          <p className="muted">No suggestions (are embeddings loaded yet?).</p>
-        )}
-        {suggestions?.length > 0 && (
-          <ul className="similar-list">
-            {suggestions.map((s) => (
-              <li key={s.oracle_id}>
-                <div className="similar-head">
-                  <Link
-                    to={`/card/${s.oracle_id}`}
-                    onClick={() => logAction("click", s.seed, s, "deck_builder")}
-                  >
-                    {s.name}
-                  </Link>
-                  <ConfidenceBadge confidence={s.confidence} band={s.band} />
-                  <button
-                    onClick={() => {
-                      logAction("deck_add", s.seed, s, "deck_builder");
-                      update(addCard(deck, s));
-                    }}
-                    title="Add to deck"
-                  >
-                    +
-                  </button>
-                </div>
-                {s.reasons.length > 0 && <div className="reasons">{s.reasons.join(" · ")}</div>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </aside>
-    </div>
+            </Stack>
+          )}
+        </Stack>
+      </Grid.Col>
+    </Grid>
   );
 }

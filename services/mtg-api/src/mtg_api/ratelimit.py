@@ -39,6 +39,21 @@ ANONYMOUS_LIMIT = 60
 FREE_LIMIT = 300
 SUPPORTER_LIMIT = 1200
 
+# /v1/cards/search and /v1/cards/autocomplete back the webapp's debounced
+# live-typing search (~300ms debounce — a handful of requests per active
+# typer). They get their own counter and a higher ceiling than general API
+# traffic on the same identifier: without this, the *general* budget would
+# have to absorb typing traffic on top of card/printing/ruling detail
+# fetches, and — per client_ip()'s docstring — anonymous webapp traffic
+# behind CloudFront shares one bucket per edge IP across *all* concurrent
+# users there, so a page of people typing could exhaust each other's
+# remaining budget for every other route too. Scoping these two paths out
+# means live search can't cannibalize (or be cannibalized by) anything else.
+SEARCH_PATHS = frozenset({"/v1/cards/search", "/v1/cards/autocomplete"})
+SEARCH_ANONYMOUS_LIMIT = 240
+SEARCH_FREE_LIMIT = 600
+SEARCH_SUPPORTER_LIMIT = 1200  # unchanged — already generous for this traffic shape
+
 WINDOW_SECONDS = 60
 
 # No rate check (and no DB touch) on these — public, static, no DB. Deliberately
@@ -114,7 +129,13 @@ def _extract_key(request: Request) -> str | None:
 
 
 def identify(conn: psycopg.Connection, request: Request) -> tuple[str, int]:
-    """(identifier, requests/min limit) for this request."""
+    """(identifier, requests/min limit) for this request.
+
+    Search/autocomplete get a distinct identifier suffix (`:search`) so
+    their counter never shares a row with the caller's general traffic —
+    see SEARCH_PATHS' comment above.
+    """
+    is_search = request.url.path in SEARCH_PATHS
     key = _extract_key(request)
     if key:
         key_sha256 = hash_key(key)
@@ -124,9 +145,15 @@ def identify(conn: psycopg.Connection, request: Request) -> tuple[str, int]:
         ).fetchone()
         if row is not None:
             tier = row[0]
-            limit = SUPPORTER_LIMIT if tier == "supporter" else FREE_LIMIT
-            return f"key:{key_sha256}", limit
-    return f"ip:{client_ip(request)}", ANONYMOUS_LIMIT
+            if is_search:
+                limit = SEARCH_SUPPORTER_LIMIT if tier == "supporter" else SEARCH_FREE_LIMIT
+            else:
+                limit = SUPPORTER_LIMIT if tier == "supporter" else FREE_LIMIT
+            identifier = f"key:{key_sha256}"
+            return (f"{identifier}:search" if is_search else identifier), limit
+    identifier = f"ip:{client_ip(request)}"
+    limit = SEARCH_ANONYMOUS_LIMIT if is_search else ANONYMOUS_LIMIT
+    return (f"{identifier}:search" if is_search else identifier), limit
 
 
 def _window_start(now: datetime) -> datetime:
