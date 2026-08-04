@@ -1,8 +1,16 @@
 # CLAUDE.md
 
-Standalone repo (not part of the `personal/projects` monorepo). Tools for a
-Magic: The Gathering collection: a stdlib-only Python library, a local web app
-over it, and two self-contained HTML dashboards.
+Lives at `mtg-tools/` inside the `personal/projects` monorepo (imported
+2026-08-04, history preserved — see the vault note for why). It was built and
+run as a standalone repo for its first month; this file's rules below predate
+the move and are unaffected by it. Tools for a Magic: The Gathering collection:
+a stdlib-only Python library, a local web app over it, and two self-contained
+HTML dashboards.
+
+CI lives at the monorepo root as `.github/workflows/mtg-tools-tests.yml` and
+`mtg-tools-deploy.yml` (path-filtered to this directory), not under
+`mtg-tools/.github/`. Everything else below — running it, the non-negotiables,
+the vault pointer — works exactly as written, from inside this directory.
 
 ## Repo shape
 

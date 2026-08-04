@@ -1,4 +1,4 @@
-name: deploy
+name: mtg-tools deploy
 
 # Ship the SPA (local backend) to Cloudflare Pages on every push to main.
 # No-ops politely until the two secrets exist — one-time setup:
@@ -6,11 +6,14 @@ name: deploy
 #      `mtg-tools` (direct upload).
 #   2. Repo settings → secrets: CLOUDFLARE_API_TOKEN (Pages:Edit) and
 #      CLOUDFLARE_ACCOUNT_ID.
-# docs/hosting.md has the full story (incl. why no COOP/COEP headers).
+# mtg-tools/docs/hosting.md has the full story (incl. why no COOP/COEP headers).
 
 on:
   push:
     branches: [main]
+    paths:
+      - "mtg-tools/**"
+      - ".github/workflows/mtg-tools-deploy.yml"
   workflow_dispatch:
 
 permissions:
@@ -19,6 +22,9 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
     steps:
       - name: Check for Cloudflare credentials
         id: gate
@@ -28,15 +34,15 @@ jobs:
           echo "go=${TOKEN:+yes}" >> "$GITHUB_OUTPUT"
           [ -n "$TOKEN" ] || echo "No CLOUDFLARE_API_TOKEN secret — skipping deploy."
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.gate.outputs.go == 'yes'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: steps.gate.outputs.go == 'yes'
         with:
-          node-version-file: .nvmrc
+          node-version-file: mtg-tools/.nvmrc
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: mtg-tools/frontend/package-lock.json
 
       - name: Build the SPA
         if: steps.gate.outputs.go == 'yes'
@@ -50,4 +56,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy frontend/dist --project-name=mtg-tools --branch=main
+          # wrangler-action runs from the repo root regardless of this job's
+          # working-directory default, so the deploy path is spelled out.
+          command: pages deploy mtg-tools/frontend/dist --project-name=mtg-tools --branch=main

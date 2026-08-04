@@ -1,4 +1,4 @@
-name: tests
+name: mtg-tools tests
 
 on:
   pull_request:
@@ -6,8 +6,14 @@ on:
     # merge untested. `synchronize` covers those, `reopened` covers revivals.
     types: [opened, synchronize, reopened]
     branches: [main]
+    paths:
+      - "mtg-tools/**"
+      - ".github/workflows/mtg-tools-tests.yml"
   push:
     branches: [main]
+    paths:
+      - "mtg-tools/**"
+      - ".github/workflows/mtg-tools-tests.yml"
   workflow_dispatch:
 
 # A new push to a PR makes the in-flight run obsolete. Cancelling it keeps the
@@ -22,6 +28,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
     strategy:
       fail-fast: false
       matrix:
@@ -31,7 +40,7 @@ jobs:
         python-version: ["3.9", "3.11", "3.13"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -62,13 +71,16 @@ jobs:
   webapp:
     name: webapp
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.9", "3.13"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -105,15 +117,18 @@ jobs:
   e2e-local:
     name: e2e-local
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version-file: .nvmrc
+          node-version-file: mtg-tools/.nvmrc
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: mtg-tools/frontend/package-lock.json
 
       - name: Install Node deps
         run: npm --prefix frontend ci
@@ -136,21 +151,24 @@ jobs:
         run: VITE_BACKEND=local npm --prefix frontend run build
 
       - name: Run the OPFS journey
-        working-directory: frontend
+        working-directory: mtg-tools/frontend
         run: npm run test:e2e:local
 
   parity:
     name: parity
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version-file: .nvmrc
+          node-version-file: mtg-tools/.nvmrc
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: mtg-tools/frontend/package-lock.json
 
       - uses: actions/setup-python@v5
         with:
@@ -201,17 +219,20 @@ jobs:
   frontend:
     name: frontend
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Pinned by .nvmrc so CI and the laptop agree. Node 20 went EOL in April
       # 2026 and is below Vite's floor of ^20.19 || >=22.12.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version-file: .nvmrc
+          node-version-file: mtg-tools/.nvmrc
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: mtg-tools/frontend/package-lock.json
 
       - name: Install
         run: npm --prefix frontend ci
@@ -227,15 +248,18 @@ jobs:
   e2e:
     name: e2e
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mtg-tools
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version-file: .nvmrc
+          node-version-file: mtg-tools/.nvmrc
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: mtg-tools/frontend/package-lock.json
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -279,7 +303,7 @@ jobs:
         run: npm --prefix frontend run build
 
       - name: Run the end-to-end suite
-        working-directory: frontend
+        working-directory: mtg-tools/frontend
         env:
           # CI installs into the job's own environment; there is no venv here.
           E2E_PYTHON: python
@@ -290,5 +314,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: frontend/playwright-report/
+          path: mtg-tools/frontend/playwright-report/
           retention-days: 7
