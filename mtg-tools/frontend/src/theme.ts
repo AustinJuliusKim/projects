@@ -1,87 +1,94 @@
 import { Button, Card, createTheme, Paper } from '@mantine/core'
 
-// An arcane/parchment identity for a card-game tool, replacing Mantine's
-// stock blue-on-white defaults. Everything here is Mantine's own theming
-// API — no new dependencies, no custom CSS files.
+// "Ledger Dark" — after Mercury's banking UI: a near-black canvas, one
+// vivid cobalt accent reserved for primary actions, and desaturated
+// semantic color so gains/losses/review states read calmly rather than
+// shouting. Picked over an earlier arcane/parchment pass after reviewing
+// three fintech-inspired directions side by side (Mercury / Wealthfront /
+// Carta) — see PR #82's history for the others.
 //
-// The two neutral palettes below are what most of the app's "designed"
-// feel comes from for free: `gray` is what light mode's dimmed text,
-// borders, and hover backgrounds draw from, and `dark` is the equivalent
-// for dark mode's AppShell/Paper/Card chrome. Warming both means every
-// existing component — nothing here overrides component internals beyond
-// a few defaultProps — picks up the theme without a per-component pass.
+// Everything here is Mantine's own theming API — no new dependencies.
+// `gray` (light mode) and `dark` (dark mode) are what most of the app's
+// look comes from for free: dimmed text, borders, Paper/Card/AppShell
+// surfaces all draw from these, so existing screens inherit the theme
+// without a per-component pass. Deliberately cool-neutral (a faint
+// blue-violet bias toward the cobalt accent) rather than a default gray.
 
 export const theme = createTheme({
-  primaryColor: 'bronze',
-  // A deeper shade reads better on light parchment; a lighter one stays
-  // legible on the dark-mode ink background.
-  primaryShade: { light: 6, dark: 4 },
+  primaryColor: 'cobalt',
+  // A deeper shade reads better on light paper; the lighter, punchier
+  // shade — the exact hero color from the concept review — pops on the
+  // near-black dark background.
+  primaryShade: { light: 6, dark: 5 },
 
   colors: {
-    // Gold/bronze accent — buttons, links, the active nav item, badges.
-    bronze: [
-      '#fbf1dc',
-      '#f6e4be',
-      '#efd093',
-      '#e6ba68',
-      '#dca542',
-      '#d3922b',
-      '#b87920',
-      '#93611a',
-      '#6e4913',
-      '#4a310d',
+    // Cobalt accent — reserved for primary actions and the active nav
+    // item, not sprinkled everywhere (that restraint is the point of
+    // this direction, same as Mercury's own single-accent rule).
+    cobalt: [
+      '#eef0ff',
+      '#dbe0ff',
+      '#b7c0ff',
+      '#96a3ff',
+      '#7a89ff',
+      '#5468ff',
+      '#4453e0',
+      '#3540b8',
+      '#282f8f',
+      '#1c2166',
     ],
-    // Light-mode neutrals: parchment cream instead of Mantine's default
-    // cool gray. Used broadly — dimmed text, borders, subtle backgrounds.
+    // Light-mode neutrals: cool paper with a faint blue-violet bias
+    // toward the accent, instead of Mantine's default neutral gray.
     gray: [
-      '#faf6ee',
-      '#f2ead8',
-      '#e5d7b8',
-      '#d3bf94',
-      '#b9a276',
-      '#96825c',
-      '#786a4c',
-      '#5c503a',
-      '#453b2b',
-      '#2e271c',
+      '#f6f6f9',
+      '#ececf2',
+      '#d8d9e3',
+      '#bfc0cf',
+      '#9fa1b5',
+      '#82849b',
+      '#676980',
+      '#505267',
+      '#3a3b4d',
+      '#232433',
     ],
-    // Dark-mode chrome: deep ink/umber instead of Mantine's default cool
-    // slate. AppShell body, Paper/Card surfaces, and dark-mode text all
-    // draw from this scale.
+    // Dark-mode chrome: Mercury's near-black ink and graphite panels,
+    // not Mantine's default cool slate. index 9 ≈ body bg, 7 ≈ Paper/
+    // AppShell surfaces, 3 ≈ dimmed text, 0 ≈ primary text — all pulled
+    // directly from the reviewed concept's tokens.
     dark: [
-      '#d8cdb8',
-      '#bdb094',
-      '#a3947a',
-      '#6b5f4d',
-      '#4a4033',
-      '#3a3226',
-      '#2f2820',
-      '#241f18',
-      '#191510',
-      '#100d09',
+      '#edeef4',
+      '#c7c9d6',
+      '#a7a9bd',
+      '#8d8fa3',
+      '#5c5e75',
+      '#3a3c4d',
+      '#2a2b37',
+      '#1b1c25',
+      '#16161d',
+      '#131319',
     ],
   },
 
-  // A serif for headings only — body text and the data-dense tables
-  // (Collection, Sealed) keep Mantine's default sans for density and
-  // readability. This is the single biggest lever for "card-game tool"
-  // over "generic SaaS dashboard."
+  // A tight, confident system grotesk for headings (weight 800) — the
+  // "serious operator" register this direction is going for. Body text
+  // uses the same family at normal weight, matching Mantine's own
+  // default stack closely but pinned explicitly rather than inherited.
+  fontFamily: 'ui-sans-serif, "Inter", "Helvetica Neue", Arial, sans-serif',
   headings: {
-    fontFamily:
-      '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif',
-    fontWeight: '600',
+    fontFamily: 'ui-sans-serif, "Inter", "Helvetica Neue", Arial, sans-serif',
+    fontWeight: '800',
   },
 
   defaultRadius: 'md',
+  radius: { md: '8px' },
 
-  // Warm-tinted shadows (ink, not pure black) so elevation reads as part
-  // of the same palette rather than a generic default.
+  // Cool near-black shadow tint (not warm) to match the palette.
   shadows: {
-    xs: '0 1px 2px rgba(46, 39, 28, 0.08)',
-    sm: '0 2px 6px rgba(46, 39, 28, 0.10)',
-    md: '0 4px 12px rgba(46, 39, 28, 0.12)',
-    lg: '0 8px 24px rgba(46, 39, 28, 0.14)',
-    xl: '0 16px 40px rgba(46, 39, 28, 0.16)',
+    xs: '0 1px 2px rgba(10, 10, 16, 0.10)',
+    sm: '0 2px 6px rgba(10, 10, 16, 0.14)',
+    md: '0 4px 14px rgba(10, 10, 16, 0.16)',
+    lg: '0 10px 28px rgba(10, 10, 16, 0.18)',
+    xl: '0 18px 44px rgba(10, 10, 16, 0.20)',
   },
 
   components: {
