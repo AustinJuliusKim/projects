@@ -12,7 +12,10 @@ Don't create an `ARCHITECTURE.md`. Repo conventions live here and project decisi
 - React apps use React `^19` — don't start a new app on an older major. The caret keeps each app on 19.x without drifting to a future major.
 - `npm run check` exists in some areas (e.g. `packages/guided-repl-lessons`).
 - `apps/portfolio` is build-only and has no test script by design — its absence is not a gap.
-- Don't run deploy scripts or `bootstrap-infra.sh`.
+- Don't run deploy scripts, `bootstrap-infra.sh`, or `services/mtg-api`'s
+  Makefile admin/deploy targets (`make deploy`, `make deploy-bootstrap`,
+  `make embed`, `make eval-similar`, `make eval-calibration`) — these
+  mutate real AWS/Supabase resources.
 
 ## ObsidianVault
 

@@ -28,7 +28,7 @@ credentials (the CI roles deliberately can't do any of this).
   ```bash
   cd services/mtg-api
   DATABASE_URL='postgresql://mtg_ingest:...@<project>.pooler.supabase.com:5432/postgres' \
-    python scripts/migrate.py
+    make migrate
   ```
 
 - [x] Set the GitHub repo **secret** `MTG_DATABASE_URL` = that session-pooler
@@ -56,10 +56,7 @@ credentials (the CI roles deliberately can't do any of this).
 
   ```bash
   cd services/mtg-api
-  sam build && sam deploy \
-    --stack-name MtgApi --region us-west-2 --resolve-s3 \
-    --capabilities CAPABILITY_IAM \
-    --parameter-overrides 'DatabaseUrl=postgresql://mtg_ingest:...@<project>.pooler.supabase.com:6543/postgres'
+  make deploy-bootstrap DatabaseUrl='postgresql://mtg_ingest:...@<project>.pooler.supabase.com:6543/postgres'
   ```
 
   Note the **transaction pooler, port 6543** here (Lambda), vs 5432 for
@@ -107,9 +104,9 @@ credentials (the CI roles deliberately can't do any of this).
   the quality gate:
 
   ```bash
-  DATABASE_URL='<session pooler :5432>' python scripts/eval_similar.py --fit-calibration
+  DATABASE_URL='<session pooler :5432>' make eval-calibration
   # paste printed CALIBRATION into src/mtg_api/similar/scoring.py
-  DATABASE_URL='<session pooler :5432>' python scripts/eval_similar.py
+  DATABASE_URL='<session pooler :5432>' make eval-similar
   # gate: recall@10 >= 0.5 before showing /similar in the webapp
   ```
 
