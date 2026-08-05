@@ -117,26 +117,71 @@ credentials (the CI roles deliberately can't do any of this).
 
   Done 2026-08-04: `CALIBRATION = {"mean": 0.525, "std": 0.121, "slope": 1.6}`,
   committed in `src/mtg_api/similar/scoring.py`.
-- [ ] **Quality gate NOT met** — `docs/PLAN.md`'s locked gate is
-  `recall@10 >= 0.5` before `/similar` ships publicly in the webapp:
+- [x] **Quality gate — MET.** `docs/PLAN.md`'s locked gate is
+  `recall@10 >= 0.5` before `/similar` ships publicly in the webapp.
+
+  First measured 2026-08-04 against the real embed run: **recall@10:
+  0.23**, badly short. Diagnosed empirically (not guessed) — classified
+  all 60 golden-pair directions against the real embedded DB: **70% were
+  not in the top-200 cosine candidate pool at all**, confirmed via true
+  exact-cosine rank (HNSW index bypassed entirely, forced seq scan) to be
+  a genuine embedding-quality limit, not an index-tuning one — e.g.
+  Isochron Scepter → Dramatic Reversal's true exact rank was 13,628.
+  Famous combo pairs routinely share no oracle-text vocabulary at all
+  (the combo is a rules interaction, not a textual similarity), which
+  cosine search structurally cannot express — pure hybrid-weight
+  retuning capped out around ~30% recall@10 at best.
+
+  Two external co-occurrence data sources were investigated and rejected
+  first: EDHREC's ToS explicitly prohibits "automated searches, requests,
+  or queries to the Site" (confirmed by reading it directly); Archidekt
+  has a real, working bulk deck-search API but similar ToS language
+  (tolerated in practice per their own forum, not clean). Landed on
+  **[Commander Spellbook](https://commanderspellbook.com)** instead — a
+  rules-based known-combo catalog (not popularity/co-occurrence, so it
+  doesn't touch the "not decklist co-occurrence" design decision at all),
+  with a genuine bulk JSON export
+  (`json.commanderspellbook.com/variants.json.gz`) used the same way
+  their own frontend uses it, no ToS restriction, no auth, no rate limit.
+
+  2026-08-05: added `card_combo_pairs` (migrations 0007–0008, populated
+  by `scripts/sync_combos.py` — one HTTP GET, ~123k pairs from ~104k
+  combo variants, idempotent to rerun) as a new scoring signal, rebalanced
+  `WEIGHTS` (`0.25·cosine + 0.45·combo + 0.20·mechanics + 0.05·type_line +
+  0.05·resources`), and blended in Commander Spellbook's own popularity
+  metric as a tie-breaker among a seed's multiple legitimate combo
+  partners (`COMBO_POPULARITY_WEIGHT` in `scoring.py`) — a popular seed
+  like Basalt Monolith has many real combo partners all saturating the
+  strength signal equally; popularity breaks the tie toward the famous
+  one. Also fixed a real bug found along the way: `embed_text.py`'s
+  self-name canonicalization used unscoped `str.replace` (not
+  word-bounded), which could corrupt a card's own embedding text if its
+  short name was a common substring elsewhere in its own oracle text.
 
   ```bash
+  DATABASE_URL='<session pooler :5432>' make sync-combos   # one-time / periodic refresh
+  DATABASE_URL='<session pooler :5432>' make eval-calibration
+  # paste printed CALIBRATION into src/mtg_api/similar/scoring.py
   DATABASE_URL='<session pooler :5432>' make eval-similar
   ```
 
-  Measured 2026-08-04 against the real embed run: **recall@10: 0.23**,
-  recall@25: 0.27, MRR (found): 0.586, bad-pair leakage (top 25): 0/10. The
-  engine finds the right partner card often enough when it does show up
-  (decent MRR, zero false-positive leakage on the known-bad set), but
-  misses it out of the top 10/25 more than half the time — needs
-  investigation (candidate-pool depth, hybrid scoring weights, or
-  `embed_text.py`'s text transformation) before phase 4's similar-cards
-  panel can go live. **Do not surface `/similar` in the webapp until this
-  is re-run and passes.**
-- [x] Commit the refreshed constants (ordinary PR) — regardless of the gate
-  result, the calibration fit is still the correct one for the real
-  embeddings (calibration maps raw scores to confidence %, independent of
-  whether the underlying candidates are the right ones).
+  Result: **recall@10: 0.62** (gate: ≥ 0.5), recall@25: 0.73, MRR
+  (found): 0.483, bad-pair leakage (top 25): 0/10 — unchanged, the combo
+  signal introduces no false positives since it's sourced from an actual
+  combo catalog. `/similar` is clear to surface in the webapp.
+
+  Honest ceiling note: ~28% of the golden set's pairs (near-functional
+  reprints like Sanguine Bond/Vito, parallel-mechanic pairs like Blood
+  Artist/Zulaport Cutthroat) aren't combos at all and have zero Commander
+  Spellbook data — no combo-signal tuning can help those, they're capped
+  by cosine/mechanics alone. 0.62 already clears the gate comfortably
+  without needing to solve that separately.
+- [x] Commit the refreshed constants and the combo signal (ordinary PR).
+- [ ] `sync-combos` is a one-time historical pull, not on a recurring
+  cron — Commander Spellbook's data updates as new decks are submitted,
+  so periodically rerunning `make sync-combos` (idempotent) keeps it
+  current. No cadence decided yet; revisit if `/similar` quality drifts
+  noticeably stale.
 
 ## 4. Webapp (phase 4 — search/deck-builder frontend)
 

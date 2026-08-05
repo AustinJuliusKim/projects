@@ -133,3 +133,8 @@ This project is unofficial Fan Content permitted under the
 and is not endorsed by Scryfall or Wizards of the Coast. Per
 [Scryfall's terms](https://scryfall.com/docs/terms), card data served by this
 project is never paywalled.
+
+Known-combo data (the `/similar` endpoint's `card_combo_pairs`, populated by
+`scripts/sync_combos.py`) comes from the community-run
+[Commander Spellbook](https://commanderspellbook.com) project, also
+unofficial Fan Content, not affiliated with Wizards of the Coast.
