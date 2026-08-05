@@ -7,6 +7,10 @@
   --accent: #b8482a;
   --accent-hover: #9a3a20;
   --chip-bg: #f1ede6;
+  --badge-live-bg: #e2eee3;
+  --badge-live-text: #2c6437;
+  --badge-wip-bg: #f6e7db;
+  --badge-wip-text: #8a4f22;
   --max: 720px;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -22,6 +26,10 @@
     --accent: #e08a5f;
     --accent-hover: #eb9d75;
     --chip-bg: #262019;
+    --badge-live-bg: #1c2a1e;
+    --badge-live-text: #8ccd95;
+    --badge-wip-bg: #2f2318;
+    --badge-wip-text: #e2ab6d;
   }
 }
 
@@ -255,6 +263,72 @@ h3 {
   background: var(--chip-bg);
   color: var(--text-muted);
 }
+/* Status badge — sits in the .project h3 flex row. */
+.badge {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.badge--live {
+  background: var(--badge-live-bg);
+  color: var(--badge-live-text);
+}
+.badge--in-progress {
+  background: var(--badge-wip-bg);
+  color: var(--badge-wip-text);
+}
+.project .p-status-note {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: -6px 0 16px;
+}
+
+/* Tech spec — label/value rows, collapsing to one column when narrow. */
+.spec {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 18px;
+}
+.spec-row {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  gap: 14px;
+  align-items: baseline;
+}
+.spec dt {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.spec dd {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+}
+@media (max-width: 560px) {
+  .spec-row {
+    grid-template-columns: 1fr;
+    gap: 1px;
+  }
+}
+
+.attribution {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  margin: 30px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
 .project .p-links {
   display: flex;
   gap: 18px;

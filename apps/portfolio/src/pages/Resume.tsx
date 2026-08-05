@@ -57,11 +57,12 @@ export default function Resume() {
 
         <section className="r-section">
           <h2>Selected Projects</h2>
-          {projects.map((p) => (
+          {/* Not every project fits on one printed page — see `onResume` in data.ts. */}
+          {projects.filter((p) => p.onResume).map((p) => (
             <div className="r-project" key={p.name}>
               <p className="r-proj-head">
                 <strong>{p.name}</strong> — {p.tagline}{" "}
-                {p.live && (
+                {p.status === "live" && p.live && (
                   <a href={p.live}>{p.live.replace("https://", "")}</a>
                 )}
               </p>
