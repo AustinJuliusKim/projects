@@ -62,3 +62,66 @@ def test_reasons_name_shared_mechanics():
 
 def test_resource_keys_are_valid_features():
     assert features.RESOURCE_KEYS <= set(features.FEATURES)
+
+
+def test_combo_defaults_to_zero_not_a_penalty():
+    # No combo data for this pair — the component should be a neutral 0.0
+    # baseline (same as any other zero-overlap component), not missing or
+    # negative.
+    _, parts = scoring.hybrid_score(SEED, UNRELATED, cosine=0.5)
+    assert parts["combo"] == 0.0
+    assert parts["combo_produces"] is None
+
+
+def test_combo_signal_can_overcome_low_cosine():
+    # This is the whole point: a confirmed combo pair with weak textual
+    # similarity should still outrank an unrelated pair at the same cosine.
+    combo_score, combo_parts = scoring.hybrid_score(
+        SEED, UNRELATED, cosine=0.1, combo_strength=0.5, combo_produces="Infinite mana"
+    )
+    no_combo_score, _ = scoring.hybrid_score(SEED, UNRELATED, cosine=0.1)
+    assert combo_score > no_combo_score
+    assert combo_parts["combo"] > 0.5  # strength alone (no popularity) still scores highly
+
+
+def test_combo_strength_saturates_independent_of_popularity():
+    # More variants/combos don't push the strength half past its ceiling —
+    # at equal (zero) popularity, extra strength buys nothing further.
+    _, at_saturation = scoring.hybrid_score(SEED, TWIN, cosine=0.3, combo_strength=0.5)
+    _, way_above = scoring.hybrid_score(SEED, TWIN, cosine=0.3, combo_strength=5.0)
+    assert at_saturation["combo"] == way_above["combo"]
+
+
+def test_combo_popularity_breaks_ties_between_equally_strong_partners():
+    # Two candidates both at max strength (a confirmed 2-card combo each) —
+    # the famous one (high popularity) should score higher than the
+    # obscure one (low popularity), same as it would in the real golden
+    # set (crowding among a popular seed's many legitimate combo partners
+    # was exactly the gap this closes — see OPS.md phase 3).
+    _, famous = scoring.hybrid_score(
+        SEED, TWIN, cosine=0.3, combo_strength=0.5, combo_popularity=50_000
+    )
+    _, obscure = scoring.hybrid_score(
+        SEED, TWIN, cosine=0.3, combo_strength=0.5, combo_popularity=1
+    )
+    assert famous["combo"] > obscure["combo"]
+
+
+def test_combo_popularity_is_irrelevant_without_any_combo_relationship():
+    # Popularity must never manufacture a combo signal on its own — it's a
+    # tie-breaker among real matches, not an independent source of score.
+    _, parts = scoring.hybrid_score(SEED, UNRELATED, cosine=0.3, combo_popularity=1_000_000)
+    assert parts["combo"] == 0.0
+
+
+def test_reasons_leads_with_known_combo():
+    _, parts = scoring.hybrid_score(
+        SEED, UNRELATED, cosine=0.2, combo_strength=0.5, combo_produces="Infinite mana"
+    )
+    reasons = scoring.reasons(parts)
+    assert reasons[0] == "known combo: Infinite mana"
+
+
+def test_reasons_combo_without_produces_text():
+    _, parts = scoring.hybrid_score(SEED, UNRELATED, cosine=0.2, combo_strength=0.5)
+    assert scoring.reasons(parts)[0] == "known combo piece"

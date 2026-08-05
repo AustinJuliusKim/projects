@@ -50,7 +50,7 @@ endif
 
 .PHONY: help install up down migrate migrate-dry-run lint test test-db ci \
         serve ingest embed-fake \
-        build deploy deploy-bootstrap embed eval-similar eval-calibration
+        build deploy deploy-bootstrap embed eval-similar eval-calibration sync-combos
 
 # ============================================================================
 # SAFE — local dev only, no external mutations.
@@ -131,6 +131,9 @@ eval-similar: ## ADMIN: score the similarity engine against eval/golden_synergie
 
 eval-calibration: ## ADMIN: refit confidence calibration — paste printed CALIBRATION into src/mtg_api/similar/scoring.py by hand
 	$(PY) scripts/eval_similar.py --fit-calibration
+
+sync-combos: ## ADMIN: pull Commander Spellbook's combo export into card_combo_pairs (needs DATABASE_URL override) — one HTTP GET, idempotent
+	$(PY) scripts/sync_combos.py
 
 help: ## Show this help
 	@echo "Safe — local dev, no external mutations:"

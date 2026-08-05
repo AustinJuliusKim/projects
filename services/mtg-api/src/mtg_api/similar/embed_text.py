@@ -25,15 +25,25 @@ def _face_names(name: str) -> list[str]:
     return [part.strip() for part in name.split("//") if part.strip()]
 
 
+def _replace_word_bounded(text: str, target: str, replacement: str) -> str:
+    """Plain str.replace matches anywhere, including mid-word — a card
+    whose short name is a common substring (e.g. a hypothetical "Rats")
+    could otherwise clobber unrelated text ("Pirates" -> "PiCARDNAMEs").
+    \\b anchors the match to real word boundaries instead."""
+    if not target:
+        return text
+    return re.sub(r"\b" + re.escape(target) + r"\b", replacement, text)
+
+
 def _clean_oracle_text(oracle_text: str, name: str) -> str:
     text = REMINDER_RE.sub("", oracle_text)
     for face in [name, *_face_names(name)]:
-        text = text.replace(face, "CARDNAME")
+        text = _replace_word_bounded(text, face, "CARDNAME")
         # Scryfall also abbreviates a legendary self-reference to the short
         # name ("Vito" for "Vito, Thorn of the Dusk Rose").
         short = face.split(",")[0].strip()
         if len(short) > 2:
-            text = text.replace(short, "CARDNAME")
+            text = _replace_word_bounded(text, short, "CARDNAME")
     return re.sub(r"[ \t]+", " ", text).strip()
 
 

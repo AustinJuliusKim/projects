@@ -31,9 +31,29 @@ def rank_similar(
         format_=format_,
         identity=identity,
     )
+    # Known-combo partners (card_combo_pairs) are exactly the candidates
+    # cosine-similarity search structurally misses (combo pairs whose
+    # oracle text shares no vocabulary — see OPS.md phase 3's diagnosis),
+    # so they're unioned in rather than left to the cosine cutoff. Most
+    # won't already be in `candidates`; dedupe on oracle_id either way.
+    seen = {c["oracle_id"] for c in candidates}
+    combos = queries.combo_candidates(
+        conn, str(seed["oracle_id"]), format_=format_, identity=identity
+    )
+    combo_by_id = {c["oracle_id"]: c for c in combos}
+    candidates = candidates + [c for c in combos if c["oracle_id"] not in seen]
+
     results = []
     for cand in candidates:
-        score, components = scoring.hybrid_score(seed, cand, cand["cosine"])
+        combo = combo_by_id.get(cand["oracle_id"])
+        score, components = scoring.hybrid_score(
+            seed,
+            cand,
+            cand["cosine"],
+            combo_strength=combo["strength"] if combo else 0.0,
+            combo_produces=combo["sample_produces"] if combo else None,
+            combo_popularity=combo["popularity"] if combo else 0,
+        )
         conf = scoring.confidence(score)
         if conf < min_confidence:
             continue

@@ -78,6 +78,26 @@ def test_identity_in_wubrg_order():
     assert embed_text(card).endswith("colors WUG")
 
 
+def test_self_name_replacement_is_word_bounded():
+    # A short name that's a substring of an unrelated word must not get
+    # clobbered — plain str.replace would turn "Rats" into "CARDNAMEs" for
+    # a card short-named "Rat", corrupting a word that isn't a real
+    # self-reference.
+    card = dict(
+        BOLT,
+        name="Rat, Swarm Leader",
+        oracle_text=(
+            "Whenever Rat, Swarm Leader attacks, create a 1/1 Rat token. "
+            "Rats you control get +1/+1."
+        ),
+    )
+    text = embed_text(card)
+    assert "Rats you control" in text  # untouched — not a word-bounded match
+    # 1 (leading "CARDNAME | ..." name slot) + 2 real replacements (the
+    # full-name self-ref, the standalone "Rat" token line).
+    assert text.count("CARDNAME") == 3
+
+
 def test_hash_stable_and_sensitive():
     text = embed_text(BOLT)
     assert embed_hash(text) == embed_hash(text)

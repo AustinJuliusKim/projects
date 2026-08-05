@@ -195,6 +195,49 @@ def similar_candidates(
     return conn.execute(sql, params).fetchall()
 
 
+def combo_candidates(
+    conn: psycopg.Connection,
+    oracle_id: str,
+    *,
+    format_: str | None = None,
+    identity: str | None = None,
+) -> list[dict[str, Any]]:
+    """The seed's known-combo partners (card_combo_pairs, from Commander
+    Spellbook — see migrations/0007_combos.sql), with the same card fields
+    and cosine that similar_candidates returns, so they're scored through
+    the identical hybrid_score call rather than a special-cased path. These
+    are exactly the candidates cosine-similarity search structurally misses
+    (combo pairs whose oracle text shares no vocabulary) — see OPS.md phase
+    3's diagnosis. Same format/identity prefilters as similar_candidates,
+    for consistency."""
+    where = ["NOT c.is_removed"]
+    params: dict[str, Any] = {"seed": oracle_id}
+    if format_:
+        where.append("c.legalities ->> %(format)s = 'legal'")
+        params["format"] = format_.lower()
+    if identity is not None:
+        where.append("c.color_identity <@ %(identity)s")
+        params["identity"] = [ch for ch in identity.upper() if ch != "C"]
+    sql = (
+        "WITH seed AS (SELECT embedding FROM card_embeddings WHERE oracle_id = %(seed)s), "
+        "partner AS ("
+        "  SELECT CASE WHEN oracle_id_a = %(seed)s THEN oracle_id_b ELSE oracle_id_a END "
+        "    AS oracle_id, strength, sample_produces, popularity "
+        "  FROM card_combo_pairs WHERE oracle_id_a = %(seed)s OR oracle_id_b = %(seed)s"
+        ") "
+        "SELECT c.oracle_id, c.name, c.type_line, c.oracle_text, c.keywords, "
+        "rep.image_normal, partner.strength, partner.sample_produces, partner.popularity, "
+        # COALESCE: a combo partner missing an embedding (shouldn't happen
+        # once the embed run covers all live cards, but this must not crash
+        # scoring if it does) falls back to 0 cosine, not NULL.
+        "COALESCE(1 - (e.embedding <=> (SELECT embedding FROM seed)), 0) AS cosine "
+        f"FROM partner JOIN cards c ON c.oracle_id = partner.oracle_id {REP_IMAGE_JOIN} "
+        "LEFT JOIN card_embeddings e ON e.oracle_id = c.oracle_id "
+        f"WHERE {' AND '.join(where)} AND EXISTS (SELECT 1 FROM seed)"
+    )
+    return conn.execute(sql, params).fetchall()
+
+
 def all_sets(conn: psycopg.Connection) -> list[dict[str, Any]]:
     return conn.execute(
         "SELECT code, name, set_type, released_at, card_count, icon_svg_uri "

@@ -14,8 +14,8 @@ Don't create an `ARCHITECTURE.md`. Repo conventions live here and project decisi
 - `apps/portfolio` is build-only and has no test script by design — its absence is not a gap.
 - Don't run deploy scripts, `bootstrap-infra.sh`, or `services/mtg-api`'s
   Makefile admin/deploy targets (`make deploy`, `make deploy-bootstrap`,
-  `make embed`, `make eval-similar`, `make eval-calibration`) — these
-  mutate real AWS/Supabase resources.
+  `make embed`, `make eval-similar`, `make eval-calibration`,
+  `make sync-combos`) — these mutate real AWS/Supabase resources.
 
 ## ObsidianVault
 

@@ -140,6 +140,33 @@ def test_similar_404s(client):
     assert client.get("/v1/cards/00000000-0000-0000-0000-000000000000/similar").status_code == 404
 
 
+def test_similar_surfaces_a_known_combo_partner_missed_by_cosine(client):
+    # Basalt Monolith + Rings of Brighthearth is one of the real
+    # golden-set pairs diagnosed as missed by cosine search (see OPS.md
+    # phase 3) — fake embeddings make this even more pronounced (pure
+    # noise, no real textual similarity to lean on at all). Seed a combo
+    # pair directly and confirm it surfaces near the top on strength alone.
+    import psycopg
+
+    monolith = oracle_id_of("Basalt Monolith")
+    rings = oracle_id_of("Rings of Brighthearth")
+    a, b = sorted([monolith, rings])
+    with psycopg.connect(TEST_DATABASE_URL) as c:
+        c.execute(
+            "INSERT INTO card_combo_pairs "
+            "  (oracle_id_a, oracle_id_b, combo_count, strength, sample_produces) "
+            "VALUES (%s, %s, 1, 0.5, 'Infinite colorless mana')",
+            (a, b),
+        )
+        c.commit()
+
+    resp = client.get(f"/v1/cards/{monolith}/similar", params={"limit": 5})
+    assert resp.status_code == 200
+    results = resp.json()
+    assert results[0]["name"] == "Rings of Brighthearth"
+    assert "known combo: Infinite colorless mana" in results[0]["reasons"]
+
+
 def test_similar_404_when_no_embedding(client):
     import psycopg
 
