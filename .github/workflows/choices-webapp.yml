@@ -45,10 +45,9 @@ jobs:
 
   # PR previews: every same-repo PR touching the app redeploys the single
   # shared preview stack (last-writer-wins; concurrency serializes runs), at
-  # https://preview.choices.austinjuliuskim.com -- served by PROD's shared
-  # CloudFront distribution via the Lambda@Edge router in
-  # ops/edge-preview-router.yaml, not a distribution of its own. See
-  # docs/feature-deploys.md for the one-time bootstrap this depends on.
+  # https://preview.choices.austinjuliuskim.com -- served by the preview
+  # stack's OWN CloudFront distribution, fully separate from prod's. See
+  # docs/feature-deploys.md for why it isn't shared with prod.
   # Fork PRs are skipped — GitHub withholds the OIDC token there anyway.
   # Requires the deploy role's trust policy to allow the `pull_request` sub
   # and the bucket patterns broadened to `choiceswebapp*` (docs/iam-policy.json,
@@ -96,18 +95,14 @@ jobs:
           # AdminSubs may live as a repo variable or secret — accept either.
           PREVIEW_ADMIN_SUBS: ${{ vars.PREVIEW_ADMIN_SUBS || secrets.PREVIEW_ADMIN_SUBS }}
         run: |
-          # Preview no longer owns a distribution -- it's reached at
-          # preview.choices.austinjuliuskim.com via prod's shared one
-          # (ops/edge-preview-router.yaml). SharedDistributionId is looked up
-          # fresh each run rather than hardcoded: it's stable across ordinary
-          # deploys, but a lookup is cheap and avoids a stale value if prod's
-          # distribution is ever recreated.
-          SHARED_DIST_ID=$(aws cloudformation describe-stacks --stack-name ChoicesWebApp \
-            --query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" --output text)
+          # WebAclArn is load-bearing: preview's distribution is subscribed to a
+          # CloudFront Free flat-rate plan, which attaches a protection-pack web
+          # ACL and then forbids removing it. If this doesn't match what's
+          # attached, the next distribution update fails. Keep it identical to
+          # samconfig.toml [preview].
           params=(
-            CreateDistribution=false
             CustomDomain=preview.choices.austinjuliuskim.com
-            "SharedDistributionId=$SHARED_DIST_ID"
+            CertificateArn=arn:aws:acm:us-east-1:549883968767:certificate/dce0cb12-7e2a-43a7-9952-e8252af9545e
             TableName=choices-games-preview
             GlueDatabaseName=choices_events_preview
             VapidPublicKey=BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M

@@ -12,16 +12,9 @@ production `ChoicesWebApp` stack or `choices.austinjuliuskim.com`.
 - The preview stack is a second, fully independent CloudFormation stack
   (`ChoicesWebApp-preview`, config env `preview` in `samconfig.toml`): its own
   DynamoDB table (`choices-games-preview`, via the `TableName` template
-  parameter), Lambda, and S3 site bucket. **It has no CloudFront distribution
-  of its own** (`CreateDistribution=false`) — it's reached at
-  `https://preview.choices.austinjuliuskim.com`, served by **prod's** shared
-  distribution via a Lambda@Edge origin-request router
-  (`ops/edge-preview-router.yaml`, us-east-1, admin-deployed) that inspects
-  the `Host` header and routes preview's hostname to preview's own S3
-  bucket/Lambda Function URL. Every other Host (prod's) passes through
-  unaffected. See "Bootstrap: shared-distribution routing" below for the
-  one-time setup this depends on, and the top of `ops/edge-preview-router.yaml`
-  for the full rollout runbook.
+  parameter), Lambda, S3 site bucket, Cognito pool, **and its own CloudFront
+  distribution**, reached at `https://preview.choices.austinjuliuskim.com`.
+  Nothing is shared with prod except the ACM certificate (see below).
 - Preview uses a dedicated VAPID keypair, never shared with prod. Only the
   public key is committed (`samconfig.toml`); the private key lives solely in
   the CloudFormation stack. On a **fresh** preview stack creation, generate a
@@ -63,8 +56,8 @@ admin profile; keep `docs/iam-policy.json` in sync):
 Because the CLI's `--parameter-overrides` **replaces** samconfig's list rather
 than merging it, every new `template.yaml` parameter has to be added in *both*
 the workflow's `params=()` array and `samconfig.toml [preview]`, or preview
-silently drifts from prod. Preview also carries no `WebAclArn` by design (it
-has no distribution of its own to protect — see below).
+silently drifts from prod. `WebAclArn` in particular must match what's actually
+attached to preview's distribution — see the bootstrap section below.
 
 The `deploy-preview` step also injects the Stripe **Test-mode** secret key,
 webhook secret, and `AdminSubs` from GitHub secrets/vars via
@@ -72,55 +65,85 @@ webhook secret, and `AdminSubs` from GitHub secrets/vars via
 (register the test webhook endpoint, add the 3 secrets/vars, find your preview
 Cognito sub): see **[stripe-preview.md](./stripe-preview.md)**.
 
-## Bootstrap: shared-distribution routing
+## Preview's CloudFront distribution
 
-Preview used to have its own CloudFront distribution (recurring headache: the
-account's Free-plan protection pack kept attaching to it out-of-band, the same
-issue documented in the vault's CloudFront PAYG Migration Plan). It's been
-retired in favor of routing `preview.choices.austinjuliuskim.com` through
-prod's shared, already-hardened distribution. One-time setup, in order:
+Preview has its own distribution, subscribed to a CloudFront **Free flat-rate
+plan** ($0/mo). Two things about it are load-bearing:
 
-1. Deploy this template to `ChoicesWebApp-preview` with
-   `CreateDistribution=false`, `CustomDomain=preview.choices.austinjuliuskim.com`,
-   and a **real** `OriginVerifySecret` (`openssl rand -hex 32`, passed once via
-   `--parameter-overrides`, recorded somewhere durable — NoEcho parameters
-   aren't recoverable via `describe-stacks`). This deletes preview's old
-   distribution (slow — CloudFront disables then deletes, expect 15–30+ min).
-   **Preview is unreachable at any URL until step 4.**
-2. Read the resulting stack's `SiteBucketName` and `ApiUrl` outputs; derive
-   `PreviewSiteBucketDomain` (`<bucket>.s3.<region>.amazonaws.com`) and
-   `PreviewApiOriginDomain` (the `ApiUrl` host only, same parsing
-   `deploy-frontend.sh`/this template already do elsewhere).
-3. Admin-deploy `ops/edge-preview-router.yaml` (us-east-1) with those two
-   values, `PreviewAliasHostname=preview.choices.austinjuliuskim.com`, and the
-   same `OriginVerifySecret` from step 1. Capture its
-   `PreviewEdgeRouterVersionArn` output.
-4. Request a new ACM cert (us-east-1) with SANs
-   `[choices.austinjuliuskim.com, preview.choices.austinjuliuskim.com]`;
-   complete DNS validation. Deploy this template to **prod**
-   (`ChoicesWebApp`) with the new `CertificateArn`,
-   `PreviewAliasHostname=preview.choices.austinjuliuskim.com`, and
-   `PreviewEdgeFunctionArn` set to the ARN from step 3 — this is the moment
-   the preview subdomain goes live.
-5. Add the `preview.choices.austinjuliuskim.com` DNS record (same target as
-   the existing apex record — no Route53/DNS IaC exists anywhere in this
-   repo) and add `https://preview.choices.austinjuliuskim.com/` to the Google
-   OAuth client's authorized redirect URIs (console-only).
+- **`WebAclArn` must be pinned.** A plan-subscribed distribution requires a WAF
+  protection pack and forbids removing it, so if the template doesn't declare
+  the attached ACL, the *next* CloudFormation update of the distribution fails
+  with "You can't remove or replace the web ACL for your distribution." This is
+  an account-wide failure mode — it has bitten prod and the portfolio stack
+  before (see the vault's CloudFront PAYG Migration Plan). Pin it from day one.
+- **Prod's web ACL cannot be reused.** Flat-rate plans forbid sharing a web ACL
+  (or CloudFront Function, or KeyValueStore) with another distribution. Preview
+  needs its own pack.
 
-**Ongoing:** ordinary `deploy-preview` CI runs do *not* repeat any of this —
-`SiteBucket`/`ApiFunction`/`ApiFunctionUrl` physical IDs stay stable across
-routine updates, so the edge router's baked-in domains stay valid. The one
-thing that *does* need re-running is step 3 (re-deploy the router) followed by
-step 4's prod redeploy (re-copy the new ARN) whenever
-`ops/edge-preview-router.yaml`'s code changes, or in the rare case preview's
-bucket or Function URL gets replaced (full teardown/recreate, or a future
-template change that happens to force-replace either resource) — the router's
-baked-in domains would go stale otherwise. `OriginVerifySecret` gates both the
-API origin's `x-origin-verify` header (existing pattern) and the S3 bucket's
-`Referer`-based policy (`PreviewSiteBucketPolicy` in `template.yaml`) — see
-that resource's comment for why Referer, not OAC/OAI, secures the S3 side
-here (both turned out to be dead ends for an origin Lambda@Edge constructs at
-request time).
+The Free plan gives a hard $0 ceiling — no overage regardless of traffic, and
+blocked/attack traffic doesn't count against the allowance. The failure mode
+under abuse is degraded delivery (fewer/more distant edge locations), never a
+bill. Allowances: 1M requests / 100GB per month, 5 cache behaviors (this app
+uses 3), 5 WAF rules.
+
+### One-time bootstrap
+
+1. Deploy this template to `ChoicesWebApp-preview` with `CustomDomain` +
+   `CertificateArn` set and `WebAclArn=""`. Creates the distribution on
+   pay-as-you-go with no WAF (15–30 min).
+2. Subscribe **that** distribution to a **Free** plan (console, or the
+   `pricingplanmanager` API — it is *not* a CloudFormation resource, same as
+   prod's Pro plan). This attaches a `CreatedByCloudFront-*` protection pack.
+3. Read the attached ACL:
+   `aws cloudfront get-distribution-config --id <preview-dist-id>`.
+4. Pin that ARN as `WebAclArn` in **both** `samconfig.toml [preview]` and the
+   workflow's `params=()` array, then redeploy preview. The template now
+   declares what's attached, so later updates don't drift.
+5. Point `preview.choices.austinjuliuskim.com` at the new distribution's domain
+   (Route53 A-alias; no DNS IaC exists in this repo).
+6. Add `https://preview.choices.austinjuliuskim.com/` to the Google OAuth
+   client's authorized redirect URIs (console-only).
+
+The ACM cert is shared with prod: one dual-SAN cert covers both
+`choices.austinjuliuskim.com` and `preview.choices.austinjuliuskim.com`, and a
+cert can be attached to multiple distributions. Nothing else is shared.
+
+### Why preview is not served off prod's distribution
+
+This was tried (PRs #89–#91, 2026-08-05) and reverted. Recording it so nobody
+re-attempts it the same way:
+
+Both hostnames were put on prod's distribution, with a **Lambda@Edge
+origin-request** function meant to swap origins based on the `Host` header. It
+never worked — **at the `origin-request` trigger CloudFront has already replaced
+`request.headers.host` with the *origin's* domain name**, so the function's host
+check was always false and it no-op'd on 100% of requests. `/api*` and `/j/*`
+traffic to the preview hostname silently reached **prod's** backend and wrote to
+prod's DynamoDB table.
+
+The viewer Host is unavailable at that trigger for a structural reason per
+behavior, and neither is fixable in place:
+
+- **default (S3):** `CachingOptimized` forwards no headers, and AWS documents
+  that Host cannot be forwarded to S3-type origins at all.
+- **`/api*`, `/j/*`:** the origin request policy is `AllViewerExceptHostHeader`
+  — chosen deliberately because Lambda Function URLs *reject* a forwarded viewer
+  Host. The constraint that forces that policy is the same one that makes
+  host-based routing impossible there.
+
+Two further reasons not to retry it: CloudFront **multi-tenant distributions**
+and **continuous-deployment/staging distributions** are both explicitly
+unsupported on flat-rate pricing plans, and **Lambda@Edge invocations are billed
+pay-as-you-go even under a flat-rate plan** — so the shared-distribution design
+punched a hole in the very no-overage guarantee the plan is bought for.
+
+A separate distribution costs nothing extra (there is no fixed monthly charge
+for a distribution) and keeps staging changes from ever touching production.
+
+If host-based routing is ever genuinely needed, the viable trigger is
+**viewer-request**, where the real Host *is* visible — CloudFront Functions
+runtime 2.0 has `cf.updateRequestOrigin()`, which also supports OAC. Do not use
+Lambda@Edge at origin-request for this.
 
 ## Deploy (local, from any branch)
 
@@ -146,11 +169,16 @@ aws s3 rm "s3://$(aws cloudformation describe-stacks --stack-name ChoicesWebApp-
 sam delete --config-env preview
 ```
 
-This deletes preview's bucket/table/Lambda but doesn't touch prod's
-`PreviewAliasHostname`/`PreviewEdgeFunctionArn` — `preview.choices...` would
-keep resolving through the edge router to a bucket/Function URL that no
-longer exists (502s) until preview is recreated (re-run the bootstrap above)
-or those two params are cleared on prod.
+Two things to know about teardown:
+
+- **Cancel the Free plan first.** A distribution subscribed to a pricing plan
+  cannot be deleted while the subscription is active, so `sam delete` will fail
+  on the distribution. Free plans cancel immediately (paid plans persist to the
+  end of the billing cycle).
+- Prod is entirely unaffected — it shares no resources with preview except the
+  ACM cert, which is not deleted by this. Remember to remove the
+  `preview.choices...` Route53 record, which would otherwise point at a
+  deleted distribution.
 
 ## Tier-1 hardening parameters
 
@@ -158,11 +186,9 @@ or those two params are cleared on prod.
   (Pro tier, $15/mo)**, which requires its protection-pack web ACL
   (`CreatedByCloudFront-8bb2952d`) to stay associated — CloudFront rejects
   any deploy that removes or replaces it. The samconfig `[default]` value
-  must therefore always be that pack's ARN. Preview carries no `WebAclArn`
-  of its own (`CreateDistribution=false` means it has no distribution to
-  protect) — but since preview traffic now arrives through prod's shared
-  distribution, it's covered by this same WAF pack, unlike the old
-  standalone-distribution setup where preview had none at all.
+  must therefore always be that pack's ARN. Preview has the same requirement
+  against its **own** pack (Free plan) — a web ACL cannot be shared between
+  plan-subscribed distributions. See "Preview's CloudFront distribution".
 - **WAF rules are managed by `ops/edge-waf.yaml` (us-east-1, admin-deployed).**
   Because the plan blocks swapping the association, that stack *imports* the
   console-created pack rather than creating one; the ARN pinned above never
@@ -207,23 +233,22 @@ or those two params are cleared on prod.
 - `OriginVerifySecret`: same handling as the VAPID private key — pass once
   via `--parameter-overrides` on a fresh deploy (e.g. `openssl rand -hex 32`),
   never commit; later deploys reuse the stored value. Blank = CloudFront
-  doesn't send the header (fine while `EnforceOriginHeader` is `false`). On a
-  `CreateDistribution=false` stack (preview), this same value also gates the
-  S3 bucket's `Referer`-based policy (`PreviewSiteBucketPolicy`) — blank
-  there means the edge router can't read the bucket at all, not just a
-  weaker check.
+  doesn't send the header (fine while `EnforceOriginHeader` is `false`).
+  Preview has this set and runs with `EnforceOriginHeader=true`.
 - `EnforceOriginHeader`: flip to `true` only after the frontend uses the
   CloudFront `/api` URL (`ApiBaseUrl` output) and the secret is set.
 
 ## Notes / future work
 
-- Cost at idle is ~zero (pay-per-request DynamoDB, Lambda; no distribution or
-  WAF ACL of its own to pay for either, now that it shares prod's).
+- Cost at idle is ~zero: pay-per-request DynamoDB and Lambda, and preview's
+  distribution is on a Free flat-rate plan ($0/mo, WAF included). There is no
+  fixed monthly charge for a CloudFront distribution.
 - Preview CORS is `*` (no fixed domain to pin). Prod stays pinned.
 - CI preview deploys shipped (see "CI preview deploys" above) — the old
   workflow_dispatch idea was superseded by the on-PR `deploy-preview` job.
-- `deploy-frontend.sh`'s `aws cloudfront create-invalidation --paths "/*"`
-  now invalidates the **shared** prod distribution when run against the
-  preview stack (its `DistributionId` output resolves to
-  `SharedDistributionId`) — harmless and cheap, but if it's ever worth
-  narrowing, scope it to `/__preview/*`, `/api*`, `/j/*` instead of `/*`.
+- Preview is **publicly reachable** — no auth gate. The Free plan's hard $0
+  ceiling is what makes that acceptable: bot traffic can't produce a bill, only
+  degraded delivery. If it ever needs gating, a WAF rule in **Block** mode is
+  the right tool — since Oct 2024 AWS charges no CloudFront request or
+  data-transfer fees for WAF-blocked requests, which CloudFront Function 401s
+  and geo-restriction 403s do *not* get.

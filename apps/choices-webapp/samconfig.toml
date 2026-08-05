@@ -6,38 +6,46 @@ resolve_s3 = true
 s3_prefix = "ChoicesWebApp"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "VapidPublicKey=\"BL0BvvWzSES2LgK4Tq074U1rmeDVVZLWk-1sCCcoRACaxbcvtlxK_fu7lA6QWvKMOEOSRcshQcEP2bcaZkaplnY\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"https://choices.austinjuliuskim.com\" CustomDomain=\"choices.austinjuliuskim.com\" CertificateArn=\"arn:aws:acm:us-east-1:549883968767:certificate/dce0cb12-7e2a-43a7-9952-e8252af9545e\" WebAclArn=\"arn:aws:wafv2:us-east-1:549883968767:global/webacl/CreatedByCloudFront-8bb2952d/76c07143-4d9e-4fd0-bc59-e7e1d641fe87\" GoogleClientId=\"240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com\" CognitoDomainPrefix=\"choices-auth\" CognitoCallbackUrl=\"https://choices.austinjuliuskim.com/\" StripePriceMonthly=\"price_1Tpz7cIVveMhKb5YtT1ml6Qr\" StripePriceAnnual=\"price_1Tpz6nIVveMhKb5Y019Vv6v7\" BedrockModelId=\"us.anthropic.claude-haiku-4-5-20251001-v1:0\" PreviewAliasHostname=\"preview.choices.austinjuliuskim.com\" PreviewEdgeFunctionArn=\"arn:aws:lambda:us-east-1:549883968767:function:ChoicesPreviewEdgeRouter-PreviewEdgeRouterFunction-EdBHdAvyjtH6:1\""
+parameter_overrides = "VapidPublicKey=\"BL0BvvWzSES2LgK4Tq074U1rmeDVVZLWk-1sCCcoRACaxbcvtlxK_fu7lA6QWvKMOEOSRcshQcEP2bcaZkaplnY\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"https://choices.austinjuliuskim.com\" CustomDomain=\"choices.austinjuliuskim.com\" CertificateArn=\"arn:aws:acm:us-east-1:549883968767:certificate/dce0cb12-7e2a-43a7-9952-e8252af9545e\" WebAclArn=\"arn:aws:wafv2:us-east-1:549883968767:global/webacl/CreatedByCloudFront-8bb2952d/76c07143-4d9e-4fd0-bc59-e7e1d641fe87\" GoogleClientId=\"240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com\" CognitoDomainPrefix=\"choices-auth\" CognitoCallbackUrl=\"https://choices.austinjuliuskim.com/\" StripePriceMonthly=\"price_1Tpz7cIVveMhKb5YtT1ml6Qr\" StripePriceAnnual=\"price_1Tpz6nIVveMhKb5Y019Vv6v7\" BedrockModelId=\"us.anthropic.claude-haiku-4-5-20251001-v1:0\""
 image_repositories = []
 
 [default.global.parameters]
 region = "us-west-2"
 
-# Bootstrap complete as of 2026-08-05 (see the vault's Choices CloudFront
-# PAYG Migration Plan doc, Disposition log). CertificateArn above is the new
-# dual-SAN cert (arn:...dce0cb12-7e2a-43a7-9952-e8252af9545e, covers both
-# choices.austinjuliuskim.com and preview.choices.austinjuliuskim.com);
-# PreviewEdgeFunctionArn points at ops/edge-preview-router.yaml's
-# ChoicesPreviewEdgeRouter stack (us-east-1) -- re-paste after every future
-# redeploy of that stack, Lambda@Edge requires a newly published version
-# per code change.
+# CertificateArn is the dual-SAN cert covering BOTH choices.austinjuliuskim.com
+# and preview.choices.austinjuliuskim.com. An ACM cert can be attached to more
+# than one distribution, so prod and preview share this one — preview needs the
+# SAN for its own distribution's alias. (It replaced the old single-name cert
+# ...2ec1bd4f..., which is now detached and expires 2026-12-21.)
 
 # Preview stack for feature branches (docs/feature-deploys.md). Fully separate
-# backend resources: own table, bucket, Lambda; no distribution of its own
-# (CreateDistribution=false) -- reached at preview.choices.austinjuliuskim.com,
-# served by prod's shared distribution via the Lambda@Edge router in
-# ops/edge-preview-router.yaml. VAPID keys are a dedicated preview-only pair —
-# never used by prod. The PRIVATE key is deliberately not committed (public
-# repo): pass it via --parameter-overrides on first stack creation; updates
-# reuse the stored value (same as prod). OriginVerifySecret similarly must be
-# set once out-of-band (see docs/feature-deploys.md) -- it gates both the API
-# origin's x-origin-verify header and the S3 bucket's Referer-based policy.
+# resources: its own table, bucket, Lambda, Cognito pool, AND its own CloudFront
+# distribution — reached at preview.choices.austinjuliuskim.com. It is NOT
+# shared with prod: an earlier attempt to serve both hostnames from prod's
+# single distribution via a Host-header Lambda@Edge router is documented as
+# failed in docs/feature-deploys.md (the viewer Host is not visible at the
+# origin-request trigger), and a separate distribution is also the only option
+# compatible with CloudFront flat-rate pricing plans.
+#
+# WebAclArn is load-bearing, not optional: this distribution is subscribed to a
+# Free flat-rate plan, which attaches a CreatedByCloudFront-* protection pack
+# and then forbids removing it. If the template doesn't declare the attached
+# ACL, the NEXT CloudFormation update of the distribution fails — the
+# account-wide failure mode that has bitten prod and the portfolio stack before.
+# Pin whatever ARN the plan attached; see docs/feature-deploys.md.
+#
+# VAPID keys are a dedicated preview-only pair — never used by prod. The PRIVATE
+# key is deliberately not committed (public repo): pass it via
+# --parameter-overrides on first stack creation; updates reuse the stored value
+# (same as prod). OriginVerifySecret is handled the same way and is already set;
+# it gates the x-origin-verify header on the API origin.
 [preview.deploy.parameters]
 stack_name = "ChoicesWebApp-preview"
 resolve_s3 = true
 s3_prefix = "ChoicesWebApp-preview"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "CreateDistribution=\"false\" CustomDomain=\"preview.choices.austinjuliuskim.com\" TableName=\"choices-games-preview\" GlueDatabaseName=\"choices_events_preview\" VapidPublicKey=\"BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"*\" GoogleClientId=\"240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com\" CognitoDomainPrefix=\"choices-auth-preview\" CognitoCallbackUrl=\"https://preview.choices.austinjuliuskim.com/\" StripePriceMonthly=\"price_1TpzGYIVveMhKb5YH2DIAGcr\" StripePriceAnnual=\"price_1TpzGjIVveMhKb5YRATUAc1o\" BedrockModelId=\"us.anthropic.claude-haiku-4-5-20251001-v1:0\""
+parameter_overrides = "CustomDomain=\"preview.choices.austinjuliuskim.com\" CertificateArn=\"arn:aws:acm:us-east-1:549883968767:certificate/dce0cb12-7e2a-43a7-9952-e8252af9545e\" TableName=\"choices-games-preview\" GlueDatabaseName=\"choices_events_preview\" VapidPublicKey=\"BCEqS-WSzK1WdQxxPscCUqTr4Jm8Si_xXpQVYRwrg4QKdEcGnvD7Bd-3kyLqqmMRiRKZAlYPKvrod99puL_WG7M\" VapidSubject=\"mailto:austinjuliuskim@gmail.com\" CorsAllowOrigin=\"*\" GoogleClientId=\"240909566780-pbki19loi4ou5hmb3780l4672f9d357b.apps.googleusercontent.com\" CognitoDomainPrefix=\"choices-auth-preview\" CognitoCallbackUrl=\"https://preview.choices.austinjuliuskim.com/\" StripePriceMonthly=\"price_1TpzGYIVveMhKb5YH2DIAGcr\" StripePriceAnnual=\"price_1TpzGjIVveMhKb5YRATUAc1o\" BedrockModelId=\"us.anthropic.claude-haiku-4-5-20251001-v1:0\""
 
 [preview.global.parameters]
 region = "us-west-2"
