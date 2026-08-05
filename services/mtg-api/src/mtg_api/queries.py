@@ -222,11 +222,12 @@ def combo_candidates(
         "WITH seed AS (SELECT embedding FROM card_embeddings WHERE oracle_id = %(seed)s), "
         "partner AS ("
         "  SELECT CASE WHEN oracle_id_a = %(seed)s THEN oracle_id_b ELSE oracle_id_a END "
-        "    AS oracle_id, strength, sample_produces, popularity "
+        "    AS oracle_id, strength, produces, popularity, combo_count "
         "  FROM card_combo_pairs WHERE oracle_id_a = %(seed)s OR oracle_id_b = %(seed)s"
         ") "
         "SELECT c.oracle_id, c.name, c.type_line, c.oracle_text, c.keywords, "
-        "rep.image_normal, partner.strength, partner.sample_produces, partner.popularity, "
+        "rep.image_normal, partner.strength, partner.produces, partner.popularity, "
+        "partner.combo_count, "
         # COALESCE: a combo partner missing an embedding (shouldn't happen
         # once the embed run covers all live cards, but this must not crash
         # scoring if it does) falls back to 0 cosine, not NULL.

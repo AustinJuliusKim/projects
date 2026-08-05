@@ -49,7 +49,7 @@ def fetch_variants() -> list[dict]:
 
 
 def accumulate_pairs(variants: list[dict], known_oracle_ids: set[str]) -> dict:
-    """(oracle_id_a, oracle_id_b) -> {combo_count, strength, sample_produces,
+    """(oracle_id_a, oracle_id_b) -> {combo_count, strength, produces,
     sample_popularity} for every pair of known cards that co-appear in at
     least one variant. `strength` sums 1/n_cards per co-membership, so a
     pair found together in a tight 2-card combo counts for more than one
@@ -73,22 +73,24 @@ def accumulate_pairs(variants: list[dict], known_oracle_ids: set[str]) -> dict:
         if n < 2:
             continue
 
-        produces = ", ".join(
+        # A real list, not a joined string — the API hands this straight to
+        # callers as `combo.produces` now (migrations/0009).
+        produces = [
             p["feature"]["name"] for p in variant.get("produces", []) if p.get("feature")
-        )
+        ]
         popularity = variant.get("popularity") or 0
 
         for i in range(n):
             for j in range(i + 1, n):
                 key = (oracle_ids[i], oracle_ids[j])
                 entry = pairs.setdefault(
-                    key, {"combo_count": 0, "strength": 0.0, "sample_produces": None, "pop": -1}
+                    key, {"combo_count": 0, "strength": 0.0, "produces": None, "pop": -1}
                 )
                 entry["combo_count"] += 1
                 entry["strength"] += 1.0 / n
                 if popularity > entry["pop"]:
                     entry["pop"] = popularity
-                    entry["sample_produces"] = produces or None
+                    entry["produces"] = produces or None
 
     if skipped_unknown:
         print(f"sync-combos: {skipped_unknown} card reference(s) not in our cards table (skipped)")
@@ -97,7 +99,7 @@ def accumulate_pairs(variants: list[dict], known_oracle_ids: set[str]) -> dict:
 
 def upsert_pairs(conn: psycopg.Connection, pairs: dict) -> int:
     rows = [
-        (a, b, v["combo_count"], v["strength"], v["sample_produces"], max(v["pop"], 0))
+        (a, b, v["combo_count"], v["strength"], v["produces"], max(v["pop"], 0))
         for (a, b), v in pairs.items()
     ]
     done = 0
@@ -105,12 +107,12 @@ def upsert_pairs(conn: psycopg.Connection, pairs: dict) -> int:
         chunk = rows[i : i + BATCH]
         conn.cursor().executemany(
             "INSERT INTO card_combo_pairs "
-            "  (oracle_id_a, oracle_id_b, combo_count, strength, sample_produces, "
+            "  (oracle_id_a, oracle_id_b, combo_count, strength, produces, "
             "   popularity, updated_at) "
             "VALUES (%s, %s, %s, %s, %s, %s, now()) "
             "ON CONFLICT (oracle_id_a, oracle_id_b) DO UPDATE SET "
             "  combo_count = excluded.combo_count, strength = excluded.strength, "
-            "  sample_produces = excluded.sample_produces, popularity = excluded.popularity, "
+            "  produces = excluded.produces, popularity = excluded.popularity, "
             "  updated_at = now()",
             chunk,
         )

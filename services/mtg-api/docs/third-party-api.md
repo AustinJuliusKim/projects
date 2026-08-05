@@ -122,4 +122,8 @@ A breaking change that can't be done additively gets a new prefix
 
 ## Changelog
 
+- 2026-08-05 — Additive: `/similar` results carry a new `combo` object
+  (`{produces, count, popularity}`, `null` when the pair has no known-combo
+  relationship) — structured version of the "known combo: ..." text that
+  already appeared in `reasons`.
 - 2026-08-04 — Phase 5: API keys + rate limiting shipped (this document).

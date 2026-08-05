@@ -1,4 +1,4 @@
-import { Card, Grid, Group, Paper, Skeleton, SimpleGrid, Stack } from "@mantine/core";
+import { AspectRatio, Card, Grid, Group, Paper, Skeleton, SimpleGrid, Stack } from "@mantine/core";
 
 export function CardGridSkeleton({ count = 10 }) {
   return (
@@ -7,6 +7,30 @@ export function CardGridSkeleton({ count = 10 }) {
         <Card key={i} withBorder padding="sm" radius="md">
           <Skeleton style={{ aspectRatio: "488 / 680" }} w="100%" />
           <Skeleton height={14} width="70%" mt="xs" />
+        </Card>
+      ))}
+    </SimpleGrid>
+  );
+}
+
+// Grid-view counterpart to SimilarRowsSkeleton, matching SimilarPanel's
+// "Variant A" tile: full-bleed image, then a name/badge line, then a combo
+// chip line.
+export function SimilarGridSkeleton({ count = 10 }) {
+  return (
+    <SimpleGrid cols={{ base: 2, xs: 3, sm: 4, md: 5 }} spacing="md" aria-busy="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i} withBorder padding="sm" radius="md">
+          <Card.Section>
+            <AspectRatio ratio={5 / 7}>
+              <Skeleton />
+            </AspectRatio>
+          </Card.Section>
+          <Group wrap="nowrap" gap="xs" mt="xs">
+            <Skeleton height={14} style={{ flex: 1 }} />
+            <Skeleton height={18} width={40} radius="xl" />
+          </Group>
+          <Skeleton height={10} width="70%" mt={4} />
         </Card>
       ))}
     </SimpleGrid>

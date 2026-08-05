@@ -77,7 +77,7 @@ def test_combo_signal_can_overcome_low_cosine():
     # This is the whole point: a confirmed combo pair with weak textual
     # similarity should still outrank an unrelated pair at the same cosine.
     combo_score, combo_parts = scoring.hybrid_score(
-        SEED, UNRELATED, cosine=0.1, combo_strength=0.5, combo_produces="Infinite mana"
+        SEED, UNRELATED, cosine=0.1, combo_strength=0.5, combo_produces=["Infinite mana"]
     )
     no_combo_score, _ = scoring.hybrid_score(SEED, UNRELATED, cosine=0.1)
     assert combo_score > no_combo_score
@@ -116,7 +116,7 @@ def test_combo_popularity_is_irrelevant_without_any_combo_relationship():
 
 def test_reasons_leads_with_known_combo():
     _, parts = scoring.hybrid_score(
-        SEED, UNRELATED, cosine=0.2, combo_strength=0.5, combo_produces="Infinite mana"
+        SEED, UNRELATED, cosine=0.2, combo_strength=0.5, combo_produces=["Infinite mana"]
     )
     reasons = scoring.reasons(parts)
     assert reasons[0] == "known combo: Infinite mana"
@@ -125,3 +125,16 @@ def test_reasons_leads_with_known_combo():
 def test_reasons_combo_without_produces_text():
     _, parts = scoring.hybrid_score(SEED, UNRELATED, cosine=0.2, combo_strength=0.5)
     assert scoring.reasons(parts)[0] == "known combo piece"
+
+
+def test_reasons_joins_multiple_produces_entries():
+    # combo_produces is a structured list now (card_combo_pairs.produces) —
+    # the prose reason still renders as a single ", "-joined string.
+    _, parts = scoring.hybrid_score(
+        SEED,
+        UNRELATED,
+        cosine=0.2,
+        combo_strength=0.5,
+        combo_produces=["Infinite mana", "Infinite tokens"],
+    )
+    assert scoring.reasons(parts)[0] == "known combo: Infinite mana, Infinite tokens"

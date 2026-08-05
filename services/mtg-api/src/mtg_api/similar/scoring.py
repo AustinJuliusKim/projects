@@ -84,13 +84,15 @@ def hybrid_score(
     cand: dict[str, Any],
     cosine: float,
     combo_strength: float = 0.0,
-    combo_produces: str | None = None,
+    combo_produces: list[str] | None = None,
     combo_popularity: int = 0,
 ) -> tuple[float, dict[str, Any]]:
     """`combo_strength`/`combo_produces`/`combo_popularity` come from
     card_combo_pairs (0.0/None/0 when the pair has no known-combo
     relationship — a neutral baseline, not a penalty, same as any other
-    zero-overlap component)."""
+    zero-overlap component). `combo_produces` is the structured list of
+    feature names (card_combo_pairs.produces); reasons() below joins it
+    into prose at display time only — the list itself is never scored."""
     seed_feats = card_features(seed)
     cand_feats = card_features(cand)
     seed_mech = seed_feats | {k.lower() for k in seed.get("keywords") or []}
@@ -132,7 +134,7 @@ def reasons(components: dict[str, Any]) -> list[str]:
     out = []
     if components["combo"] > 0:
         if components["combo_produces"]:
-            out.append(f"known combo: {components['combo_produces']}")
+            out.append(f"known combo: {', '.join(components['combo_produces'])}")
         else:
             out.append("known combo piece")
     for kw in components["shared_keywords"][:3]:
