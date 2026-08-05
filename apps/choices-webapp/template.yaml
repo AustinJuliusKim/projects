@@ -624,7 +624,11 @@ Resources:
 
   # SPA fallback, scoped to the default (site) behavior only. The old
   # distribution-wide CustomErrorResponses (403/404 -> 200 index.html) would
-  # corrupt API error bodies now that /api* shares the distribution.
+  # corrupt API error bodies now that /api* shares the distribution. Also
+  # prefixes the cache key for the preview Host so a warm cache can't leak
+  # prod content onto the preview subdomain (CachingOptimized doesn't vary
+  # by Host) -- see ops/edge-preview-router.yaml, which strips the prefix
+  # back off before contacting preview's own S3 origin.
   SpaRewriteFunction:
     Type: AWS::CloudFront::Function
     Condition: ShouldCreateDistribution
@@ -632,12 +636,10 @@ Resources:
       Name: !Sub "${AWS::StackName}-spa-rewrite"
       AutoPublish: true
       FunctionConfig:
-        Comment: >-
-          Serve index.html for extension-less SPA routes; also prefixes the
-          cache key for the preview Host so a warm cache never leaks prod
-          content onto the preview subdomain (CachingOptimized doesn't vary
-          by Host) -- see ops/edge-preview-router.yaml, which strips the
-          prefix back off before contacting preview's own S3 origin.
+        # CloudFront caps this at 128 chars (hard API limit) -- the 2026-08-05
+        # deploy failed on this exact field being too long. Full context is
+        # the YAML comment above, not deployed, no length limit there.
+        Comment: SPA index.html fallback; cache-key-prefixes preview Host requests
         Runtime: cloudfront-js-2.0
       FunctionCode: !Sub
         - |
