@@ -1,6 +1,13 @@
-import { projects } from "../data";
+import { projects, mtgAttribution, type Project } from "../data";
+
+const STATUS_LABEL: Record<Project["status"], string> = {
+  live: "Live",
+  "in-progress": "In progress",
+};
 
 export default function Work() {
+  const showsMtgData = projects.some((p) => p.name.startsWith("MTG"));
+
   return (
     <section id="work" aria-labelledby="work-h">
       <div className="wrap">
@@ -10,23 +17,31 @@ export default function Work() {
         </h2>
         {projects.map((p) => (
           <article className="project" key={p.name}>
-            <h3>{p.name}</h3>
+            <h3>
+              {p.name}
+              <span className={`badge badge--${p.status}`}>
+                {STATUS_LABEL[p.status]}
+              </span>
+            </h3>
             <p className="p-tag">{p.tagline}</p>
+            {p.statusNote && <p className="p-status-note">{p.statusNote}</p>}
             <p className="desc">{p.description}</p>
             <ul>
               {p.highlights.map((h, i) => (
                 <li key={i}>{h}</li>
               ))}
             </ul>
-            <div className="chips">
-              {p.stack.map((s) => (
-                <span className="chip" key={s}>
-                  {s}
-                </span>
+            <dl className="spec">
+              {p.spec.map((row) => (
+                <div className="spec-row" key={row.label}>
+                  <dt>{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </div>
               ))}
-            </div>
+            </dl>
             <div className="p-links">
-              {p.live && (
+              {/* Only link what someone can actually visit today. */}
+              {p.status === "live" && p.live && (
                 <a href={p.live} target="_blank" rel="noreferrer">
                   Live ↗
                 </a>
@@ -39,6 +54,7 @@ export default function Work() {
             </div>
           </article>
         ))}
+        {showsMtgData && <p className="attribution">{mtgAttribution}</p>}
       </div>
     </section>
   );
