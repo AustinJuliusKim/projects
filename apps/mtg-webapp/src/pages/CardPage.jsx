@@ -16,6 +16,7 @@ import {
 import { getCard, getPrintings, getRulings, isAbortError } from "../api.js";
 import { addCard, loadDeck, saveDeck } from "../deck.js";
 import SimilarPanel from "../components/SimilarPanel.jsx";
+import { CardPageSkeleton } from "../components/Skeletons.jsx";
 
 export default function CardPage() {
   const { oracleId } = useParams();
@@ -44,7 +45,7 @@ export default function CardPage() {
   }, [oracleId]);
 
   if (error) return <Text c="dimmed">{error}</Text>;
-  if (!card) return <Text c="dimmed">Loading…</Text>;
+  if (!card) return <CardPageSkeleton />;
 
   function onAdd(c) {
     saveDeck(addCard(loadDeck(), { ...card, ...c }));
