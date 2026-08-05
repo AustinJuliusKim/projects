@@ -5,6 +5,7 @@ import { Chip, Group, Select, Pagination, Text, Stack, Alert } from "@mantine/co
 import { isAbortError, searchCards } from "../api.js";
 import { addCard, loadDeck, saveDeck } from "../deck.js";
 import CardGrid from "../components/CardGrid.jsx";
+import { CardGridSkeleton } from "../components/Skeletons.jsx";
 
 const COLORS = ["W", "U", "B", "R", "G"];
 const FORMATS = ["", "commander", "modern", "standard", "pioneer", "legacy", "pauper", "vintage"];
@@ -19,6 +20,7 @@ export default function SearchPage() {
 
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!q && !identity && !format) {
@@ -26,6 +28,7 @@ export default function SearchPage() {
       return;
     }
     const controller = new AbortController();
+    setLoading(true);
     searchCards(
       { q: q || null, identity: identity || null, format: format || null, order, page },
       { signal: controller.signal },
@@ -33,6 +36,11 @@ export default function SearchPage() {
       .then(setResult)
       .catch((e) => {
         if (!isAbortError(e)) setError(e.message);
+      })
+      .finally(() => {
+        // An aborted request's finally fires after the superseding effect
+        // already set loading=true — only the live request may clear it.
+        if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
   }, [q, identity, format, order, page]);
@@ -91,13 +99,14 @@ export default function SearchPage() {
       </Group>
 
       {error && <Alert color="red">Search failed: {error}</Alert>}
-      {!result && !error && (
+      {!result && !error && !loading && (
         <Text c="dimmed">
           Search by rules text (“deals damage to each”), name, or type — then filter by color
           identity and format.
         </Text>
       )}
-      {result && (
+      {loading && <CardGridSkeleton />}
+      {result && !loading && (
         <>
           <Text c="dimmed" size="sm">
             {result.total} cards

@@ -5,6 +5,7 @@ import { Grid, Stack, Title, Text, Group, ActionIcon, Button, Paper } from "@man
 import { getSimilar } from "../api.js";
 import { logAction } from "../feedback.js";
 import ConfidenceBadge from "../components/ConfidenceBadge.jsx";
+import { SimilarRowsSkeleton } from "../components/Skeletons.jsx";
 import {
   addCard,
   cardCount,
@@ -121,6 +122,7 @@ export default function DeckPage() {
           <Button onClick={suggest} disabled={busy || cardCount(deck) === 0} loading={busy}>
             {busy ? "Thinking…" : "Suggest cards for this deck"}
           </Button>
+          {busy && <SimilarRowsSkeleton count={6} />}
           {suggestions !== null && suggestions.length === 0 && (
             <Text c="dimmed" size="sm">
               No suggestions (are embeddings loaded yet?).

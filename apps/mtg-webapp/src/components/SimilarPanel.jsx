@@ -5,6 +5,7 @@ import { Stack, Paper, Group, ActionIcon, Text } from "@mantine/core";
 import { getSimilar, isAbortError } from "../api.js";
 import { logAction, logImpressions } from "../feedback.js";
 import ConfidenceBadge from "./ConfidenceBadge.jsx";
+import { SimilarRowsSkeleton } from "./Skeletons.jsx";
 
 // The differentiator: mechanically synergistic suggestions with confidence
 // and reasons. Impressions/clicks are logged from day one — training data
@@ -29,7 +30,7 @@ export default function SimilarPanel({ oracleId, identity, context = "card_page"
   }, [oracleId, identity, context]);
 
   if (error) return <Text c="dimmed">Similar cards unavailable: {error}</Text>;
-  if (results === null) return <Text c="dimmed">Finding similar cards…</Text>;
+  if (results === null) return <SimilarRowsSkeleton />;
   if (!results.length) return <Text c="dimmed">No similar cards found.</Text>;
 
   return (
