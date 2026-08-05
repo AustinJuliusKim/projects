@@ -9,6 +9,8 @@ import { CardGridSkeleton } from "../components/Skeletons.jsx";
 
 const COLORS = ["W", "U", "B", "R", "G"];
 const FORMATS = ["", "commander", "modern", "standard", "pioneer", "legacy", "pauper", "vintage"];
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZES = [10, 25, 50, 100];
 
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
@@ -17,6 +19,7 @@ export default function SearchPage() {
   const format = params.get("format") || "";
   const order = params.get("order") || "name";
   const page = Number(params.get("page") || 1);
+  const pageSize = Number(params.get("page_size") || DEFAULT_PAGE_SIZE);
 
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -30,7 +33,14 @@ export default function SearchPage() {
     const controller = new AbortController();
     setLoading(true);
     searchCards(
-      { q: q || null, identity: identity || null, format: format || null, order, page },
+      {
+        q: q || null,
+        identity: identity || null,
+        format: format || null,
+        order,
+        page,
+        page_size: pageSize,
+      },
       { signal: controller.signal },
     )
       .then(setResult)
@@ -43,10 +53,10 @@ export default function SearchPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [q, identity, format, order, page]);
+  }, [q, identity, format, order, page, pageSize]);
 
   function patch(next) {
-    const merged = { q, identity, format, order, ...next, page: next.page ?? 1 };
+    const merged = { q, identity, format, order, page_size: pageSize, ...next, page: next.page ?? 1 };
     setParams(
       Object.fromEntries(Object.entries(merged).filter(([, v]) => v !== "" && v !== null)),
     );
@@ -96,6 +106,14 @@ export default function SearchPage() {
           allowDeselect={false}
           aria-label="Order"
         />
+        <Select
+          data={PAGE_SIZES.map((n) => ({ value: String(n), label: `${n} per page` }))}
+          value={String(pageSize)}
+          onChange={(v) => patch({ page_size: v ? Number(v) : DEFAULT_PAGE_SIZE })}
+          w={140}
+          allowDeselect={false}
+          aria-label="Results per page"
+        />
       </Group>
 
       {error && <Alert color="red">Search failed: {error}</Alert>}
@@ -105,7 +123,7 @@ export default function SearchPage() {
           identity and format.
         </Text>
       )}
-      {loading && <CardGridSkeleton />}
+      {loading && <CardGridSkeleton count={Math.min(pageSize, 25)} />}
       {result && !loading && (
         <>
           <Text c="dimmed" size="sm">
@@ -114,7 +132,13 @@ export default function SearchPage() {
           <CardGrid cards={result.cards} onAdd={onAdd} />
           {pages > 1 && (
             <Group justify="center" mt="md">
-              <Pagination value={page} onChange={(p) => patch({ page: p })} total={pages} />
+              <Pagination
+                siblings={1}
+                boundaries={1}
+                value={page}
+                onChange={(p) => patch({ page: p })}
+                total={pages}
+              />
             </Group>
           )}
         </>

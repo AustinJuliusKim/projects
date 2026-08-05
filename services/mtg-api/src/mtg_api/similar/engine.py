@@ -51,7 +51,7 @@ def rank_similar(
             cand,
             cand["cosine"],
             combo_strength=combo["strength"] if combo else 0.0,
-            combo_produces=combo["sample_produces"] if combo else None,
+            combo_produces=combo["produces"] if combo else None,
             combo_popularity=combo["popularity"] if combo else 0,
         )
         conf = scoring.confidence(score)
@@ -66,6 +66,17 @@ def rank_similar(
                 "confidence": conf,
                 "band": scoring.band(conf),
                 "reasons": scoring.reasons(components),
+                # None when the pair has no known-combo relationship — the
+                # route turns this into `combo: null` (routes/models.py).
+                "combo": (
+                    {
+                        "produces": combo["produces"] or [],
+                        "count": combo["combo_count"],
+                        "popularity": combo["popularity"],
+                    }
+                    if combo
+                    else None
+                ),
                 "score": score,
             }
         )

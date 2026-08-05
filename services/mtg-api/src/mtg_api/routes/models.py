@@ -43,6 +43,19 @@ class Autocomplete(BaseModel):
     names: list[str]
 
 
+class ComboInfo(BaseModel):
+    """Structured known-combo data for this result, from card_combo_pairs
+    (Commander Spellbook — see migrations/0007_combos.sql). `produces` is
+    the feature name(s) the combo produces (e.g. "Infinite colorless
+    mana"); `count` is how many distinct Commander Spellbook variants
+    contain this pair; `popularity` is that combo's deck-inclusion count
+    on Commander Spellbook, used elsewhere as a tie-breaker."""
+
+    produces: list[str]
+    count: int
+    popularity: int
+
+
 class SimilarCard(BaseModel):
     oracle_id: uuid.UUID
     name: str
@@ -53,6 +66,8 @@ class SimilarCard(BaseModel):
     confidence: float
     band: str
     reasons: list[str]
+    # None when this pair has no known-combo relationship (most results).
+    combo: ComboInfo | None = None
 
 
 class Ruling(BaseModel):

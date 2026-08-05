@@ -87,10 +87,13 @@ def test_similar_shape(client):
             "confidence",
             "band",
             "reasons",
+            "combo",
         }
         assert 0 <= r["confidence"] <= 1
         assert r["band"] in {"high", "medium", "low"}
         assert r["name"] != "Sanguine Bond"
+        # No combo data seeded yet for this pool — every result is combo-less.
+        assert r["combo"] is None
 
 
 def test_similar_related_pair_outranks_unrelated(client):
@@ -154,9 +157,9 @@ def test_similar_surfaces_a_known_combo_partner_missed_by_cosine(client):
     with psycopg.connect(TEST_DATABASE_URL) as c:
         c.execute(
             "INSERT INTO card_combo_pairs "
-            "  (oracle_id_a, oracle_id_b, combo_count, strength, sample_produces) "
-            "VALUES (%s, %s, 1, 0.5, 'Infinite colorless mana')",
-            (a, b),
+            "  (oracle_id_a, oracle_id_b, combo_count, strength, produces, popularity) "
+            "VALUES (%s, %s, 1, 0.5, %s, 12345)",
+            (a, b, ["Infinite colorless mana"]),
         )
         c.commit()
 
@@ -165,6 +168,11 @@ def test_similar_surfaces_a_known_combo_partner_missed_by_cosine(client):
     results = resp.json()
     assert results[0]["name"] == "Rings of Brighthearth"
     assert "known combo: Infinite colorless mana" in results[0]["reasons"]
+    assert results[0]["combo"] == {
+        "produces": ["Infinite colorless mana"],
+        "count": 1,
+        "popularity": 12345,
+    }
 
 
 def test_similar_404_when_no_embedding(client):
