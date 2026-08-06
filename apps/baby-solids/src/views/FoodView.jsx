@@ -70,6 +70,12 @@ export default function FoodView({ log }) {
       {food.backgroundMd && <Prose text={food.backgroundMd} />}
 
       <Divider label="How to serve it" labelPosition="left" />
+      <Text size="xs" c="dimmed">
+        The one size rule any guideline body actually issues is AAP's: no piece larger than half an
+        inch. The specific shapes below, and the age bands themselves, are common practice built
+        from grasp milestones — sensible, widely used, and not handed down by anyone. Treat them as
+        a starting point for your baby, not a standard.
+      </Text>
       {food.ageBands.map((band) => (
         <Card key={band.band} withBorder padding="sm">
           <Group justify="space-between" mb={4}>
