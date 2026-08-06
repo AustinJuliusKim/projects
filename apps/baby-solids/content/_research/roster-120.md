@@ -51,11 +51,11 @@ are distributed across all nine categories on purpose.
 | Egg | whole egg, yolk and white together, hard-cooked and mashed with a fat |
 | Fish | salmon · cod · sardine · 고등어 Atlantic mackerel |
 | Crustacean | shrimp finely minced into a soft patty · lump crabmeat |
-| Tree nut | almond butter thinned 1:3 · cashew butter · ground walnut |
+| Tree nut | almond butter, thinned · cashew butter · ground walnut |
 | Peanut | thinned peanut butter or peanut flour in oatmeal |
 | Wheat | whole-wheat toast strips · wheat pasta · semolina upma |
 | Soy | tofu · smashed edamame · natto · tempeh |
-| Sesame | **tahini thinned 1:3** · 참기름 sesame oil · za'atar |
+| Sesame | **tahini, thinned** · 참기름 sesame oil · za'atar |
 
 ## The roster
 
@@ -184,8 +184,8 @@ are distributed across all nine categories on purpose.
 | Unsalted butter | | 6 | milk | general | |
 | Extra-virgin olive oil | | 6 | | mediterranean | |
 | Toasted sesame oil | 참기름 | 6 | sesame | korean | Flavour signature of most Korean banchan |
-| Tahini | طحينة | 6 | sesame | levantine | **Thin ~1:3.** Straight from the jar it's a choking-consistency paste |
-| Almond butter | | 6 | tree_nut | general | Thinned 1:3, same rule |
+| Tahini | طحينة | 6 | sesame | levantine | **Thin until it pours off a spoon.** Straight from the jar it's a choking-consistency paste |
+| Almond butter | | 6 | tree_nut | general | Thinned the same way |
 | Cashew butter | | 6 | tree_nut | indian | Tree-nut allergy is not a single class — two vehicles |
 | Ground walnut | 호두 | 6 | tree_nut | korean | Ground to flour and stirred in. Whole or halved: hard no until 4 |
 | Full-fat coconut milk | | 6 | *see note* | southeast_asian | FDA labels coconut a tree nut; clinical cross-reactivity is rare |
@@ -222,7 +222,7 @@ swordfish, king mackerel, Gulf tilefish, bigeye tuna, marlin, orange roughy.
 root (crisp through any cooking), 콩나물 and 숙주 (long strings), shiitake caps
 (rubbery, slippery), edamame (skin pops off as an intact disc), grapes and
 blueberries (round and firm), 대추 and prune (pit plus indigestible skin), corn
-kernels, whole olives, and any nut or seed butter served unthinned. **The 1:3
+kernels, whole olives, and any nut or seed butter served unthinned. **The
 dilution rule applies to four entries and deserves its own explainer.**
 
 **Unpasteurized and raw.** Raw milk and raw-milk cheeses (queso fresco, feta,
