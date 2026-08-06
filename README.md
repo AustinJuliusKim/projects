@@ -13,8 +13,10 @@ below.
 ├── apps/        # Deployable applications (web apps, personal site)
 │   ├── choices-webapp/   # Vite/React frontend + Node.js Lambda backend (AWS SAM)
 │   ├── guided-repl/      # Vite/React SPA: fixture-replayed walkthrough of using Claude Code
+│   ├── baby-solids/      # Vite/React SPA: cited food canon + solids tracker (no server, no DB)
 │   └── mtg-webapp/       # Vite/React SPA: MTG card search + deck builder over services/mtg-api
 ├── packages/    # Shared, reusable libraries
+│   ├── baby-core/             # Baby profile + timeline event schemas and merge, shared across baby apps
 │   └── guided-repl-protocol/  # Frame vocabulary + fixture schema shared by guided-repl + its seeder
 ├── services/    # Standalone, long-lived backends/scripts
 │   ├── guided-repl-seeder/    # Node CLI that records real Claude Code runs into fixtures
@@ -66,6 +68,7 @@ something more permissive. Anything not listed below is reserved.
 
 | Project | License |
 |---|---|
+| `packages/baby-core` | MIT |
 | `apps/guided-repl` | MIT |
 | `packages/guided-repl-lessons` | MIT |
 | `packages/guided-repl-protocol` | MIT |
@@ -76,6 +79,7 @@ something more permissive. Anything not listed below is reserved.
 | `apps/choices-webapp` | All Rights Reserved |
 | `services/mtg-api` | All Rights Reserved |
 | `apps/mtg-webapp` | All Rights Reserved |
+| `apps/baby-solids` | All Rights Reserved |
 | `ops/`, `foundry/`, `.claude/`, `docs/` | All Rights Reserved (root LICENSE) |
 
 Two things worth stating plainly:

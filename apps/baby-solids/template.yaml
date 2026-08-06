@@ -1,0 +1,238 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  baby-solids: static SPA (S3 + CloudFront) plus a private sync bucket the
+  browsers read and write directly with scoped Cognito credentials.
+  Deliberately serverless in the literal sense — there is no Lambda and no
+  database. Mirrors apps/mtg-webapp/template.yaml minus its /api/* origin.
+
+Parameters:
+  CustomDomain:
+    Type: String
+    Default: ""
+    Description: Optional custom domain (leave blank to use the CloudFront URL)
+  CertificateArn:
+    Type: String
+    Default: ""
+    Description: ACM certificate ARN in us-east-1 for CustomDomain (required if CustomDomain is set)
+  WebAclArn:
+    Type: String
+    Default: ""
+    Description: >
+      Pin for a WAF web ACL already attached to the distribution (the
+      CloudFront Free plan attaches a protection-pack ACL out of band and
+      refuses updates that would remove it). Leave "" until that applies.
+  GoogleClientId:
+    Type: String
+    Default: ""
+    Description: >
+      Google OAuth client ID. Blank = sync disabled on this stack (no identity
+      pool, no sync bucket policy; the app still runs local-only).
+  HouseholdId:
+    Type: String
+    Default: "default"
+    Description: >
+      Prefix that scopes one family's events. Both caregivers share it, and
+      the IAM policy is written against it, so a signed-in browser can only
+      read and write inside this one prefix.
+  SyncAllowedOrigin:
+    Type: String
+    Default: "*"
+    Description: >
+      CORS origin for browser writes to the sync bucket. Defaults to "*"
+      because the distribution domain does not exist until this stack is first
+      created — tighten it to the real site origin on the second deploy. Note
+      the actual access gate is the scoped IAM credential, not CORS.
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
+  HasWebAcl: !Not [!Equals [!Ref WebAclArn, ""]]
+  HasSync: !Not [!Equals [!Ref GoogleClientId, ""]]
+
+Resources:
+  # --- Static site -------------------------------------------------------
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  SiteOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  SiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        WebACLId: !If [HasWebAcl, !Ref WebAclArn, !Ref "AWS::NoValue"]
+        Aliases: !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasCustomDomain
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins:
+          - Id: SiteS3Origin
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt SiteOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: SiteS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          # AWS managed "CachingOptimized" policy
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          AllowedMethods: [GET, HEAD, OPTIONS]
+        CustomErrorResponses:
+          # SPA fallback: serve index.html for client-side routes
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${SiteBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution.Id}"
+
+  # --- Sync --------------------------------------------------------------
+  # One object per device: households/<id>/devices/<identityId>.json. Because
+  # a device only ever writes its own key there is never a second writer on an
+  # object, so no locking and no conditional writes are needed. Reconciliation
+  # happens on read via mergeEvents().
+  SyncBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [GET, PUT, HEAD]
+            AllowedOrigins: [!Ref SyncAllowedOrigin]
+            AllowedHeaders: ["*"]
+            ExposedHeaders: [ETag]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          # Device logs are rewritten in full on every sync; keeping a bounded
+          # version history makes an accidental clobber recoverable without
+          # unbounded storage growth.
+          - Id: ExpireOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      VersioningConfiguration:
+        Status: Enabled
+
+  IdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Condition: HasSync
+    Properties:
+      IdentityPoolName: !Sub "${AWS::StackName}-identities"
+      # No guest access: an anonymous identity must never be able to read a
+      # child's feeding log.
+      AllowUnauthenticatedIdentities: false
+      SupportedLoginProviders:
+        accounts.google.com: !Ref GoogleClientId
+
+  # The only security boundary in the app. Writes are pinned to the caller's
+  # own Cognito identity id via a policy variable, so the key cannot be chosen
+  # by the client; reads span the household so each caregiver sees the other.
+  SyncAuthenticatedRole:
+    Type: AWS::IAM::Role
+    Condition: HasSync
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              ForAnyValue:StringLike:
+                "cognito-identity.amazonaws.com:amr": authenticated
+      Policies:
+        - PolicyName: household-sync
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: WriteOnlyOwnDeviceObject
+                Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub "${SyncBucket.Arn}/households/${HouseholdId}/devices/${!cognito-identity.amazonaws.com:sub}.json"
+              - Sid: ReadWholeHousehold
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "${SyncBucket.Arn}/households/${HouseholdId}/*"
+              - Sid: ListHouseholdPrefix
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt SyncBucket.Arn
+                Condition:
+                  StringLike:
+                    "s3:prefix": !Sub "households/${HouseholdId}/*"
+
+  IdentityPoolRoles:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Condition: HasSync
+    Properties:
+      IdentityPoolId: !Ref IdentityPool
+      Roles:
+        authenticated: !GetAtt SyncAuthenticatedRole.Arn
+
+Outputs:
+  SiteBucketName:
+    Description: S3 bucket to upload the built frontend (aws s3 sync dist/)
+    Value: !Ref SiteBucket
+  DistributionId:
+    Description: CloudFront distribution ID (for cache invalidations)
+    Value: !Ref SiteDistribution
+  DistributionDomainName:
+    Description: CloudFront domain to point your DNS CNAME/alias at
+    Value: !GetAtt SiteDistribution.DomainName
+  SiteUrl:
+    Description: Your web app URL (open this!)
+    Value: !If
+      - HasCustomDomain
+      - !Sub "https://${CustomDomain}"
+      - !Sub "https://${SiteDistribution.DomainName}"
+  SyncBucketName:
+    Description: Private sync bucket (VITE_SYNC_BUCKET)
+    Value: !Ref SyncBucket
+  IdentityPoolId:
+    Description: Cognito identity pool for browser credentials (VITE_IDENTITY_POOL_ID)
+    Condition: HasSync
+    Value: !Ref IdentityPool
+  HouseholdId:
+    Description: Household prefix the IAM policy is scoped to (VITE_HOUSEHOLD_ID)
+    Value: !Ref HouseholdId

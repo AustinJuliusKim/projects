@@ -1,0 +1,10 @@
+{
+  "StackName": "BabySolids",
+  "Region": "us-west-2",
+  "CustomDomain": "",
+  "CertificateArn": "",
+  "WebAclArn": "",
+  "GoogleClientId": "FILL_AFTER_OAUTH_CLIENT",
+  "HouseholdId": "kim",
+  "SyncAllowedOrigin": "*"
+}

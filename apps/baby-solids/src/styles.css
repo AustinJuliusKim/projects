@@ -1,0 +1,32 @@
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: #0e0f13;
+  /* Room for the fixed bottom nav plus the iOS home indicator. */
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+/* One-handed use is the norm here — a phone in one hand, a baby in the other. */
+.bs-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #121319;
+  border-top: 1px solid #24262f;
+  z-index: 100;
+}
+
+@media print {
+  .bs-no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    padding-bottom: 0;
+  }
+}
