@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Stack, Title, Text, Card, Group, Badge, Progress, Alert, Anchor, Button } from "@mantine/core";
 
-import { FOODS_BY_ID, ALLERGEN_PLANS } from "../useLog.js";
+import { FOODS_BY_ID } from "../useLog.js";
 
 /**
  * The allergen maintenance view.
@@ -40,8 +40,9 @@ export default function AllergensView({ log }) {
       )}
 
       {log.allergens.map((a) => {
-        const plan = ALLERGEN_PLANS.find((p) => p.allergen === a.allergen);
+        const plan = log.plans.find((p) => p.allergen === a.allergen);
         const food = plan ? FOODS_BY_ID[plan.foodId] : null;
+        const started = a.status !== "not_started";
         const pct = Math.min(100, (a.sessionsLast7d / a.targetSessions) * 100);
         return (
           <Card key={a.allergen} withBorder padding="sm">
@@ -52,20 +53,37 @@ export default function AllergensView({ log }) {
               <Badge
                 size="sm"
                 variant="light"
-                color={a.dueToday ? "orange" : a.sessionsLast7d ? "teal" : "gray"}
+                color={!started ? "gray" : a.dueToday ? "orange" : "teal"}
               >
-                {a.sessionsLast7d} / {a.targetSessions} this week
+                {started ? `${a.sessionsLast7d} / ${a.targetSessions} this week` : "not started"}
               </Badge>
             </Group>
 
-            <Progress value={pct} size="sm" color={a.dueToday ? "orange" : "teal"} mb={6} />
+            {started && (
+              <Progress value={pct} size="sm" color={a.dueToday ? "orange" : "teal"} mb={6} />
+            )}
 
             <Text size="xs" c="dimmed">
-              {a.lastAt
-                ? `Last served ${a.daysSinceLast === 0 ? "today" : `${a.daysSinceLast} day${a.daysSinceLast === 1 ? "" : "s"} ago`}.`
-                : "Never served."}{" "}
-              Rolling seven days, not a weekly reset.
+              {started ? (
+                <>
+                  {a.lastAt
+                    ? `Last served ${a.daysSinceLast === 0 ? "today" : `${a.daysSinceLast} day${a.daysSinceLast === 1 ? "" : "s"} ago`}.`
+                    : "Never served."}{" "}
+                  Rolling seven days, not a weekly reset.
+                </>
+              ) : (
+                <>
+                  The clock starts once you serve it — until then this is a decision to make, not
+                  something you are behind on.
+                </>
+              )}
             </Text>
+
+            {!started && plan?.medicalGate && (
+              <Text size="xs" c="dimmed" mt={6} fs="italic">
+                {plan.medicalGate}
+              </Text>
+            )}
 
             {food && (
               <Group mt="sm" gap="xs">
