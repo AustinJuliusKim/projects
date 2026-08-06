@@ -102,6 +102,11 @@ export default function BrowseView({ log }) {
                       modify
                     </Badge>
                   )}
+                  {!food.reviewedOn && (
+                    <Badge size="xs" color="gray" variant="outline">
+                      draft
+                    </Badge>
+                  )}
                 </Group>
                 <Text size="xs" c="dimmed">
                   {food.category.replace(/_/g, " ")} · from {food.firstOkMonths}m

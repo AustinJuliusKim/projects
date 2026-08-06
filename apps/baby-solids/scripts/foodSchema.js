@@ -80,6 +80,15 @@ export function buildFoodSchema(enums) {
     cultural: z.array(oneOf("culturalTags")).default(["general"]),
     prepMinutes: z.number().int().positive().optional(),
     sources: z.array(source).min(1, "every food needs at least one source"),
+    /**
+     * Date a human read this record against its cited sources.
+     *
+     * Absent means nobody has. Records are drafted from primary sources, but
+     * drafted is not the same as checked, and this is advice a parent acts on
+     * with their own child — so the distinction is carried in the data and
+     * shown in the UI rather than tracked on a checklist somewhere.
+     */
+    reviewedOn: z.string().regex(DATE_ONLY, "reviewedOn must be YYYY-MM-DD").optional(),
     // Derived by the compiler from the body.
     relatedIds: z.array(z.string().regex(SLUG)).default([]),
     backgroundMd: z.string().optional(),

@@ -38,6 +38,15 @@ export default function FoodView({ log }) {
         <Badge variant="light">iron: {food.nutrients.ironType.replace("_", "-")}</Badge>
       </Group>
 
+      {!food.reviewedOn && (
+        <Alert color="gray" title="Draft — not yet checked by a human" variant="light">
+          <Text size="sm">
+            This record was written from the sources listed at the bottom, but nobody has read it
+            back against them yet. Follow the links before you act on it.
+          </Text>
+        </Alert>
+      )}
+
       {food.allergenProtocol && (
         <Alert color="orange" title="Before the first taste" variant="light">
           <Text size="sm">{food.allergenProtocol.medicalGate}</Text>

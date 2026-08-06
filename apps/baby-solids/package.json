@@ -10,7 +10,8 @@
     "check": "node scripts/compile-content.js --check",
     "check:sql": "node scripts/emit-sql.js --dry-run",
     "preview": "vite preview",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "review:status": "node scripts/review-status.js"
   },
   "dependencies": {
     "@baby/core": "file:../../packages/baby-core",
