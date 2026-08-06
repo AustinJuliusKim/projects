@@ -86,10 +86,19 @@ ironTypes:
 # How much weight a claim carries. Rendered as a visible badge; anything at
 # common_practice must not be presented as instruction from a guideline body.
 evidenceTiers:
-  - guideline # AAP, WHO, CDC, NHS, Health Canada, FDA
+  - guideline # AAP, WHO, CDC, NHS, Health Canada, FDA — current
+  - retired_guideline # withdrawn or superseded by its issuing body; see below
   - trial # a named RCT or systematic review
+  - reference # composition data (USDA FoodData Central) — a measurement, not advice
   - expert_opinion # e.g. CSACI's >=1x/week allergen cadence
   - common_practice # widely done, not guideline-issued (most cut-size rules)
+
+# On retired_guideline: a canon meant to last years will outlive some of its
+# sources. AAP retired its 2005 infant-methemoglobinemia clinical report in June
+# 2025, and two records cite it. Deleting the citation would lose provenance for
+# advice that is still sensible on its own; leaving it badged "guideline" would
+# be a lie. The honest third option is a tier that says the body no longer
+# stands behind it, so a reader can weigh it accordingly.
 
 amounts:
   - none

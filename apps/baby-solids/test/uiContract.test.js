@@ -8,6 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { TIER_LABEL } from "../src/tiers.js";
 
 const { foods, index } = JSON.parse(
   readFileSync(new URL("../src/generated/foods.json", import.meta.url), "utf8"),
@@ -66,13 +67,30 @@ test("every relatedId resolves to a real food (no dead links in the UI)", () => 
   }
 });
 
-test("the tier badge map covers every tier used in the canon", () => {
-  // FoodView falls back to a grey "Source" badge, but an unmapped tier means
-  // the evidence grading silently stops being visible.
-  const known = new Set(["guideline", "trial", "expert_opinion", "common_practice"]);
+test("the tier badge map covers every tier in the vocabulary", () => {
+  // Read the vocabulary from enums.yaml rather than restating it. An earlier
+  // version kept its own copy of this list and went stale the moment two tiers
+  // were added — it failed, but for the wrong reason. An unmapped tier makes
+  // the evidence grading silently fall back to a neutral badge, which is
+  // exactly the case where the label matters most.
+  const enums = readFileSync(new URL("../content/enums.yaml", import.meta.url), "utf8");
+  const declared = enums
+    .split(/^evidenceTiers:$/m)[1]
+    .split(/^\w/m)[0]
+    .split("\n")
+    .map((l) => /^\s+-\s+([a-z_]+)/.exec(l)?.[1])
+    .filter(Boolean);
+
+  assert.ok(declared.length >= 4, "failed to parse evidenceTiers out of enums.yaml");
+  for (const tier of declared) {
+    assert.ok(TIER_LABEL[tier], `enums.yaml declares tier "${tier}" with no badge in tiers.js`);
+  }
+});
+
+test("every tier actually used in the canon has a badge", () => {
   for (const food of foods) {
     for (const src of food.sources) {
-      assert.ok(known.has(src.tier), `${food.id} uses unmapped tier "${src.tier}"`);
+      assert.ok(TIER_LABEL[src.tier], `${food.id} uses unmapped tier "${src.tier}"`);
     }
   }
 });

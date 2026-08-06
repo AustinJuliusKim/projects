@@ -1,6 +1,1196 @@
 {
   "foods": [
     {
+      "id": "apple",
+      "name": "Apple",
+      "aliases": [
+        "apples",
+        "applesauce",
+        "sagwa",
+        "사과"
+      ],
+      "category": "fruit",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "soft-strip",
+          "servingNote": "Cooked slices, or raw apple grated on the coarse side of a box grater. Both are guideline-issued forms; raw chunks are not.",
+          "prepMd": "Two routes, pick either.\n\n**Cooked.** Peel, core, and slice. Simmer with a splash of water, or roast\ncovered, until a slice collapses under a fork — five to fifteen minutes\ndepending on thickness. Serve as finger-length slices, which is also what NHS\nsuggests for apple: \"slices instead of small chunks.\" At this age the whole-hand\ngrasp means the piece is held in a fist with an end sticking out, so the baby\nsets the bite size.\n\n**Grated raw.** Peel, then grate on the coarse side of a box grater. The shreds\nare soft enough to gum and short enough that no single piece can lodge. Stir\ninto yogurt or porridge, or offer on a loaded spoon."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "The pincer grasp arrives — AAP puts it at most often between 9 and 10 months —\nso soft cooked cubes about the size of your thumbnail become pick-up-able. They\nmust still be cooked soft or grated. A pincer grip does not make a raw apple\ncube safe; it just means the baby can now deliver one to their own airway.\n\nGrated raw apple stays useful here and is the easier weekday version."
+        },
+        {
+          "band": "12-17",
+          "geometry": "soft-strip",
+          "prepMd": "Still cooked soft or grated raw. Baked apple, apple stirred through oatmeal,\napple sauce, apple in a stew.\n\nRaw apple chunks and raw apple slices thick enough to snap off are the one thing\nthat does not change at twelve months. AAP's line is four years, not one."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "note": "AAP names \"raw fruit chunks, such as apple pieces\" on its choking-hazard list and keeps them off the menu until 4 years of age or older. That restriction is about raw pieces, not about apple — cooked or grated apple is fine from six months.",
+        "requiredModification": "Never raw chunks. Either cook it until it mashes easily with a fork, or grate it raw. Peel it either way."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 0.12,
+        "fdcId": 171688,
+        "tags": [
+          "fiber"
+        ]
+      },
+      "cultural": [
+        "general"
+      ],
+      "prepMinutes": 15,
+      "sources": [
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics — Choking Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "CDC — Choking Hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "CDC — When, What, and How to Introduce Solid Foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/help-your-baby-enjoy-new-foods/",
+          "body": "NHS — Help your baby enjoy new foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/foods-to-avoid-giving-babies-and-young-children/",
+          "body": "NHS — Foods to avoid giving babies and young children",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://fdc.nal.usda.gov/",
+          "body": "USDA FoodData Central (fdcId 171688, raw with skin; 173928, cooked without skin)",
+          "tier": "reference",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "mango",
+        "green-peas",
+        "butternut-squash",
+        "pear",
+        "korean-pear"
+      ],
+      "backgroundMd": "Apple is one of the few foods in this canon that three separate guideline\nbodies name by name — and all three name it as a hazard in its raw form. AAP\nlists \"raw fruit chunks, such as apple pieces\" and says to keep them from\nchildren \"until 4 years of age or older.\" CDC's hazard list says \"raw carrots or\napples.\" NHS covers it in its preparation guidance.\n\nThat is not a reason to skip apple. It is a reason to change its form, and\nunusually there are **two fixes that guideline bodies actually issue** rather\nthan one someone extrapolated:\n\n- **Cook it** until you can mash it easily with a fork (CDC and NHS both).\n- **Grate it raw** (NHS).\n\nPeel it either way. NHS notes that removing the skin makes food easier to\nswallow, and apple skin does not break down under gums.\n\nNutritionally apple is close to filler: 0.12 mg of iron per 100 g raw, and\ncooking destroys nearly all the vitamin C — USDA's cooked, peeled entry gives\n0.2 mg per 100 g against 4.6 mg raw. So **cooked apple is not a useful vitamin-C\npartner for an iron meal**; use [[mango]], [[green-peas]], or\n[[butternut-squash]] for that. Apple's value here is that it is cheap,\nyear-round, familiar, and takes flavour well alongside things a baby is less\nsure about.\n\nNo juice before 12 months. Applesauce is fine if it is unsweetened — added\nsugars are off the menu under 24 months.\n\n[[pear]] is handled differently because a ripe European pear goes soft;\n[[korean-pear]] is handled like apple because it does not.",
+      "safetyNoteMd": "Raw apple is hard, smooth, and breaks into airway-sized wedges under a bite —\nthe exact combination that makes it one of the named entries on both the AAP and\nCDC lists. A baby who can bite a piece off cannot reliably grind it, and the\npiece that comes away is the wrong shape.\n\nCooking and grating are the two fixes, and they are guideline-issued rather than\ninferred. Peeling is the third and applies to both.\n\nTest cooked apple the way you would test any cooked fruit: press a piece between\nyour fingers. If it holds its shape, it needs longer."
+    },
+    {
+      "id": "avocado",
+      "name": "Avocado",
+      "aliases": [
+        "aguacate",
+        "palta",
+        "hass",
+        "alligator pear"
+      ],
+      "category": "fruit",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "spear-finger-length",
+          "servingNote": "Slippery is the whole difficulty. Expect it to squirt out of the fist before it gets anywhere near the mouth.",
+          "prepMd": "Halve, remove the pit, and cut the flesh into long wedges — roughly the length\nof an adult finger, thick enough not to collapse when squeezed. Leaving a\nstrip of skin along the back gives something dry to hold; the skin itself is\nnot eaten.\n\nOne honest caveat about that shape: AAP's published rule is to cut food for\ninfants into pieces no larger than one-half inch, and that is the only\ndimensional instruction any US body issues. Longer soft-food spears are\nwidespread practice rather than a guideline instruction, and they rest on the\nfood yielding under light pressure. If a piece holds its shape when you press\nit, it is the wrong piece regardless of its length."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "Once your baby picks things up between thumb and forefinger instead of raking\nat them, small cubes work and are less frustrating. Keep offering a wedge or\ntwo alongside — biting off a piece is a separate skill from picking one up."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the rest of the table is eating it: cubed, sliced, mashed on toast,\nstirred through other foods. No caveat beyond ripeness."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "low",
+        "requiredModification": "Use fruit ripe enough to yield to gentle thumb pressure. Underripe avocado is a firm food, not a soft one."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 0.55,
+        "fdcId": 171705,
+        "tags": [
+          "healthy-fat"
+        ]
+      },
+      "cultural": [
+        "general",
+        "latin"
+      ],
+      "prepMinutes": 5,
+      "sources": [
+        {
+          "url": "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/Starting-Solid-Foods.aspx",
+          "body": "American Academy of Pediatrics",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics — Choking Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "Centers for Disease Control and Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "beef",
+        "oatmeal",
+        "lentils",
+        "banana"
+      ],
+      "backgroundMd": "One of the few foods that needs no cooking and no softening — a ripe avocado\nis already at the texture everything else has to be cooked down to. It appears\non no choking-hazard list, and no primary source restricts it.\n\nDo not think of it as an iron food. At 0.55 mg per 100 g of non-heme iron it\ncontributes very little, so it belongs alongside the foods doing the real work —\n[[beef]], fortified [[oatmeal]], [[lentils]] — rather than instead of them. It is\nmostly fat and calories, which at this age is a point in its favour.\n\nRelated: [[banana]] is the other no-cook soft food and behaves much the same in\nthe hand.",
+      "safetyNoteMd": "Ripeness is the only real variable. A hard avocado is a firm raw food and\nshould be left to ripen rather than served, which is the same logic CDC\napplies to hard raw fruit and vegetables generally.\n\nSome people with latex allergy react to avocado, but no primary infant-feeding\nsource addresses that, so this record makes no claim about it either way."
+    },
+    {
+      "id": "banana",
+      "name": "Banana",
+      "aliases": [
+        "platano",
+        "plátano",
+        "banane",
+        "바나나"
+      ],
+      "category": "fruit",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "spear-finger-length",
+          "servingNote": "Peel back half the skin and leave the rest on — it is the only dry part of a banana.",
+          "prepMd": "Peel about half the skin down, cut the banana in half across the middle, and\nhand over the piece with skin still on the bottom half. Bare banana is\nnotoriously slippery; the skin is the grip.\n\nIf you want it bare, one common trick is to score the peeled banana lengthwise\ninto thirds so it separates into long spears that hold together better than a\nwhole one. That is a kitchen technique, not an instruction from anybody.\n\nOn size: AAP's published rule is to cut food for infants into pieces no larger\nthan one-half inch, and that is the only dimensional instruction a US guideline\nbody issues. Longer soft-food spears are widespread practice rather than\nguideline advice, and they depend entirely on the fruit yielding under light\npressure."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "Once your baby picks things up between thumb and forefinger rather than raking\nat them, small pieces stop being frustrating. Cut into short chunks, or leave\nsome longer pieces alongside so biting stays in practice."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the rest of the table is eating it — in chunks, sliced onto oatmeal,\nmashed into yoghurt. No caveat beyond ripeness."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "low",
+        "requiredModification": "Use fruit ripe enough to bruise under light thumb pressure. A firm, underripe banana is a hard food."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 0.26,
+        "fdcId": 173944,
+        "tags": []
+      },
+      "cultural": [
+        "general"
+      ],
+      "prepMinutes": 2,
+      "sources": [
+        {
+          "url": "https://www.nhs.uk/start-for-life/baby/weaning/what-to-feed-your-baby/around-6-months/",
+          "body": "NHS Start for Life — what to feed your baby around 6 months",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/Starting-Solid-Foods.aspx",
+          "body": "American Academy of Pediatrics",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics — Choking Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "Centers for Disease Control and Prevention — choking hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "avocado"
+      ],
+      "backgroundMd": "One of the few foods named by a guideline body for this exact moment: NHS lists\nbananas among the fruits to offer from around six months, and AAP names small\npieces of banana as a suitable finger food. No cooking, no softening, no\nequipment.\n\nIt is not an iron food. At 0.26 mg of non-heme iron per 100 g it is close to\nthe bottom of anything in this canon, so serve it for what it is — an easy,\nfamiliar carbohydrate that a baby can practise on — and keep the iron work with\nmeat, fortified cereal, beans, and lentils.\n\nRelated: [[avocado]] is the other no-cook soft food and behaves much the same in\nthe hand.",
+      "safetyNoteMd": "Ripeness is the whole story. A ripe banana compresses to nothing; a firm,\ngreen-shouldered one behaves like a hard raw fruit and should be left a few days\ninstead.\n\nYou may have been told never to serve banana in rounds. Worth knowing where that\ncomes from: CDC's rule about round foods is written about grapes, cherries,\nberries, tomatoes, hot dogs, and string cheese — **banana is not on that list**,\nand no guideline body prohibits banana coins. Ripe banana does not hold a rigid\ncircular shape the way a grape or a hot-dog slice does, which is the property\nthe rule is actually about. Cut it however suits your baby's grip."
+    },
+    {
+      "id": "barley",
+      "name": "Barley",
+      "aliases": [
+        "bori",
+        "보리",
+        "pearl barley",
+        "pearled barley",
+        "hulled barley",
+        "barley cereal"
+      ],
+      "category": "grain",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "ground-and-moistened",
+          "servingNote": "Mix fortified barley cereal with breast milk, formula, or water — never cow's milk before 12 months.",
+          "prepMd": "Fortified infant barley cereal: put a spoonful in a bowl and mix with breast\nmilk, formula, or water until it is smooth and thick enough to stay on a loaded\nspoon. Start thinner and thicken it over the following weeks — that transition\nis the point of the food as much as the iron is.\n\nWhole barley is a different job. Pearled barley needs simmering for the better\npart of an hour, well past the chewy texture an adult would want, and then\ngrinding or mashing. CDC's instruction for whole grains is to cook and finely\ngrind or mash the kernels; a whole cooked barley grain is on the hazard list as\nwritten.\n\nBarley cereal takes other foods well — mashed [[butternut-squash]], puréed\n[[spinach]], mashed [[tofu]] — which is a good way to get the vitamin-C pairing\nand the iron into the same bowl."
+        },
+        {
+          "band": "9-11",
+          "geometry": "ground-and-moistened",
+          "prepMd": "Thicker, lumpier cereal, and this is the age Health Canada flags for it: lumpy\ntextures should be offered no later than nine months. Cooked-and-mashed pearled\nbarley folded into the cereal is a natural step up from smooth.\n\nBarley porridge with soft vegetables and a mashed protein is a full meal at this\nage, and a spoon the baby holds themselves is worth the mess."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the household eats it — boribap, barley in a soup or stew, barley\nporridge. Keep grains soft and well cooked, and mash or chop through anything\nthat is still distinctly chewy.\n\nRoasted barley tea (boricha) is a common household drink but it is a drink, and\nbefore twelve months drinks other than breast milk or formula displace what a\nbaby actually needs. It also carries no nutrition worth counting."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "low",
+        "requiredModification": "Cook whole barley well past the doneness you would eat yourself, then grind or mash it. CDC lists whole cooked grain kernels as a hazard and says to cook and finely grind or mash them."
+      },
+      "nutrients": {
+        "ironType": "fortified",
+        "ironMgPer100g": 48.2,
+        "fdcId": 171358,
+        "tags": [
+          "iron-rich",
+          "fiber",
+          "gluten-grain"
+        ]
+      },
+      "cultural": [
+        "general",
+        "korean"
+      ],
+      "prepMinutes": 5,
+      "sources": [
+        {
+          "url": "https://www.fda.gov/food/hfp-constituent-updates/fda-issues-final-guidance-industry-action-level-inorganic-arsenic-infant-rice-cereals",
+          "body": "FDA — Action level for inorganic arsenic in infant rice cereals (names barley as an alternative)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "CDC — When, What, and How to Introduce Solid Foods (fortified oat, barley and multi-grain cereals)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/cows-milk-and-milk-alternatives.html",
+          "body": "CDC — Cow's Milk and Milk Alternatives",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.fda.gov/food/nutrition-food-labeling-and-critical-foods/gluten-free-labeling-foods",
+          "body": "FDA — Gluten-Free Labeling of Foods (wheat, rye, barley and crossbred hybrids)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/26815017/",
+          "body": "ESPGHAN — Gluten Introduction and the Risk of Coeliac Disease, position paper (JPGN 2016)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38847232/",
+          "body": "ESPGHAN — Early diet and the risk of coeliac disease, 2024 update position paper",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.canada.ca/en/health-canada/services/canada-food-guide/resources/nutrition-healthy-term-infants/nutrition-healthy-term-infants-recommendations-birth-six-months/6-24-months.html",
+          "body": "Health Canada — Nutrition for Healthy Term Infants, 6 to 24 Months (iron-fortified cereal; lumpy textures by nine months)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://ods.od.nih.gov/factsheets/Iron-HealthProfessional/",
+          "body": "NIH Office of Dietary Supplements — Iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://fdc.nal.usda.gov/",
+          "body": "USDA FoodData Central (fdcId 171358 fortified infant cereal dry; 170285 pearled cooked; 170283 hulled; 170284 pearled raw)",
+          "tier": "reference",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "mango",
+        "green-peas",
+        "butternut-squash",
+        "yogurt",
+        "spinach",
+        "tofu"
+      ],
+      "backgroundMd": "FDA names barley explicitly as an alternative to rice cereal in its\ninorganic-arsenic guidance, and CDC recommends offering a variety of fortified\ninfant cereals — oat, barley, multi-grain — rather than only rice. That is why\nbarley is here.\n\n**The wheat and gluten question, stated exactly, because it is routinely\nmuddled.**\n\nBarley is **not wheat** and is **not one of the nine US major allergens**. It\ncarries no US allergen labelling requirement, and a child with an IgE wheat\nallergy is not, by that fact, allergic to barley.\n\nBarley **is** a gluten-containing grain. FDA's gluten-free rule defines those as\n\"wheat, rye, barley, and other grains produced by breeding\" them, so a food\ncontaining barley cannot be labelled gluten-free.\n\nPut together: **barley is a celiac question, not a wheat-allergy question.** A\nchild with celiac disease must avoid it. But do not read \"not wheat\" as \"safe\nfor a wheat-allergic child\" and serve it on that basis — if there is a diagnosed\nwheat allergy in the picture, that decision belongs with the clinician managing\nit, not with a labelling technicality.\n\n**On timing, there is nothing to wait for.** ESPGHAN's position is that gluten\nmay be introduced at any point between 4 and 12 completed months, and that\ntiming does not affect the cumulative incidence of celiac disease — a position\nits 2024 update maintains. No delay is warranted, and delaying does not prevent\nanything.\n\n**Fortification is the entire nutritional story, and the gap is about 36-fold.**\nDry fortified barley infant cereal carries **48.2 mg of iron per 100 g**. Cooked\npearled barley carries 1.33 mg. Hulled barley is 3.6 mg raw and pearled 2.5 mg\nraw, both before the dilution of cooking. Against an iron requirement of 11 mg a\nday at 7 to 12 months, fortified infant cereal is the single realistic vehicle\nshort of meat — the 48.2 mg figure is for the dry powder, so what actually\nreaches the bowl depends on how thickly you mix it, but the ratio holds.\n\nAdded iron absorbs inefficiently, so pair it with a vitamin-C food in the same\nmeal: [[mango]], [[green-peas]], [[butternut-squash]]. Do not pair it with\n[[yogurt]] — dairy calcium inhibits non-heme absorption.\n\n**Prepare it with breast milk, formula, or water. Not cow's milk before 12\nmonths.** USDA's \"prepared\" barley cereal entry is made up with whole milk,\nwhich is not the preparation to copy at this age.",
+      "safetyNoteMd": "**Whole cooked grain kernels are on CDC's choking-hazard list.** Barley grains\nare small but firm and slippery, and pearled barley cooked to an adult's\n\"al dente\" is exactly the texture the list is about. Cook it soft, then grind or\nmash.\n\n**Gluten, not wheat allergy.** Barley belongs in a conversation about celiac\ndisease. It does not belong in a wheat-free diet, and it should not be presented\nas a safe substitute for a wheat-allergic child without a clinician's say-so.\n\n**Never cow's milk to mix it before 12 months.** Breast milk, formula or water\nonly. This is about volume of unmodified cow's milk, not about dairy in general\n— see [[yogurt]], which is fine from around six months."
+    },
+    {
+      "id": "beef",
+      "name": "Beef",
+      "aliases": [
+        "sogogi",
+        "소고기",
+        "ground beef",
+        "minced beef",
+        "carne de res"
+      ],
+      "category": "animal_protein",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "ground-and-moistened",
+          "servingNote": "Ground and loosened with its own juices, broth, or a puree — dry mince scatters and is hard to gather.",
+          "prepMd": "Buy ground, or grind it yourself. Brown it through, breaking it up finer than\nyou would for yourself, then stir in enough of its own juices, unsalted broth,\nor a familiar puree that it clumps instead of scattering. Loose dry mince is\ngenuinely hard for a six-month-old to collect — it goes everywhere and nothing\ngets eaten.\n\nCook ground beef to 160 °F (USDA FSIS). Remove any fat or gristle **before**\ncooking rather than picking it out afterwards; that is CDC's instruction and it\nis easier that way.\n\nA common alternative at this age is a large, palm-sized patty or a strip of\nslow-cooked beef the baby gnaws on without detaching pieces. That is widespread\npractice, not a guideline instruction, and it depends on the meat being soft\nenough to shred under pressure. If it holds together when you pull at it, it is\nthe wrong piece."
+        },
+        {
+          "band": "9-11",
+          "geometry": "ground-and-moistened",
+          "prepMd": "Same ground form, and now easier — a pincer grasp picks up mince that a whole\nhand could only push around. Mixed into [[oatmeal]] or mashed vegetables it goes\ndown faster than on its own."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "Whatever the table is eating, subject to two things. Meat still needs to be soft\nand cut small: \"tough or large chunks of meat\" stays on CDC's hazard list past\nthe first birthday. And processed beef stays out — hot dogs, sausages, and lunch\nmeat are excluded twice over, once for sodium and once because CDC's rule for\ncylindrical foods is to cut them into short thin strips rather than rounds."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Ground or finely minced, never chunks. Remove fat, skin, and bones before cooking, and cook until it mashes with light pressure."
+      },
+      "nutrients": {
+        "ironType": "heme",
+        "ironMgPer100g": 2.93,
+        "fdcId": 174034,
+        "tags": [
+          "zinc",
+          "protein"
+        ]
+      },
+      "cultural": [
+        "general",
+        "korean"
+      ],
+      "prepMinutes": 20,
+      "sources": [
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/vitamins-minerals/iron.html",
+          "body": "Centers for Disease Control and Prevention — iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "Centers for Disease Control and Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "Centers for Disease Control and Prevention — choking hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.who.int/publications/i/item/9789240081864",
+          "body": "WHO — guideline for complementary feeding of infants and young children 6–23 months (2023)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://caringforkids.cps.ca/handouts/healthy-living/feeding_your_baby_in_the_first_year",
+          "body": "Canadian Paediatric Society",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+          "body": "USDA Food Safety and Inspection Service — safe minimum internal temperatures",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "lentils",
+        "black-beans",
+        "broccoli",
+        "oatmeal"
+      ],
+      "backgroundMd": "Beef is the clearest example of why the old \"food before one is just for fun\"\nline does not hold. WHO's 2023 complementary feeding guideline recommends\nanimal-source foods — meat, fish, or eggs — **daily** from six months as a\nstrong recommendation, and Health Canada and the Canadian Paediatric Society ask\nfor iron-rich foods from about six months, at least twice a day.\n\nWhat makes beef different from the plant sources is the *form* of the iron. CDC\nclassifies the iron in meat, poultry, and fish as heme iron and says plainly\nthat it is more easily absorbed than the non-heme iron in plants and fortified\ncereals. Pan-browned ground beef carries 2.93 mg per 100 g, plus zinc, and\nunlike [[lentils]] or [[black-beans]] it does not need a vitamin-C food beside\nit — heme absorption is not vitamin-C dependent. Pair it with [[broccoli]] if\nyou like, but for taste, not chemistry.\n\nCPS names \"minced\" among suitable forms, which lines up with the hazard list:\nground beef is the guideline-friendliest way to serve it.",
+      "safetyNoteMd": "Two separate things, both real.\n\n**Choking.** Chunks of meat are a named hazard-list entry. Ground, finely\nminced, or shredded-to-collapse is the safe form; a cube of steak is not, at any\nage in this range.\n\n**Cooking.** Ground beef to 160 °F, whole cuts to 145 °F with a three-minute\nrest. Ground meat mixes surface bacteria all the way through, which is why its\ntarget is higher than a steak's — for a baby that margin is not worth trimming."
+    },
+    {
+      "id": "black-beans",
+      "name": "Black beans",
+      "aliases": [
+        "frijoles negros",
+        "turtle beans",
+        "black turtle beans"
+      ],
+      "category": "plant_protein",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "smashed",
+          "servingNote": "Every bean flattened — a whole cooked bean is a named choking hazard, however soft it feels.",
+          "prepMd": "Cook from dry until the beans collapse, or use canned. Then flatten every single\nbean — press each one between thumb and forefinger, or run a fork or potato\nmasher through the lot until nothing round is left. Loosen with cooking liquid,\nunsalted broth, or a puree so the mash gathers on a spoon.\n\nBean skins sometimes separate and float free of the mash. No guideline body\ninstructs removing them; parents who do it are following common practice, not a\nrule."
+        },
+        {
+          "band": "9-11",
+          "geometry": "smashed",
+          "prepMd": "Same mash, now self-fed, and it works well spread on a strip of toast or stirred\ninto [[oatmeal]]. A pincer grasp can pick up an individual bean, which is exactly\nthe reason to keep flattening them."
+        },
+        {
+          "band": "12-17",
+          "geometry": "smashed",
+          "prepMd": "Still flattened. This is the part parents are surprised by: \"whole beans\" is on\nCDC's hazard list without an age qualifier, and a toddler who bolts food is not\nobviously safer with a round bean than a nine-month-old. Refried, mashed into\nrice, or squashed into a burrito filling all work."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Mash, puree, or flatten every bean between two fingers. Whole beans are a named entry on the CDC/WIC choking-hazard list."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 2.1,
+        "fdcId": 173735,
+        "tags": [
+          "protein"
+        ]
+      },
+      "cultural": [
+        "general",
+        "latin"
+      ],
+      "prepMinutes": 25,
+      "sources": [
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "Centers for Disease Control and Prevention — choking hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/vitamins-minerals/iron.html",
+          "body": "Centers for Disease Control and Prevention — iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/start-for-life/baby/weaning/what-to-feed-your-baby/around-6-months/",
+          "body": "NHS Start for Life — what to feed your baby around 6 months",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://caringforkids.cps.ca/handouts/healthy-living/feeding_your_baby_in_the_first_year",
+          "body": "Canadian Paediatric Society",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/foods-and-drinks-to-avoid-or-limit.html",
+          "body": "Centers for Disease Control and Prevention — foods and drinks to avoid or limit",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "broccoli",
+        "lentils",
+        "oatmeal"
+      ],
+      "backgroundMd": "A cheap, storable, iron-carrying protein that both NHS and the Canadian\nPaediatric Society name for this age — CPS's phrase is \"mashed beans, peas or\nlentils,\" and the mashing is not decoration.\n\nThe iron is non-heme, 2.10 mg per 100 g cooked, which means absorption depends\non what is on the plate beside it. Black beans contain **zero vitamin C**, so\nthey are the clearest case in this canon for deliberate pairing: CDC advises\nserving non-heme iron with a vitamin-C food and names broccoli among its\nvitamin-C foods. **[[broccoli]] with black beans is a pairing CDC's own advice\nsupports**, not a folk tip. [[lentils]] carry more iron per 100 g if you are\nchoosing between pulses.",
+      "safetyNoteMd": "**Whole beans are a direct entry on the CDC/WIC choking-hazard list**, alongside\nwhole grapes and chunks of meat. They are small, round, smooth, and about the\nsize of an infant airway, and being soft does not change the geometry. Mashing\nor flattening is the required modification, not a texture preference.\n\n**Sodium, if you use canned.** Beans cooked from dry are about 1 mg of sodium per\n100 g. Canned beans are substantially higher — this record does not publish a\nfigure because we could not verify one, so read the can. Rinsing canned beans\nunder running water is common practice for cutting the sodium; it is not\nguideline-issued, and a no-salt-added can is the more reliable route."
+    },
+    {
+      "id": "broccoli",
+      "name": "Broccoli",
+      "aliases": [
+        "brocoli",
+        "brócoli",
+        "브로콜리"
+      ],
+      "category": "vegetable",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "spear-finger-length",
+          "servingNote": "A cooked floret with a length of stalk left on — the stalk is the handle, the head is the part that gets eaten.",
+          "prepMd": "Steam or boil florets until the thickest part of the stalk takes a knife with no\nresistance — softer than you would serve yourself, softer than \"tender-crisp\".\nLeave each floret attached to two or three centimetres of stalk so there is\nsomething narrow to hold while the bushy head goes in the mouth.\n\nThe tree shape is why broccoli works early: the head is easy to gum and the stalk\nis a built-in handle. Pieces cut small are harder at this age, not safer — a\nbaby who cannot pick them up ends up raking a handful in at once.\n\nThe length of that stalk is common practice, not a rule from anybody. AAP's\npublished dimensional guidance is the single instruction to cut food for infants\ninto pieces no larger than half an inch, and no body issues per-food shapes. What\ncarries the safety here is the cooking: if the stalk resists, it is not ready,\nwhatever length it is."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "Small soft pieces of head and stalk, picked up between finger and thumb. Keep a\nwhole floret on the tray too — biting a piece off is a separate skill from\npicking one up, and it is worth practising."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the rest of the table is eating it, as long as it is cooked soft. Raw\nbroccoli and thick raw stalks stay out."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Cook until the stalk gives with no resistance and the head mashes between two fingers. Raw broccoli is a hard raw vegetable."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 0.67,
+        "fdcId": 169967,
+        "tags": [
+          "vitamin-c"
+        ]
+      },
+      "cultural": [
+        "general"
+      ],
+      "prepMinutes": 15,
+      "sources": [
+        {
+          "url": "https://www.nhs.uk/start-for-life/baby/weaning/what-to-feed-your-baby/around-6-months/",
+          "body": "NHS Start for Life — what to feed your baby around 6 months",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/vitamins-minerals/iron.html",
+          "body": "Centers for Disease Control and Prevention — iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "Centers for Disease Control and Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "Centers for Disease Control and Prevention — choking hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "black-beans",
+        "lentils",
+        "oatmeal"
+      ],
+      "backgroundMd": "**Broccoli's job in a baby's diet is not its own iron — it is everybody else's.**\nAt 64.9 mg of vitamin C per 100 g it is one of the foods CDC names when it\nadvises pairing non-heme iron sources with vitamin C so more of the iron is\nabsorbed. Its own 0.67 mg of iron is a rounding error next to that.\n\nSo serve it *with* something: [[black-beans]], which contain no vitamin C at all,\nor [[lentils]], which carry the most non-heme iron in this batch and only 1.5 mg\nof C. Fortified [[oatmeal]] is the same case. Broccoli beside any of those is a\nCDC-supported combination rather than a nice idea.\n\nIt is also the food NHS puts first by name. NHS recommends starting with the\nless-sweet vegetables — \"broccoli, cauliflower and spinach\" — so that a baby\ngets used to a range of flavours before the sweeter foods arrive.\n\nFrozen broccoli is a legitimate substitute with one caveat worth knowing: USDA's\nfigures put frozen at 40.1 mg of vitamin C against fresh broccoli's 64.9 — about\na 38% drop. Iron is essentially unchanged at 0.61 mg. Frozen is still a good\nvitamin-C food; fresh is a better one.",
+      "safetyNoteMd": "Raw broccoli is a hard raw vegetable, the category CDC says usually needs cooking\nso it mashes easily. Raw florets, crudités, and slaw are not a form to serve in\nthis age range.\n\nThe stalk is firmer than the head and is what to test — a head that mashes on a\nstem that does not is the piece most likely to be swallowed in a lump. Press the\nstalk, not the florets."
+    },
+    {
+      "id": "butternut-squash",
+      "name": "Butternut squash",
+      "aliases": [
+        "butternut",
+        "butternut pumpkin",
+        "winter squash",
+        "calabaza"
+      ],
+      "category": "vegetable",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "spear-two-finger",
+          "servingNote": "Roast rather than boil if you can — it keeps its shape better in a fist.",
+          "prepMd": "Halve it, scoop the seeds, and roast cut-side down at around 200 °C / 400 °F\nuntil a fork slides in with no resistance — usually 35 to 45 minutes. Steaming\nworks too but leaves it wetter and harder to hold.\n\nCut finger-length wedges about as thick as two of your fingers. At this age the\nwhole-hand grasp means the piece is held in a fist with an end sticking out, so\nthe baby controls the bite. Small pieces are harder now, not safer — they can't\nbe picked up and end up scooped by the handful.\n\nSkin on or off is your call. Roasted butternut skin is edible and gives\nsomething to grip; peeled is tidier and NHS notes that removing skin makes food\neasier to swallow."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "Once the pincer grasp appears — AAP puts that at most often between 9 and 10\nmonths — switch to soft cubes about the size of your thumbnail, keeping a few\nlarger wedges alongside so biting and tearing stay in practice.\n\nMashed butternut is also a good carrier for something the baby is less sure\nabout: iron-rich purées, a spoonful of yogurt, ground meat."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the rest of the table is eating it — cubed, mashed, in soup, roasted in\nwedges. Keep some pieces big enough to bite from rather than only pincer-sized\nones."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "low",
+        "requiredModification": "Cook until a piece smashes with light pressure between thumb and forefinger. Raw squash is a hard vegetable and is not appropriate at any age in this range."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 0.6,
+        "fdcId": 169296,
+        "tags": [
+          "vitamin-c",
+          "vitamin-a",
+          "fiber"
+        ]
+      },
+      "cultural": [
+        "general"
+      ],
+      "prepMinutes": 40,
+      "sources": [
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/babys-first-solid-foods/",
+          "body": "NHS — Your baby's first solid foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "CDC — When, What, and How to Introduce Solid Foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics — Choking Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://publications.aap.org/pediatrics/article/116/3/784/68408/Infant-Methemoglobinemia-The-Role-of-Dietary",
+          "body": "AAP — Infant Methemoglobinemia (Pediatrics 2005;116:784) — RETIRED by AAP June 2025",
+          "tier": "retired_guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://fdc.nal.usda.gov/",
+          "body": "USDA FoodData Central (fdcId 169296, cooked; 2685570, Foundation)",
+          "tier": "reference",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "tofu",
+        "green-peas",
+        "barley",
+        "kabocha",
+        "spinach"
+      ],
+      "backgroundMd": "A sweet winter squash that roasts to a texture a six-month-old can manage\nwithout any special technique. NHS names squash among the vegetables to start\nweaning with, and CDC names squash at the category level.\n\nTreat it as a negligible iron source. USDA's two datasets disagree by roughly\nthreefold — the legacy cooked entry gives 0.6 mg of iron and 15.1 mg of vitamin\nC per 100 g, while the newer Foundation sample gives 0.213 mg and 7.6 mg. The\nfigure in this record is the higher of the two, and even that is small next to\nthe 11 mg a day a 7–12 month old needs. Its real job at the table is as a\nvitamin-C partner: serve it alongside an iron food such as [[tofu]],\n[[green-peas]], or [[barley]] cereal, since vitamin C improves absorption of\nplant (non-heme) iron eaten in the same meal.\n\n[[kabocha]] behaves almost identically once cooked, and the prep below applies\nto both.",
+      "safetyNoteMd": "Undercooked squash is firm enough to be a hazard. Test a piece between your own\nfingers rather than trusting the timer; if it holds its shape under pressure, it\nneeds longer.\n\nHome-made vegetable purées, squash included, should be cooled quickly,\nrefrigerated promptly, and not kept for days.\n\nThat advice used to have a formal citation behind it: AAP's 2005 clinical report\non infant methemoglobinemia named well water as the main risk vector, found\nlittle or no risk from commercially prepared US infant food, and noted that\ncases from home-prepared vegetable foods kept too long continued to occur.\n**AAP retired that report in June 2025**, so it is no longer current guidance\nand nothing has replaced it. The storage habit stands on its own merits — cool\nit fast, refrigerate it, don't keep it for days — but it is now ordinary food\nhygiene rather than a cited recommendation. [[spinach]] covers the whole\nargument, including where US and EU advice still differ."
+    },
+    {
+      "id": "carrot",
+      "name": "Carrot",
+      "aliases": [
+        "carrots",
+        "danggeun",
+        "당근",
+        "zanahoria",
+        "ninjin"
+      ],
+      "category": "vegetable",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "spear-finger-length",
+          "servingNote": "Cooked to fork-mashable first. Raw carrot is on two separate choking-hazard lists.",
+          "prepMd": "Peel, cut into batons roughly the length of an adult finger, and steam, boil, or\nroast until a fork goes through with no resistance and the piece mashes when you\npress it. Undercooked carrot is the failure mode — it looks done, softens on the\noutside, and stays firm in the middle. Test the thickest piece, not the thinnest.\n\nThat baton length is common practice, not a rule any body issues. AAP's one\npublished dimension is to cut food for infants into pieces no larger than half an\ninch, and everything else about shape and length in circulation — here and\neverywhere — is convention. What actually carries the safety is the mash test."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "Soft cubes, picked up between finger and thumb. Keep a few longer soft batons on\nthe tray as well, since biting a piece off is its own skill."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the family eats cooked carrot — in soups, roasted, mashed, stirred\nthrough rice. Raw carrot is still out; see below."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Cook until a fork mashes it with light pressure. Raw carrot — sticks, batons, coins, or shreds — is named by both CDC and AAP and is not appropriate in this age range."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 0.34,
+        "fdcId": 170394,
+        "tags": []
+      },
+      "cultural": [
+        "general",
+        "korean"
+      ],
+      "prepMinutes": 20,
+      "sources": [
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "Centers for Disease Control and Prevention — choking hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "Centers for Disease Control and Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics — Choking Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/start-for-life/baby/weaning/what-to-feed-your-baby/around-6-months/",
+          "body": "NHS Start for Life — what to feed your baby around 6 months",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "broccoli"
+      ],
+      "backgroundMd": "Carrot is the most heavily flagged food in this batch, and the reason is narrow:\n**raw** carrot is named by name on both US hazard lists — CDC's, which lists\n\"raw carrots\" among hard raw vegetables, and AAP's, which names \"raw vegetables\nlike carrot sticks\" among foods to avoid until age four or older. Two bodies\nnaming the same food is rare.\n\nCooked carrot is a different food mechanically and is fine. CDC's instruction is\nexplicit: \"Cook hard vegetables and fruits, such as carrots and apples, so you\ncan easily mash or puree them.\" That single sentence is the whole record.\n\nNutritionally it is unremarkable here — 0.34 mg of non-heme iron per 100 g, and\n3.6 mg of vitamin C, which is too little to count as the vitamin-C partner for\nan iron food. CDC does not list carrots among its vitamin-C foods; use\n[[broccoli]] for that job. Serve carrot because it is sweet, cheap, holds its\nshape when cooked, and babies like it.",
+      "safetyNoteMd": "**Raw carrot is the hazard, and it does not stop being one at twelve months.**\nAAP's list of foods to avoid — raw carrot sticks among them — runs to \"4 years of\nage or older.\" The concern is a hard food that does not compress meeting an\nairway that is still small.\n\nThis record allows carrot with a required modification rather than banning it,\nbecause the cooking *is* the modification. If it does not mash under a fork, it\nhas not been modified yet, and it is still the raw-carrot problem in a warm\ndisguise.\n\nOne place the bodies differ: the Canadian Paediatric Society offers **grating**\nas a way to serve raw vegetables, where AAP's list simply keeps raw carrot out\nuntil four. Grated raw carrot is not the same object as a stick — but it is\nstill hard, and AAP names no exception for it. This app follows the more\ncautious of the two and treats cooking as the modification for carrot in this\nage range.\n\n**On carrot coins, an honest note.** You will be told never to serve cooked\ncarrot in rounds. The reasoning is sound — CDC's rule for round foods is to cut\nthem into small pieces or short thin strips rather than discs, because a disc\ncan seal an airway. But that rule is written about grapes, cherries, berries,\ntomatoes, hot dogs, and string cheese. **Carrot is not named in it.** Cutting\ncooked carrot into sticks or half-moons rather than coins is a sensible\nextrapolation from a guideline, not an instruction from one — and if the carrot\nis cooked soft enough to mash, the shape is much less of the story than the\ntexture is."
+    },
+    {
+      "id": "chicken-thigh",
+      "name": "Chicken thigh",
+      "aliases": [
+        "chicken",
+        "dak",
+        "닭",
+        "dark meat chicken",
+        "pollo"
+      ],
+      "category": "animal_protein",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "ground-and-moistened",
+          "servingNote": "Finely chopped and moistened with unsalted broth or the pan juices — chicken dries out faster than beef.",
+          "prepMd": "Take the skin, fat, and bones off **before** cooking, not after — CDC is\nexplicit about the order, and it means no bone fragments end up in the finished\nmeat. Braise, poach, or roast the thigh until it pulls apart with a fork, cook\nall poultry to 165 °F (USDA FSIS), then chop it finely and stir in enough\nunsalted broth or pan juices that it holds together on a spoon.\n\nRun the chopped meat between your fingers before serving. Thigh meat carries\nsmall tendons and the occasional splinter of bone, and that check takes ten\nseconds."
+        },
+        {
+          "band": "9-11",
+          "geometry": "shredded",
+          "prepMd": "Shredded rather than chopped — long soft strands are easy to pick up with a\npincer grasp and easy to gum apart. Chicken mixed into [[oatmeal]] or mashed\nvegetables still travels better than chicken alone."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the family eats it, still soft and still cut small. \"Tough or large\nchunks of meat\" does not drop off CDC's hazard list at twelve months, and neither\ndo bones."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Remove skin, fat, and bones before cooking, then finely chop or shred. Never chunks, and never a piece with a bone in it."
+      },
+      "nutrients": {
+        "ironType": "heme",
+        "ironMgPer100g": 1.13,
+        "fdcId": 172388,
+        "tags": [
+          "protein"
+        ]
+      },
+      "cultural": [
+        "general",
+        "korean"
+      ],
+      "prepMinutes": 35,
+      "sources": [
+        {
+          "url": "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/Starting-Solid-Foods.aspx",
+          "body": "American Academy of Pediatrics",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://caringforkids.cps.ca/handouts/healthy-living/feeding_your_baby_in_the_first_year",
+          "body": "Canadian Paediatric Society",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "Centers for Disease Control and Prevention — choking hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "Centers for Disease Control and Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/vitamins-minerals/iron.html",
+          "body": "Centers for Disease Control and Prevention — iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+          "body": "USDA Food Safety and Inspection Service — safe minimum internal temperatures",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "beef",
+        "oatmeal"
+      ],
+      "backgroundMd": "AAP names \"well-cooked, finely chopped chicken\" as a finger food, and the\nCanadian Paediatric Society lists cooked chicken among iron-rich first foods.\nThat is unusually specific for a guideline body — most of them describe\ntextures, not dishes — so the form to serve is not a matter of interpretation\nhere.\n\nThe iron is heme iron, the readily absorbed kind, at 1.13 mg per 100 g roasted.\nThat is well below [[beef]]'s, so if the week's iron is coming from one animal\nfood, beef does more of the work. Chicken's advantage is that it is cheap,\nmild, and goes with everything.\n\nThigh rather than breast is a texture preference, not a guideline position: dark\nmeat stays moist through longer cooking, and dry chicken breast is the most\ncommon way a promising meat meal ends up on the floor. Breast is not unsafe —\nit just needs more help staying wet.",
+      "safetyNoteMd": "Bones and chunks are the hazard, and CDC handles both with one instruction:\nremove all fat, skin, and bones from poultry before cooking, then cook until it\nmashes easily with a fork.\n\nCook all poultry to 165 °F. Undercooked chicken is a food-safety problem, not\njust an unpleasant texture, and an infant is the worst person to test it on — no\npink at the bone, and a thermometer rather than \"it looked done\"."
+    },
+    {
+      "id": "cucumber",
+      "name": "Cucumber",
+      "aliases": [
+        "oi",
+        "오이",
+        "english cucumber",
+        "kirby",
+        "persian cucumber"
+      ],
+      "category": "vegetable",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "spear-finger-length",
+          "servingNote": "Peeled, and cut as a narrow baton — never a coin. Grating is the easier alternative and needs no judgement about thickness.",
+          "prepMd": "Peel it. Then cut lengthways into narrow batons — long enough that an end sticks\nout of a closed fist, and narrow rather than thick, so that if a piece does come\naway it is a sliver and not a chunk. Cutting out the seedy core makes the batons\nsofter.\n\nIf judging thickness feels like guesswork, grate it instead. Grated peeled\ncucumber is soft, wet, and short, and it stirs into [[yogurt]] or mixes with\nother vegetables without any decision to make.\n\nAt this age most of what happens is mouthing and gumming rather than eating, and\nthat is fine — a cold cucumber baton is a pleasant thing to chew on."
+        },
+        {
+          "band": "9-11",
+          "geometry": "spear-finger-length",
+          "prepMd": "Same form: peeled, narrow batons, or grated. The pincer grasp arriving does not\nchange the geometry rule, and this is the age at which coins become tempting\nbecause they are easy to pick up. They are the one shape to avoid."
+        },
+        {
+          "band": "12-17",
+          "geometry": "spear-finger-length",
+          "prepMd": "Still peeled and still batons rather than rounds. AAP's round-and-firm line runs\nto four years, and cucumber is a firm raw vegetable for the whole of that\nperiod.\n\nGrated cucumber folded through plain yogurt is the easy household version and\nworks as a side for the whole table."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Never raw coins or rounds. Peel it and cut narrow batons, or grate it. The skin is the specific hazard — it does not break down under gums."
+      },
+      "nutrients": {
+        "ironType": "none",
+        "tags": []
+      },
+      "cultural": [
+        "general",
+        "korean",
+        "mediterranean"
+      ],
+      "prepMinutes": 5,
+      "sources": [
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/help-your-baby-enjoy-new-foods/",
+          "body": "NHS — Help your baby enjoy new foods (narrow batons; removing skin)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics — Choking Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "CDC — Choking Hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "CDC — When, What, and How to Introduce Solid Foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "tofu",
+        "barley",
+        "mango",
+        "green-peas",
+        "yogurt"
+      ],
+      "backgroundMd": "**No AAP or CDC infant food list names cucumber.** NHS covers it, but only\ninside its general preparation guidance, in a list of vegetables to cut into\nnarrow batons. So everything in this record is a category rule applied to\ncucumber, not a food-specific ruling anyone issued. That is worth saying out\nloud, because the category rule it lands in is strict and the food looks\nharmless.\n\nTwo category rules apply. AAP's is about geometry: \"do not feed children younger\nthan 4 round, firm food unless it is chopped completely.\" A raw cucumber round\nis exactly that shape — a firm disc, roughly airway-sized, with a smooth rim.\nCDC's is about hard raw vegetables generally, the same line that puts raw\ncarrots on the list.\n\n**The skin is the specific hazard**, and it is what makes cucumber different\nfrom a soft raw fruit. Cucumber flesh is watery and yields; the skin is tough,\ndoes not break down under gums, and holds a bitten piece together as an intact\nring rather than letting it collapse. Peeling removes that.\n\nNHS gives the fixes directly: cut vegetables like carrots, peppers, cucumber and\ncelery into **narrow batons**; remove the skin, which \"makes it easier to\nswallow\"; or grate it for very young children.\n\n**Nutritionally it contributes nothing to speak of.** A USDA entry for cucumber\ncould not be verified at the time of writing, so this record publishes no iron\nor vitamin C figure at all rather than a plausible-looking guess. Treat it as a\nhydration and texture food. If you want iron, that is [[tofu]] or [[barley]]\ncereal; if you want a vitamin-C partner, [[mango]] or [[green-peas]].",
+      "safetyNoteMd": "**Never coins.** This is the single thing to take from this record. A raw\ncucumber round is the geometry AAP explicitly warns about, and it is also the\nway almost everyone cuts a cucumber.\n\n**Peel it.** The skin does not break down under gums and holds a bitten piece\ntogether. Peeling is a guideline-issued fix, not a nicety.\n\n**Chilled cucumber for teething is common practice, not guidance.** Nobody\nissues it. If you do it, the guideline-issued part is unchanged — peel it, cut a\nbaton — and the chilling is just comfort. A whole unpeeled chilled cucumber, or\na thick unpeeled spear, is not made safe by being cold.\n\nPickled cucumber is a different food: high sodium, and not appropriate before 24\nmonths."
+    },
+    {
+      "id": "egg",
+      "name": "Egg",
+      "aliases": [
+        "eggs",
+        "hen egg",
+        "gyeran",
+        "계란",
+        "달걀",
+        "huevo"
+      ],
+      "category": "animal_protein",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "ground-and-moistened",
+          "servingNote": "Softly scrambled and well cooked — moist curds, no runny patches.",
+          "prepMd": "Scramble in a little unsalted butter or oil over low heat and keep going until\nthere is no wet or glossy egg left — AAP names scrambled egg among suitable\nfinger foods, and soft moist curds are easy to gum. Hard-boiled works too; mash\nthe yolk and white together with a little breast milk, formula, or water, since\na dry hard-boiled white is rubbery on its own.\n\nServe the whole egg rather than the yolk alone — AAP's portion is about 1/3 of\na well-cooked egg, not a third of a yolk, and a yolk-only serving is a smaller\nexposure than the one that was studied.\n\nOffer it in the morning, at home, on a day you are not rushing — that is a\nlogistics choice, not a medical one: it means you are watching and your clinic\nis open. IgE reactions happen within minutes to two hours. That two-hour window\nis also why the familiar \"wait three to five days before the next new food\" rule\nadds nothing diagnostically; it just slows down variety."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "Same well-cooked forms in pincer-sized pieces: a thin omelette cut into small\nsquares, chopped hard-boiled egg, egg stirred into [[oatmeal]]. Keep it in the\nrotation at least weekly rather than treating the first serving as done."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the family eats eggs, with one exception that does not expire at twelve\nmonths: still cooked through. Runny yolks, soft-set custards, homemade\nmayonnaise, raw batter, and mousse are all uncooked-egg foods."
+        }
+      ],
+      "allergens": [
+        "egg"
+      ],
+      "allergenRegion": "US",
+      "allergenProtocol": {
+        "allergen": "egg",
+        "firstDose": "About 1/3 of a well-cooked egg — scrambled or hard-boiled and mashed — per AAP's stated portion for keeping egg in a baby's diet.",
+        "maintenanceMinSessionsPerWeek": 1,
+        "medicalGate": "If your baby has severe eczema and/or an existing food allergy, talk to your pediatrician before the first exposure to egg — that group may need a supervised introduction. Most other infants can be introduced at home. Do not ask for a broad allergy panel: in an infant with no symptoms its positive predictive value is very low, and false positives lead to unnecessary lifelong avoidance of a food the baby could safely eat."
+      },
+      "choking": {
+        "level": "low",
+        "requiredModification": "Serve well cooked and soft — scrambled, or hard-boiled and mashed with a little liquid."
+      },
+      "nutrients": {
+        "ironType": "heme",
+        "ironMgPer100g": 1.19,
+        "fdcId": 173424,
+        "tags": [
+          "protein"
+        ]
+      },
+      "cultural": [
+        "general",
+        "korean"
+      ],
+      "prepMinutes": 10,
+      "sources": [
+        {
+          "url": "https://www.healthychildren.org/English/healthy-living/nutrition/Pages/when-to-introduce-egg-peanut-butter-and-other-common-food-allergens-to-your-baby-food-allergy-prevention-tips.aspx",
+          "body": "American Academy of Pediatrics — introducing common food allergens",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/Starting-Solid-Foods.aspx",
+          "body": "American Academy of Pediatrics",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6157280/",
+          "body": "Early introduction of foods to prevent food allergy — Allergy Asthma Clin Immunol (2018), review and meta-analysis",
+          "tier": "trial",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/vitamins-minerals/iron.html",
+          "body": "Centers for Disease Control and Prevention — iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/foods-and-drinks-to-avoid-or-limit.html",
+          "body": "Centers for Disease Control and Prevention — foods and drinks to avoid or limit",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+          "body": "USDA Food Safety and Inspection Service — safe minimum internal temperatures",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/conditions/baby/weaning-and-feeding/foods-to-avoid-giving-babies-and-young-children/",
+          "body": "NHS — foods to avoid giving babies and young children",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.who.int/publications/i/item/9789240081864",
+          "body": "WHO — guideline for complementary feeding of infants and young children 6–23 months (2023)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "salmon",
+        "oatmeal"
+      ],
+      "backgroundMd": "Egg is the second-best-evidenced allergen introduction after peanut, and the\nevidence carries an unusual condition attached: **the cooking is part of the\nintervention.** A 2018 review and meta-analysis found moderate-certainty\nevidence that introducing egg between four and six months reduces egg allergy,\nwith \"much better efficacy with using cooked as opposed to raw egg.\" AAP's\nwording is the same direction: well-cooked eggs have been studied and shown to\nreduce the risk of egg allergy when fed to infants regularly.\n\nSo there is no tension between the allergy advice and the food-safety advice\nhere — well-cooked egg is both the safe form and the effective one.\n\nTwo things from AAP are worth carrying: **about 1/3 of a well-cooked egg** as\nthe portion, and **at least weekly** as the cadence. Introduction is not the\nfinish line for allergens; a single taste followed by months of nothing is not\nwhat the trials tested.\n\nEgg is also on CDC's list of heme iron foods, at 1.19 mg per 100 g. That is the\nclassification, given here as CDC gives it.\n\nRelated: [[salmon]] is the other major allergen in this batch and follows the\nsame medical gate.",
+      "safetyNoteMd": "**Cook it fully.** FDA and CDC advise against raw or undercooked egg for\neveryone, and children under five are singled out: they are about three times\nmore likely to be hospitalized with *Salmonella*. Cook eggs until the white and yolk\nare firm; egg-containing dishes such as casseroles and custards go to 160 °F\n(USDA FSIS).\n\n**The bodies disagree, and you should know it.** NHS permits raw or lightly\ncooked hen's eggs for babies *if* the eggs carry the British Lion stamp, a\nUK-specific *Salmonella*-control scheme with no US equivalent. FDA and CDC make\nno such carve-out. This app follows FDA and CDC: in the US there is no stamp\nthat makes a runny egg a safe infant food. If you are reading UK guidance\nalongside this, that is where the difference comes from — not a disagreement\nabout babies, but a difference in national egg supply controls.\n\nChoking risk from well-cooked egg is low. A whole hard-boiled egg, or a large\npiece of firm white, is a different matter — mash or cut it."
+    },
+    {
+      "id": "green-peas",
+      "name": "Green peas",
+      "aliases": [
+        "peas",
+        "garden peas",
+        "petit pois",
+        "wandukong",
+        "완두콩"
+      ],
+      "category": "vegetable",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "smashed",
+          "servingNote": "Peas roll. Smashed onto a loaded spoon or into a thicker purée, they stay put long enough to reach a mouth.",
+          "prepMd": "Simmer or steam until a pea flattens when you press it. Then smash them —\nagainst the side of a bowl with a fork, or stirred into a thicker purée such as\n[[butternut-squash]] so they have something to hold onto.\n\nLoose peas at this age mostly end up on the floor. That is not a safety problem,\nit is a physics one: a whole-hand grasp cannot pick up a sphere. Loading a spoon\nand handing it over, or spreading smashed peas on a strip of toast, gets more\ninto the baby."
+        },
+        {
+          "band": "9-11",
+          "geometry": "smashed",
+          "prepMd": "The pincer grasp — AAP puts it at most often between 9 and 10 months — is\nexactly the tool a pea is shaped for, and picking them up one at a time is good\npractice. Many parents keep squashing each pea between finger and thumb first.\n\nBe clear about what that habit is. **No AAP or CDC document names green peas as\na choking hazard.** AAP's rule concerns round *firm* food — \"do not feed\nchildren younger than 4 round, firm food unless it is chopped completely\" — and\na properly cooked pea is soft, not firm. Smashing is a conservative\nextrapolation from that rule rather than an instruction anyone issued. It costs\nnothing, so it is a reasonable thing to do; it is not a thing you have failed to\ndo if you skip it."
+        },
+        {
+          "band": "12-17",
+          "geometry": "whole-soft",
+          "prepMd": "Whole, cooked, however the rest of the table is eating them. Mushy peas, peas\nstirred through rice, peas in a soup."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "low",
+        "requiredModification": "Cook until a pea crushes under light pressure. Smashing each one is a conservative habit, not a rule any guideline body issues — see below."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 1.54,
+        "fdcId": 170420,
+        "tags": [
+          "vitamin-c",
+          "fiber",
+          "protein"
+        ]
+      },
+      "cultural": [
+        "general"
+      ],
+      "prepMinutes": 10,
+      "sources": [
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "CDC — When, What, and How to Introduce Solid Foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/babys-first-solid-foods/",
+          "body": "NHS — Your baby's first solid foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics — Choking Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "CDC — Choking Hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://ods.od.nih.gov/factsheets/Iron-HealthProfessional/",
+          "body": "NIH Office of Dietary Supplements — Iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://fdc.nal.usda.gov/",
+          "body": "USDA FoodData Central (fdcId 170420, cooked; 170419, raw)",
+          "tier": "reference",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "spinach",
+        "tofu",
+        "butternut-squash"
+      ],
+      "backgroundMd": "Both CDC and NHS name peas among early vegetables, and they are one of the few\nfoods on this list that pair themselves: 1.54 mg of iron and 14.2 mg of vitamin\nC per 100 g cooked, in the same spoonful. Vitamin C improves absorption of plant\n(non-heme) iron eaten in the same meal, so the pea does the pairing work that\n[[spinach]] or [[tofu]] need a second food for.\n\nFrozen peas are fine and often better than fresh — they are picked and frozen\nquickly, and they cook in minutes. Raw peas hold more vitamin C (40 mg per 100 g\nagainst 14.2 cooked) but are firm, so cooking is the trade you make.",
+      "safetyNoteMd": "The real failure mode is undercooking. A pea straight from the freezer, or one\nblanched for thirty seconds, stays firm — that is when AAP's round-and-firm rule\ngenuinely applies. Cook until they give.\n\nDried whole peas and split peas are a different food and need cooking to a soft\nmash; CDC lists whole beans as a choking hazard, and a hard dried pulse belongs\nin that group."
+    },
+    {
       "id": "kabocha",
       "name": "Kabocha squash",
       "aliases": [
@@ -67,6 +1257,386 @@
       ],
       "backgroundMd": "Dense, sweet winter squash — 단호박 in Korean, where it's a common early\nweaning food, often steamed and mashed thin. Behaves almost identically to\n[[sweet-potato]] once cooked, so it's a natural second food if the first went\nwell: same shapes, same softness test, different flavour.",
       "safetyNoteMd": "The raw squash is very hard and needs real force to cut — that firmness is\nexactly the hazard, so the softness test matters more here than with a\nsofter-fleshed vegetable. Press a cooked piece between thumb and forefinger\nbefore serving; if it holds its shape under pressure, cook it longer."
+    },
+    {
+      "id": "korean-pear",
+      "name": "Korean pear",
+      "aliases": [
+        "bae",
+        "배",
+        "asian pear",
+        "nashi",
+        "sand pear",
+        "apple pear",
+        "pyrus pyrifolia"
+      ],
+      "category": "fruit",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "soft-strip",
+          "servingNote": "Cooked slices, or grated raw. Waiting for it to ripen does not soften it — this is not a European pear.",
+          "prepMd": "**Grated.** This is the easier route and the one that suits the fruit. Peel it,\nthen grate on the coarse side of a box grater. The shreds are short, wet, and\nsoft enough to gum. Serve on a loaded spoon or stirred into yogurt or porridge.\n\n**Cooked.** Peel, core, slice, and simmer with a splash of water until a slice\ncollapses under a fork. It takes noticeably longer than an apple — a dense\nKorean pear can want fifteen to twenty minutes — so test rather than time it.\nServe as finger-length slices held in the fist with an end sticking out."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "The pincer grasp, most often from 9 to 10 months per AAP, means cooked cubes\nabout the size of your thumbnail can be picked up one at a time. They still have\nto be cooked soft. Being able to lift a raw cube is not the same as being able\nto chew one.\n\nGrated raw stays the low-effort option, and now that the pincer grip exists a\nsmall pile of shreds is something the baby can manage alone."
+        },
+        {
+          "band": "12-17",
+          "geometry": "soft-strip",
+          "prepMd": "Cooked soft or grated raw, still peeled. Raw chunks and raw batons are the part\nthat does not change at twelve months — AAP's line for raw fruit chunks is four\nyears.\n\nIf the household is eating bae at the end of a meal, grate the toddler's portion\noff the same fruit rather than handing over a slice."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "note": "No guideline body names Korean or Asian pear specifically. It sits inside AAP's \"raw fruit chunks\" entry, which AAP keeps off the menu until 4 years of age or older, and inside CDC's hard-raw-fruit line. That is category-level coverage, and this record says so rather than implying a food-specific ruling exists.",
+        "requiredModification": "Treat it as raw apple. Cook until it mashes easily with a fork, or grate it raw. Peel it either way. Ripening will not make raw chunks safe."
+      },
+      "nutrients": {
+        "ironType": "none",
+        "ironMgPer100g": 0,
+        "fdcId": 168177,
+        "tags": []
+      },
+      "cultural": [
+        "general",
+        "korean"
+      ],
+      "prepMinutes": 15,
+      "sources": [
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics — Choking Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "CDC — Choking Hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "CDC — When, What, and How to Introduce Solid Foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/foods-and-drinks-to-avoid-or-limit.html",
+          "body": "CDC — Foods and Drinks to Avoid or Limit",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/help-your-baby-enjoy-new-foods/",
+          "body": "NHS — Help your baby enjoy new foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://fdc.nal.usda.gov/",
+          "body": "USDA FoodData Central (fdcId 168177, Asian pear, raw)",
+          "tier": "reference",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "pear",
+        "apple",
+        "tofu",
+        "barley",
+        "green-peas"
+      ],
+      "backgroundMd": "**No guideline body names Korean or Asian pear.** AAP, CDC, NHS and Health\nCanada all cover it only at the category level — hard raw fruit — so everything\nbelow is that category rule applied to this fruit, not a ruling anyone issued\nabout *Pyrus pyrifolia*. That distinction is worth stating plainly, because the\ncategory rule it lands in is a strict one.\n\n**Do not carry over the logic from [[pear]].** A European pear is safe raw once\nit ripens because ripening softens it. A Korean pear does not do that. It stays\ncrisp and dense at full ripeness — that crunch is the point of the fruit — which\nputs it squarely inside AAP's \"raw fruit chunks, such as apple pieces\" entry\nrather than inside NHS's permission for soft ripe fruit. So it inherits the\n[[apple]] rules: cook until fork-mashable, or grate raw, peel either way.\n\n**Iron is zero.** Not low — zero, verified in USDA's entry, alongside 3.8 mg of\nvitamin C per 100 g. This is a hydration and flavour food. It is very juicy,\nmildly sweet, and pleasant on sore gums when grated; it contributes nothing to\nthe 11 mg of iron a day a 7–12 month old needs, and it is not strong enough on\nvitamin C to serve as the partner for an iron meal. Use it for enjoyment and\nvariety, and get iron from [[tofu]], [[barley]] cereal, or [[green-peas]].\n\n**Two Korean-kitchen forms that are not appropriate for a baby.** Grated bae is\nthe standard tenderiser in bulgogi and galbi marinades, mixed with soy sauce and\nsugar — that combination is high sodium and added sugar, both off the menu under\n24 months. And bae juice, or baesuk simmered with honey, runs into three\nseparate rules: no juice before 12 months, no added sugars before 24, no honey\nbefore 12. Serve the fruit plain.",
+      "safetyNoteMd": "The specific trap here is that it looks like a pear and is sold as a pear, so it\ninvites the pear reasoning: wait until it is ripe, then serve it raw. That\nreasoning is wrong for this fruit. Ripeness does not soften it, and a ripe\nKorean pear cut into cubes is the same hazard as raw apple cubes — hard, smooth,\nand breaking into airway-sized pieces under a bite.\n\nPeel it at every age in this range. The skin is tougher than a European pear's\nand does not break down under gums.\n\nServe it plain: no marinade, no juice, no honey."
+    },
+    {
+      "id": "lentils",
+      "name": "Lentils",
+      "aliases": [
+        "dal",
+        "daal",
+        "masoor",
+        "red lentils",
+        "split lentils",
+        "lentejas"
+      ],
+      "category": "plant_protein",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "smashed",
+          "servingNote": "Cooked until they collapse into a puree — red and split lentils get there on their own.",
+          "prepMd": "Rinse, then simmer in unsalted water or broth until they lose their shape\nentirely. Red and split lentils fall apart on their own in about twenty minutes;\nbrown, green, and Puy lentils hold together much longer and need either more\ntime or a mash at the end.\n\nServe as a thick puree off a loaded spoon, or spread on a strip of toast. No\nsalt — high-sodium foods are advised against under two years."
+        },
+        {
+          "band": "9-11",
+          "geometry": "smashed",
+          "prepMd": "Thicker and lumpier is fine now, and lentils are a good carrier for iron-rich\ncompany: stir in finely chopped [[chicken-thigh]] or mix with [[oatmeal]]. Mash\nany lentils that are still visibly whole."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the family eats them — dal, soup, stirred through rice. Softness is\nstill the test."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Cook until the lentils break down, and mash any that still hold a round shape."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 3.33,
+        "proteinGPer100g": 9.02,
+        "fdcId": 172421,
+        "tags": [
+          "protein"
+        ]
+      },
+      "cultural": [
+        "general",
+        "indian",
+        "mediterranean"
+      ],
+      "prepMinutes": 30,
+      "sources": [
+        {
+          "url": "https://www.nhs.uk/start-for-life/baby/weaning/what-to-feed-your-baby/around-6-months/",
+          "body": "NHS Start for Life — what to feed your baby around 6 months",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://caringforkids.cps.ca/handouts/healthy-living/feeding_your_baby_in_the_first_year",
+          "body": "Canadian Paediatric Society",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/vitamins-minerals/iron.html",
+          "body": "Centers for Disease Control and Prevention — iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "Centers for Disease Control and Prevention — choking hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "beef",
+        "salmon",
+        "broccoli",
+        "chicken-thigh",
+        "oatmeal"
+      ],
+      "backgroundMd": "**The highest non-heme iron of any whole food in this batch — 3.33 mg per 100 g\ncooked**, plus 9.02 g of protein, from something that costs almost nothing and\ncooks in half an hour without soaking. Both NHS and the Canadian Paediatric\nSociety name lentils for this age.\n\nNon-heme iron is absorbed less readily than the heme iron in [[beef]] or\n[[salmon]], and CDC's answer is to serve it with a vitamin-C food. Lentils bring\nonly 1.5 mg of vitamin C themselves, so pair them — [[broccoli]] is one CDC\nnames by name. A dal with a green vegetable stirred through it is doing real\nnutritional work, not just filling a bowl.",
+      "safetyNoteMd": "Here is an honest ambiguity rather than a resolved rule. **Lentils are not\nindividually named on CDC's choking-hazard list, but \"whole beans\" is**, and\nlentils are pulses. Nobody has published a ruling on whether a cooked lentil\nfalls inside that entry.\n\nWhat is clear is the physical difference: a cooked black bean stays a smooth\nround object, while a cooked red or split lentil has usually already\ndisintegrated. This record treats lentils as needing modification — cook them\ndown, mash what is left round — which costs nothing and stays on the right side\nof an entry that may or may not include them. Whole firm lentils, the kind that\nsurvive a salad, are the form to avoid.\n\nNo salt, for the same reason as everywhere else in the first two years. Lentils\nare not one of the nine major US allergens."
+    },
+    {
+      "id": "mango",
+      "name": "Mango",
+      "aliases": [
+        "mangga",
+        "manga",
+        "망고",
+        "ataulfo",
+        "honey mango",
+        "tommy atkins"
+      ],
+      "category": "fruit",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "soft-strip",
+          "servingNote": "Ripe mango is slippery. Leaving a strip of peel at the gripping end helps — but the peel is not the part to eat.",
+          "prepMd": "Pick a mango that gives under gentle pressure and smells sweet at the stem end.\nPeel it, cut the two cheeks off either side of the flat stone, then cut\nfinger-length strips.\n\nRipe mango is genuinely slippery, which is the main practical problem at this\nage. Two things that help: leave a band of peel at one end as a handle while\nkeeping the eating end bare, or roll the strip in a little infant cereal or\nground oats for grip. Neither is a safety measure — they are grip aids.\n\nAn underripe mango is firm. Do not serve that raw in strips: cook it soft or\ngrate it, exactly as with raw [[apple]]."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "With the pincer grasp — most often from 9 to 10 months per AAP — soft mango\ncubes about the size of your thumbnail work well, with a couple of larger strips\nalongside so biting stays in practice.\n\nMashed mango is also a good carrier for something less popular: stirred into\nplain [[yogurt]], or over [[barley]] cereal."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the rest of the table is eating it, peeled and stoned. Cubes, strips,\nblended into a lassi with plain yogurt and no added sugar."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "low",
+        "requiredModification": "Peel it and remove the stone. Use a ripe mango — an underripe one is firm and needs cooking or grating like raw apple."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 0.16,
+        "fdcId": 169910,
+        "tags": [
+          "vitamin-c",
+          "vitamin-a",
+          "fiber"
+        ]
+      },
+      "cultural": [
+        "general",
+        "indian",
+        "southeast_asian",
+        "latin"
+      ],
+      "prepMinutes": 10,
+      "sources": [
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/babys-first-solid-foods/",
+          "body": "NHS — Your baby's first solid foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/foods-to-avoid-giving-babies-and-young-children/",
+          "body": "NHS — Foods to avoid giving babies and young children (remove hard pips and stones)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics — Choking Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://ods.od.nih.gov/factsheets/Iron-HealthProfessional/",
+          "body": "NIH Office of Dietary Supplements — Iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/15606656/",
+          "body": "Oka et al. — A study of cross-reactions between mango contact allergens and urushiol (Contact Dermatitis 2004)",
+          "tier": "trial",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://fdc.nal.usda.gov/",
+          "body": "USDA FoodData Central (fdcId 169910; 2710833 Tommy Atkins; 2710834 Ataulfo)",
+          "tier": "reference",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "tofu",
+        "green-peas",
+        "barley",
+        "apple",
+        "yogurt"
+      ],
+      "backgroundMd": "A ripe mango is about as easy as first foods get: soft, sweet, and mashable\nwithout cooking. Neither AAP nor CDC names mango individually — NHS covers it at\nthe category level as a soft ripe fruit — so its place here is category-level\ncoverage rather than a food-specific ruling.\n\n**Vitamin C varies by cultivar by roughly fivefold**, so this record gives a\nrange rather than a number: USDA's verified entries run from **25.5 mg per 100 g\nfor Tommy Atkins to 168 mg for Ataulfo**, with the generic entry at 36.4 mg. Any\nof those makes mango a genuinely useful vitamin-C partner for a plant-iron meal\n— [[tofu]], [[green-peas]], [[barley]] cereal — since vitamin C improves\nabsorption of non-heme iron eaten alongside it. Mango's own iron is a trace\n0.16 mg per 100 g, and the two Foundation cultivar samples measured zero.\n\nPeel it and take the stone out. NHS's instruction is to always remove hard pips\nor stones, and a mango stone is large, fibrous, and exactly the wrong shape.",
+      "safetyNoteMd": "The stone is the hazard, and it is the only one that comes with an actual\nguideline instruction: remove hard pips and stones. Do not hand over a gnawed\nstone as a teether — it is the wrong size and shape, and the fibres come away.\n\n**Skin contact, not food allergy.** Mango peel, leaves and stem contain\nurushiol-family compounds — the same chemical family as poison ivy — and\npeer-reviewed dermatology literature documents type-IV *contact* dermatitis on\nthe lips and face in people already sensitised to poison ivy or oak. Two things\nabout that. First, it is not a food allergy and not an IgE reaction; it is a\ndelayed rash from touching the peel. Second, prior sensitisation is very\nunlikely in an infant who has never met poison ivy. This is peer-reviewed\nliterature, **not** a pediatric guideline, and no body issues advice about it.\n\nThe practical consequence is small and you were going to do it anyway: serve\npeeled flesh, and keep the peel off the tray."
+    },
+    {
+      "id": "oatmeal",
+      "name": "Oatmeal (fortified infant oat cereal)",
+      "aliases": [
+        "oats",
+        "oat cereal",
+        "infant cereal",
+        "porridge",
+        "오트밀",
+        "귀리"
+      ],
+      "category": "grain",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "preloaded-spoon",
+          "servingNote": "Mixed with breast milk, formula, or water until it is smooth and drops off the spoon.",
+          "prepMd": "Follow the box, then follow CDC: mix the cereal with breast milk, formula, or\nwater until it is smooth. Start thin — closer to a pourable consistency than a\npaste — and thicken it over the following weeks as your baby gets better at\nmoving food to the back of the mouth.\n\nLoad the spoon and hand it over, or let them take it off a loaded spoon you hold.\nEither way most of the first weeks land on the tray and the chin. That is the\njob at this age."
+        },
+        {
+          "band": "9-11",
+          "geometry": "preloaded-spoon",
+          "prepMd": "Thicker, and increasingly self-fed. This is also the point where oatmeal earns\nits keep as a carrier: mashed [[black-beans]], flaked [[salmon]], or fruit stir\ninto it and go down easily."
+        },
+        {
+          "band": "12-17",
+          "geometry": "preloaded-spoon",
+          "prepMd": "However the family eats it. If you have moved to rolled or steel-cut oats cooked\nfrom scratch, keep the smoothness rule in view — CDC's instruction is to cook and\nthen finely grind or mash whole-grain kernels, and steel-cut oats are kernels."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Serve as a smooth porridge. Whole or steel-cut grain kernels must be cooked and then finely ground or mashed — whole cooked kernels are on CDC's choking-hazard list."
+      },
+      "nutrients": {
+        "ironType": "fortified",
+        "ironMgPer100g": 64.1,
+        "fdcId": 171360,
+        "tags": [
+          "iron",
+          "zinc"
+        ]
+      },
+      "cultural": [
+        "general"
+      ],
+      "prepMinutes": 5,
+      "sources": [
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "Centers for Disease Control and Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "Centers for Disease Control and Prevention — choking hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/vitamins-minerals/iron.html",
+          "body": "Centers for Disease Control and Prevention — iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/Starting-Solid-Foods.aspx",
+          "body": "American Academy of Pediatrics",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.fda.gov/food/hfp-constituent-updates/fda-issues-final-guidance-industry-action-level-inorganic-arsenic-infant-rice-cereals",
+          "body": "U.S. Food and Drug Administration — inorganic arsenic in infant rice cereal",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "beef",
+        "lentils",
+        "broccoli",
+        "black-beans",
+        "salmon"
+      ],
+      "backgroundMd": "**The fortification is the entire point, and it is easy to lose by accident.**\nFortified infant oat cereal carries 64.1 mg of iron per 100 g dry. Plain oatmeal\ncooked in water, unenriched, carries 0.90 mg. That is roughly a seventyfold gap\nbetween two things a parent would reasonably both call \"oatmeal\".\n\nSo: **a pot of homemade porridge is not a nutritional substitute for fortified\ninfant cereal.** It is a fine food and a fine texture. It is not doing the iron\njob, and if it quietly replaces the fortified box, the iron in the diet drops by\nalmost all of it. If you prefer cooking your own oats, keep an iron-rich food\nsomewhere else in the day — see [[beef]] or [[lentils]].\n\nThe iron in fortified cereal is added, non-heme iron, not the heme iron in meat.\nCDC's advice to serve a vitamin-C food alongside non-heme iron applies here:\n[[broccoli]] is one CDC names by name.\n\n**Why oat rather than rice.** CDC's own wording is to \"offer a variety of\nfortified infant cereals such as oat, barley, and multi-grain instead of only\nrice cereal,\" and AAP notes rice cereal does not have to be the first cereal.\nThe concern behind that is inorganic arsenic, which concentrates in rice: FDA\nhas set an\naction level of 100 ppb for infant rice cereal and notes that infants' rice\nintake relative to body weight is about three times an adult's. Oat sidesteps\nthat without giving anything up.",
+      "safetyNoteMd": "Smooth porridge is a low-risk texture. **Whole cooked grain kernels are not** —\nthey are a named entry on CDC's choking-hazard list, and CDC's instruction is to\ncook and then finely grind or mash them. Instant and quick oats break down on\ntheir own; steel-cut and whole groats do not, so blend or mash those.\n\nOats are not one of the nine major US allergens. Oat products are sometimes\nprocessed on shared lines with wheat, but no infant-feeding guideline addresses\nthat question, so this record makes no claim about it in either direction — if\nwheat matters in your household, read the label."
     },
     {
       "id": "peanut",
@@ -157,6 +1727,311 @@
       "safetyNoteMd": "Two separate risks, often confused.\n\n**Allergy** is managed by early, regular exposure — with the medical gate\nabove for babies with severe eczema or egg allergy.\n\n**Choking** is managed by form. Whole peanuts and tree nuts are firm, round,\nand airway-sized: AAP keeps them off the list until age 4. A spoonful of thick\npeanut butter is on the same list. Thinned or spread very thinly, peanut is\nfine from six months."
     },
     {
+      "id": "pear",
+      "name": "Pear",
+      "aliases": [
+        "european pear",
+        "bartlett",
+        "williams",
+        "anjou",
+        "comice"
+      ],
+      "category": "fruit",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "soft-strip",
+          "servingNote": "Ripeness is the whole decision. Press the flesh near the stem with your thumb — if it gives, it can go raw and peeled.",
+          "prepMd": "Check ripeness first. Press the flesh just below the stem with your thumb. If it\nyields, it is ripe.\n\n**Ripe:** peel it, quarter it, remove the core, and cut finger-length slices.\nThe whole-hand grasp means the baby holds the slice in a fist and bites the\nprotruding end. Ripe pear is slippery once peeled — leaving a small band of skin\nat the gripping end gives some purchase, but the eating end should be peeled.\n\n**Firm:** peel, core, and simmer or roast until a slice collapses under a fork,\nthen serve the same way. Grating raw works too and needs no pan."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "With the pincer grasp — most often from 9 to 10 months per AAP — soft ripe pear\ncut into thumbnail-sized cubes is easy to pick up, and peeled. Firm pear still\ngets cooked or grated first; the pincer grip changes what the baby can lift, not\nwhat they can chew."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the rest of the table is eating it, provided it is ripe and peeled. Firm\npear still wants cooking or grating."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Judge the ripeness first. A ripe pear that yields to gentle thumb pressure can be served raw, peeled. A firm pear is treated exactly like raw apple — cook it soft or grate it — and peeled either way."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 0.18,
+        "fdcId": 169118,
+        "tags": [
+          "fiber"
+        ]
+      },
+      "cultural": [
+        "general"
+      ],
+      "prepMinutes": 10,
+      "sources": [
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/help-your-baby-enjoy-new-foods/",
+          "body": "NHS — Help your baby enjoy new foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/babys-first-solid-foods/",
+          "body": "NHS — Your baby's first solid foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics — Choking Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "CDC — When, What, and How to Introduce Solid Foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://fdc.nal.usda.gov/",
+          "body": "USDA FoodData Central (fdcId 169118, raw; 746773, Bartlett)",
+          "tier": "reference",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "apple",
+        "korean-pear"
+      ],
+      "backgroundMd": "Pear is the food on this list where the label on the shelf tells you nothing and\nyour thumb tells you everything. **Ripeness decides the whole record.**\n\nA ripe European pear — one that gives when you press near the stem — is soft\nenough that NHS's permission for soft raw fruit applies directly. Low risk,\npeeled, no cooking.\n\nAn underripe pear is a hard raw fruit, and everything in [[apple]] applies to it\nunchanged: cook until fork-mashable, or grate it raw, peel either way. Pears are\nusually sold hard because they travel and store better that way, so most pears\nyou bring home are in this second category for a few days.\n\nNutritionally it is a trace contributor — 0.18 mg of iron and 4.3 mg of vitamin\nC per 100 g. Serve it because it is soft, sweet, and easy, not because it moves\nany number.\n\nOne thing this record deliberately does not claim: pear is often described as a\nremedy or a trigger for infant constipation because of its sorbitol content. **No\nprimary-source guideline addresses pear, sorbitol, and infant stool**, so there\nis no claim here in either direction. If stooling is a worry, that is a question\nfor your pediatrician rather than a fruit choice.\n\nSee also [[korean-pear]], which looks like a pear and behaves like an apple.",
+      "safetyNoteMd": "The mistake to avoid is treating \"pear\" as a single food. A rock-hard pear cut\ninto cubes is the same hazard shape as raw apple, and the fact that it is a pear\ndoes not change that.\n\nPeel it at every age in this range. Pear skin is thin but does not break down\nunder gums, and NHS notes that removing skin makes food easier to swallow.\n\nWhole pear halves and long unpeeled wedges thick enough to snap into a chunk are\nnot appropriate; slices and cubes are."
+    },
+    {
+      "id": "salmon",
+      "name": "Salmon",
+      "aliases": [
+        "yeoneo",
+        "연어",
+        "salmón",
+        "sake"
+      ],
+      "category": "animal_protein",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "ground-and-moistened",
+          "servingNote": "Flaked fine and checked by hand for bones, then moistened so it does not crumble apart.",
+          "prepMd": "Buy it boneless if you can, and go over it with your fingers anyway. Remove the\nskin and any bones **before** cooking, which is CDC's instruction and NHS's\n(\"no bones\") — pin bones are far easier to find in a raw fillet than in a hot\ncooked one.\n\nBake, poach, or pan-cook until the flesh is opaque all the way through and\nflakes apart under a fork. Flake it fine, run the flakes through your fingers\none more time, and moisten with a spoonful of the cooking liquid or a puree so\nit holds together instead of powdering.\n\nDeboned salmon flesh is soft and low-risk. The bones are the entire hazard."
+        },
+        {
+          "band": "9-11",
+          "geometry": "shredded",
+          "prepMd": "Larger flakes, self-fed. Salmon stirred through [[oatmeal]] or mashed vegetables\nis easier to gather than dry flakes on a tray."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the family eats it, still deboned and still cooked through. No raw fish\nat this age."
+        }
+      ],
+      "allergens": [
+        "fish"
+      ],
+      "allergenRegion": "US",
+      "allergenProtocol": {
+        "allergen": "fish",
+        "firstDose": "About a teaspoon of well-cooked, fully deboned salmon, flaked fine and stirred into a food your baby already eats. No guideline body publishes a first-serving amount for fish, so treat this as a practical starting point, not a dose.",
+        "medicalGate": "If your baby has severe eczema and/or an existing food allergy, talk to your pediatrician before the first exposure to fish — that group may need a supervised introduction. Most other infants can be introduced at home. Do not ask for a broad allergy panel: in an infant with no symptoms its positive predictive value is very low, and false positives lead to unnecessary lifelong avoidance. Note also that NIAID's addendum guidelines cover peanut only; there is no equivalent testing protocol for fish, so peanut's testing pathway should not be read across to this food."
+      },
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Remove all bones and the skin before cooking, then flake the cooked fish and run it through your fingers to find any bone you missed."
+      },
+      "nutrients": {
+        "ironType": "heme",
+        "ironMgPer100g": 1.03,
+        "fdcId": 171998,
+        "tags": [
+          "protein"
+        ]
+      },
+      "cultural": [
+        "general",
+        "korean"
+      ],
+      "prepMinutes": 20,
+      "sources": [
+        {
+          "url": "https://www.healthychildren.org/English/healthy-living/nutrition/Pages/when-to-introduce-egg-peanut-butter-and-other-common-food-allergens-to-your-baby-food-allergy-prevention-tips.aspx",
+          "body": "American Academy of Pediatrics — introducing common food allergens",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.fda.gov/food/consumers/advice-about-eating-fish",
+          "body": "FDA/EPA — Advice about Eating Fish",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+          "body": "Centers for Disease Control and Prevention — choking hazards",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "Centers for Disease Control and Prevention",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/start-for-life/baby/weaning/what-to-feed-your-baby/around-6-months/",
+          "body": "NHS Start for Life — what to feed your baby around 6 months",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.who.int/publications/i/item/9789240081864",
+          "body": "WHO — guideline for complementary feeding of infants and young children 6–23 months (2023)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "beef",
+        "chicken-thigh",
+        "oatmeal"
+      ],
+      "backgroundMd": "Salmon does two jobs at once: it is heme iron at 1.03 mg per 100 g — the readily\nabsorbed kind, like [[beef]] and [[chicken-thigh]] — and it is the food most\nfamilies use to introduce fish, one of the nine major US allergens.\n\nOn the allergen side, AAP's position is that there is no evidence delaying fish\npast four to six months prevents allergy. The old advice to hold allergens back\nwas reversed for peanut on trial evidence, and the delay advice for the other\nallergens went with it. Fish is introduced like any other food, with the medical\ngate above for the babies who need it.\n\nOn mercury: FDA and EPA place salmon in the **Best Choices** category, and\nwithin that in the sub-list of fish that are *even lower* in mercury. Among\ncommon fish it is close to the safest choice you can make.",
+      "safetyNoteMd": "**Bones.** \"Bones in meat or fish\" is a named entry on CDC's choking-hazard\nlist. Debone before cooking, then check the cooked flakes by hand. Whole small\nfish and bone-in steaks are not a form to serve here.\n\n**Cooking.** Cook salmon through — opaque to the centre, flaking cleanly. No\nraw, no smoked, no cured: none of those are cooked, and cured fish is\nsalt-preserved besides, where high-sodium foods are advised against under two\nyears. This record does not print a target internal temperature for fish: the\nfigure in general circulation could not be confirmed against USDA's own chart\nwhile this was written, and we would rather give you the doneness test than a\nnumber we cannot stand behind. Opaque through the middle, flaking cleanly under\na fork — that is what the temperature describes anyway.\n\n**How much per week — there is no infant answer.** FDA and EPA's fish advice —\ntwo servings a week from Best Choices, at a serving size of about one ounce for\na one-to-three year old — is written for **children ages 1 to 11**. It starts at\nthe first birthday. **No US body publishes a per-week amount for a six-to-eleven\nmonth old**, so this record does not give one: any specific infant ounce figure\nin circulation has been extrapolated by somebody, and we are not going to add\nanother. Serve salmon as one of several protein foods across the week, and if\nyou want an actual number for your own baby, ask your pediatrician.\n\nFor wild-caught fish from local waters, check your state or provincial\nadvisories — those are issued per water body and FDA's national list does not\nreplace them."
+    },
+    {
+      "id": "spinach",
+      "name": "Spinach",
+      "aliases": [
+        "sigeumchi",
+        "시금치",
+        "baby spinach",
+        "palak",
+        "english spinach"
+      ],
+      "category": "vegetable",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "ground-and-moistened",
+          "servingNote": "The risk here is texture, not hardness — cook it and chop it fine so leaves cannot ball up into a wad.",
+          "prepMd": "Wash it well — spinach carries grit, and grit is the most common actual problem\nwith it. Wilt it in a pan with a splash of water for two or three minutes until\nit collapses, then squeeze out the liquid and **chop it finely**.\n\nThen mix it into something with body: mashed [[butternut-squash]], [[barley]]\ncereal, [[tofu]], mashed beans. A pile of loose cooked spinach is hard to pick\nup and easy to gather into a wad; carried in a thicker food it goes down easily\nand tastes less sharp.\n\nCook it fresh rather than reheating a batch. Cool leftovers quickly, refrigerate\nthem, and serve them cold or not at all."
+        },
+        {
+          "band": "9-11",
+          "geometry": "ground-and-moistened",
+          "prepMd": "Same handling — cooked, squeezed, finely chopped, carried in something. The\npincer grasp does not help much with a leaf; what changes is that the baby can\nnow self-feed a thick spinach-and-grain mixture from a loaded spoon or as small\nsoft lumps.\n\nA cooked spinach and egg or tofu scramble holds together well enough to pick up,\nwhich is the first form of spinach most babies manage on their own."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the household eats it, still cooked and chopped rather than served as\nwhole leaves. Stirred into rice or pasta, in a soup, in sigeumchi namul made\nwithout salt or soy sauce, in a dal.\n\nRaw spinach salad is a different proposition — thin whole leaves are the wad\nproblem in its purest form — and is better left until well past this range."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "modify-required",
+        "requiredModification": "Cook it, then chop it finely. A whole cooked leaf is thin and slippery and can gather into a wad — that, not firmness, is the hazard."
+      },
+      "frequencyLimit": {
+        "maxPerWeek": 7,
+        "reason": "EFSA advises that a risk cannot be excluded for infants eating more than one spinach meal in a day. One serving a day is well inside that. This is an EU precaution; CDC and the Dietary Guidelines impose no limit at all."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 1.26,
+        "fdcId": 1999632,
+        "tags": [
+          "folate",
+          "vitamin-a",
+          "vitamin-c"
+        ]
+      },
+      "cultural": [
+        "general",
+        "korean",
+        "indian"
+      ],
+      "prepMinutes": 10,
+      "sources": [
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/babys-first-solid-foods/",
+          "body": "NHS — Your baby's first solid foods (names spinach among first vegetables)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/foods-and-drinks-to-encourage.html",
+          "body": "CDC — Foods and Drinks to Encourage (cooked spinach, 6–12 months)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/17440529/",
+          "body": "Storcksdieck genannt Bonsmann et al. — Oxalic acid does not influence nonhaem iron absorption in humans (Eur J Clin Nutr 2008;62:336–41)",
+          "tier": "trial",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://efsa.onlinelibrary.wiley.com/doi/10.2903/j.efsa.2010.1935",
+          "body": "EFSA CONTAM Panel — Statement on nitrate in vegetables (EFSA Journal 2010;8(12):1935)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.bfr.bund.de/en/service/frequently-asked-questions/topic/frequently-asked-questions-on-nitrate-and-nitrite-in-food/",
+          "body": "BfR (German Federal Institute for Risk Assessment) — FAQ on nitrate and nitrite in food",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://publications.aap.org/pediatrics/article/116/3/784/68408/Infant-Methemoglobinemia-The-Role-of-Dietary",
+          "body": "AAP — Infant Methemoglobinemia (Pediatrics 2005;116:784) — RETIRED by AAP June 2025",
+          "tier": "retired_guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://ods.od.nih.gov/factsheets/Iron-HealthProfessional/",
+          "body": "NIH Office of Dietary Supplements — Iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://fdc.nal.usda.gov/",
+          "body": "USDA FoodData Central (fdcId 1999632, raw baby spinach; 1999633, raw mature)",
+          "tier": "reference",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "mango",
+        "green-peas",
+        "butternut-squash",
+        "yogurt",
+        "barley",
+        "tofu"
+      ],
+      "backgroundMd": "Spinach has a better pedigree as a first food than its reputation suggests. NHS\nnames it among the vegetables to *start* weaning with — \"vegetables that aren't\nso sweet, such as broccoli, cauliflower and spinach\" — and CDC's 6-to-12-month\nlist leads with cooked spinach. Two guideline bodies naming a single vegetable\nby name is unusual.\n\nThe iron figure in this record, 1.26 mg per 100 g, is for **raw baby spinach**\n(mature raw is 1.05). A USDA entry for cooked spinach could not be verified at\nthe time of writing, so none is quoted — cooking wilts spinach dramatically, so\nthe same weight of cooked spinach represents far more leaf than the same weight\nraw, and the two numbers are not interchangeable.\n\n**The oxalate story is wrong, and worth correcting.** You will be told that\nspinach iron \"doesn't count\" because oxalate binds it. The absorption part is\ntrue; the explanation is not.\n\nBonsmann and colleagues ran a randomized crossover trial using stable iron\nisotopes, measuring incorporation into red cells at fourteen days. A kale meal\ngave 10.7% iron absorption. The same kale meal with 1.26 g of potassium oxalate\nadded gave 11.5% — **P = 0.86, no difference at all.** The spinach meal ran\nabout 24% below kale, but not significantly. The authors' conclusion is that\npotassium oxalate did not influence iron absorption in humans, and that oxalic\nacid in fruits and vegetables is of minor relevance to iron nutrition. They\nattribute spinach's disadvantage to **calcium and polyphenols** instead.\n\nSo: spinach is a modest non-heme iron food that is poorly absorbed, for reasons\nthat are real but are not oxalate. Oxalate's established relevance is calcium\nbinding and kidney stones, not infant iron status.\n\nThe practical advice does not change much, and it is the same advice as for\nevery plant iron source: pair it with a vitamin-C food ([[mango]],\n[[green-peas]], [[butternut-squash]]) and do not pair it with dairy — the\ncalcium in [[yogurt]] works against you in the same meal.\n\n**Nitrates: the US and the EU genuinely disagree.** Both positions are given\nhere because both are defensible and they lead to slightly different habits.\n\n**The US position is permissive — and has quietly gone quiet.** AAP's 2005\nclinical report on infant methemoglobinemia identified **well water** as the\nreal high-risk vector, found \"little or no risk\" from commercially prepared US\ninfant foods, and noted that reports of nitrate poisoning from **home-prepared**\nvegetable foods continued to occur. **AAP retired that report in June 2025 and\nhas not replaced it**, so the US no longer has a current statement on dietary\nnitrate in infancy at all. What remains is that CDC and the Dietary Guidelines\nimpose no nitrate restriction whatsoever, CDC actively recommends cooked spinach\nfor 6-to-12-month-olds, and NHS recommends it as a first vegetable.\n\nThe retirement is worth knowing precisely because of what it is *not*: there is\nno new US finding that nitrate is more dangerous than previously thought. A\nretired statement is an absence of guidance, not a reversal of it.\n\n**The EU position is more cautious.** EFSA's CONTAM Panel set a nitrate ADI of\n3.7 mg per kg of body weight per day and concluded that current nitrate levels\nin vegetables are \"not of health concern for most children\" — but added that a\nrisk of methaemoglobinaemia cannot be excluded for 1-to-3-year-olds eating high\namounts, and that for infants a risk \"cannot be excluded\" for those eating more\nthan one spinach meal in a day. EFSA also recommends that children with\nbacterial gastrointestinal infections not be given spinach, because infection\nincreases the conversion of nitrate to nitrite. Germany's BfR adds that cooked\nspinach should not be reheated.\n\n**What to actually do.** The US is not wrong that spinach is a good first food —\nit plainly is, and two guideline bodies recommend it by name. But the EU's three\nprecautions cost nothing and the US does not contradict any of them, so this\nrecord treats them as the default:\n\n- No more than one spinach meal in a day.\n- Do not reheat cooked spinach — cook it fresh, or serve leftovers cold.\n- Skip it while a child has a gastrointestinal infection.\n\nIf your water comes from a private well, that is the part worth acting on: test\nit for nitrate, and use tested water for anything you make up for an infant.\nThat was the strongest point in AAP's retired report, and nothing has come along\nto weaken it.",
+      "safetyNoteMd": "**Texture, not hardness.** Spinach is soft, so it is easy to assume it needs no\nmodification. The hazard is that thin cooked leaves stick together and to the\nmouth, and a mouthful of whole leaves can gather into a slippery wad. Chopping\nfinely and mixing into a carrier food solves it.\n\n**The three EU precautions** above are the practical nitrate advice: one spinach\nmeal a day at most, never reheated, skipped during a gastrointestinal infection.\n\n**Home-made purée storage.** AAP's report singles out home-prepared vegetable\nfoods as the place where infant nitrate poisoning still occurs. Cool it fast,\nrefrigerate it promptly, and do not keep it for days — the same handling that\n[[butternut-squash]] and other home-made vegetable purées need.\n\n**Well water.** If your household is on a private well, have it tested for\nnitrate. That is the vector AAP considers genuinely high-risk, and it has\nnothing to do with which vegetables you serve."
+    },
+    {
       "id": "sweet-potato",
       "name": "Sweet potato",
       "aliases": [
@@ -224,14 +2099,517 @@
       ],
       "backgroundMd": "A soft, sweet root vegetable that holds its shape when roasted, which makes it\none of the easier first foods to hand over whole. Rich in beta-carotene, and\nits vitamin C helps the body absorb non-heme iron from the same meal — worth\npairing with beans, lentils, or fortified cereal.\n\nRelated: [[kabocha]] behaves almost identically once cooked.",
       "safetyNoteMd": "Cooked sweet potato is low risk once it mashes with light pressure between two\nfingers. Undercooked pieces are firm enough to be a hazard, so test a piece\nbefore serving rather than trusting the timer.\n\nRaw sweet potato is a hard raw vegetable and is not appropriate at any age in\nthis range."
+    },
+    {
+      "id": "tofu",
+      "name": "Tofu",
+      "aliases": [
+        "dubu",
+        "두부",
+        "bean curd",
+        "doufu",
+        "momen",
+        "silken tofu"
+      ],
+      "category": "plant_protein",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "spear-two-finger",
+          "servingNote": "Firm tofu holds a baton shape. Press it under a weight for ten minutes first and it holds together far better in a fist.",
+          "prepMd": "Buy firm or extra-firm. Drain it, wrap it in a clean towel, and press it under\nsomething heavy for ten minutes — it firms up and stops falling apart in a fist.\n\nCut finger-length batons about as thick as two of your fingers. The whole-hand\ngrasp means the baton is held in a fist with an end sticking out and the baby\nsets their own bite size. Plain and cold is fine; pan-frying briefly gives a\nslightly firmer surface that holds together better, with no oil needed beyond a\nfilm.\n\nTofu is slippery. Rolling a baton in ground oats, infant cereal, or a little\nground sesame gives grip — that is a handling aid, not a safety measure.\n\nMashed tofu also mixes into anything: purées, [[barley]] cereal, mashed\nvegetables.\n\nServe it plain. Soy sauce is very high in sodium and is not appropriate before\n24 months."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "With the pincer grasp — most often from 9 to 10 months per AAP — cubes about the\nsize of your thumbnail are easy to pick up, and tofu holds a cube shape better\nthan most soft foods. Keep a couple of larger batons alongside so biting and\ntearing stay in practice.\n\nCrumbled firm tofu scrambled in a pan takes on other flavours well and is an\neasy way to carry a vegetable the baby is less sure about."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "However the household eats it — in soup, stir-fried, crumbled through\nvegetables, in a soft stew. Silken tofu comes into its own here as a texture\nrather than an iron source.\n\nWatch the seasoning rather than the tofu: soy sauce, doenjang and most stir-fry\nsauces carry more sodium than a toddler portion should, so take the child's\nshare out before the sauce goes in."
+        }
+      ],
+      "allergens": [
+        "soy"
+      ],
+      "allergenRegion": "US",
+      "allergenProtocol": {
+        "allergen": "soy",
+        "firstDose": "About 1 teaspoon of plain mashed firm tofu — on its own, or stirred into a food the baby already eats.",
+        "medicalGate": "If your baby has severe eczema, an existing food allergy, or both, talk to your pediatrician or an allergist BEFORE the first soy exposure. That group may need a supervised introduction. Most other infants can be introduced at home. Do not ask for a broad allergy panel: in infants without symptoms its positive predictive value is very low, and false positives lead to unnecessary lifelong avoidance of a food the child could have eaten safely."
+      },
+      "choking": {
+        "level": "low",
+        "requiredModification": "None beyond cutting it to a size the baby can hold. Tofu compresses under pressure rather than blocking, and it appears on no choking-hazard list."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "ironMgPer100g": 5.36,
+        "fdcId": 172476,
+        "tags": [
+          "protein",
+          "iron-rich",
+          "calcium"
+        ]
+      },
+      "cultural": [
+        "general",
+        "korean",
+        "chinese",
+        "japanese",
+        "southeast_asian"
+      ],
+      "prepMinutes": 15,
+      "sources": [
+        {
+          "url": "https://www.canada.ca/en/health-canada/services/canada-food-guide/resources/nutrition-healthy-term-infants/nutrition-healthy-term-infants-recommendations-birth-six-months/6-24-months.html",
+          "body": "Health Canada — Nutrition for Healthy Term Infants, 6 to 24 Months (tofu among iron-rich first foods)",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+          "body": "CDC — When, What, and How to Introduce Solid Foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/Starting-Solid-Foods.aspx",
+          "body": "American Academy of Pediatrics — Starting Solid Foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/babys-first-solid-foods/",
+          "body": "NHS — Your baby's first solid foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://ods.od.nih.gov/factsheets/Iron-HealthProfessional/",
+          "body": "NIH Office of Dietary Supplements — Iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://fdc.nal.usda.gov/",
+          "body": "USDA FoodData Central (fdcId 172476 regular calcium-sulfate; 172475 firm; 174291 nigari; 172461 silken; 172450 koyadofu)",
+          "tier": "reference",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "mango",
+        "green-peas",
+        "butternut-squash",
+        "yogurt",
+        "barley"
+      ],
+      "backgroundMd": "Tofu has the strongest first-food credentials of anything in this batch: Health\nCanada, CDC, AAP and NHS all name it, and Health Canada lists it among iron-rich\n*first* foods — the category it treats as the priority at six months. It is\nsoft, compressible, appears on no choking-hazard list, and needs almost no\npreparation.\n\n**The iron depends entirely on how the tofu was set, and the spread is about\nfivefold.** Tofu is made by curdling soy milk with a coagulant, and the\ncoagulant ends up in the food. Per 100 g, USDA's verified entries run: regular\ntofu set with calcium sulfate, **5.36 mg** iron and 350 mg calcium; firm\ncalcium-sulfate tofu, 2.66 mg iron and 683 mg calcium; hard tofu set with nigari\n(magnesium chloride), 2.75 mg and 345 mg; silken firm tofu, 1.03 mg and 32 mg;\nand dried-frozen koyadofu, 9.73 mg and 364 mg.\n\nSilken tofu carries a fifth to a tenth of the iron of calcium-set regular tofu.\nIf you are buying tofu *for* the iron — and at 5.36 mg per 100 g against an\n11 mg daily target for a 7–12 month old, it is one of the few plant foods that\ngenuinely moves that number — read the ingredients panel for calcium sulfate.\nThe figure in this record is that form.\n\n**The honest complication:** the same calcium that makes calcium-sulfate tofu\niron-rich also inhibits absorption of plant (non-heme) iron. You cannot resolve\nthat from the label, and no guideline body addresses it. What you can do is the\nthing that helps regardless — serve a vitamin-C food in the same meal, since\nvitamin C improves non-heme absorption. [[mango]], [[green-peas]] or\n[[butternut-squash]] all work. Do not use [[yogurt]] as that partner: dairy\ncalcium works against you here.\n\n**On soy and hormones.** Claims about phytoestrogens in infant diets are not\nsupported by any AAP, CDC or Health Canada prohibition, and all four of those\nbodies name tofu as a food to give babies. This record does not repeat them as\nguidance.",
+      "safetyNoteMd": "There is very little to flag, which is unusual on this list. Tofu is soft,\ncompresses under pressure, and sits on no AAP or CDC hazard list. Cut it to a\nsize the baby can hold and it needs nothing else.\n\nTwo ordinary handling points. Keep opened tofu refrigerated and covered in\nwater, and use it within a few days — it is a fresh, high-protein food and it\nspoils. And check that what you bought is plain: flavoured, smoked and marinated\ntofu is usually salted heavily."
+    },
+    {
+      "id": "yogurt",
+      "name": "Plain whole-milk yogurt",
+      "aliases": [
+        "yoghurt",
+        "plain yogurt",
+        "greek yogurt",
+        "whole milk yogurt",
+        "curd",
+        "dahi"
+      ],
+      "category": "dairy",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "preloaded-spoon",
+          "servingNote": "Load the spoon and hand it over handle-first. A dipped strip of toast or cooked vegetable works as an edible spoon.",
+          "prepMd": "Plain, pasteurized, whole-fat. Start with about a teaspoon, on its own or\nstirred into something familiar.\n\nLoading a spoon and handing it over handle-first is the practical move at this\nage — a whole-hand grasp can hold a spoon long before it can fill one. A strip\nof cooked [[butternut-squash]] or a finger of toast dipped in yogurt works as an\nedible spoon and gives more grip.\n\nWatch for about two hours after the first exposure. IgE reactions happen within\nminutes to two hours, which is also why the familiar \"wait 3–5 days before the\nnext new food\" habit adds nothing diagnostically — it just slows down variety.\n\nGreek yogurt is thicker and less likely to run off a spoon, which some babies\nprefer and most trays do."
+        },
+        {
+          "band": "9-11",
+          "geometry": "preloaded-spoon",
+          "prepMd": "Same food, more independence. This is a good age to let the baby hold the spoon\nthemselves and accept the mess; self-feeding a wet food is a skill with a\nlearning curve and no shortcut.\n\nStir in mashed fruit yourself rather than buying it pre-mixed — flavoured\nyogurts marketed to babies carry added sugar, which is off the menu under 24\nmonths."
+        },
+        {
+          "band": "12-17",
+          "geometry": "preloaded-spoon",
+          "prepMd": "However the household eats it. Plain yogurt with fruit stirred in, as a dip, in\na smoothie, spooned over grains.\n\nKeep it whole-fat. Babies should get roughly half their calories from fat, and\nAAP does not recommend restricting fat before age two."
+        }
+      ],
+      "allergens": [
+        "milk"
+      ],
+      "allergenRegion": "US",
+      "allergenProtocol": {
+        "allergen": "milk",
+        "firstDose": "About 1 teaspoon of plain, pasteurized, whole-milk yogurt — on its own, or stirred into a food the baby already eats.",
+        "medicalGate": "If your baby has severe eczema, an existing food allergy, or both, talk to your pediatrician or an allergist BEFORE the first milk exposure. That group may need a supervised introduction. Most other infants can be introduced at home. Do not ask for a broad allergy panel: in infants without symptoms its positive predictive value is very low, and false positives lead to unnecessary lifelong avoidance of a food the child could have eaten safely."
+      },
+      "choking": {
+        "level": "low"
+      },
+      "nutrients": {
+        "ironType": "none",
+        "ironMgPer100g": 0.05,
+        "fdcId": 171284,
+        "tags": [
+          "protein",
+          "calcium",
+          "probiotic"
+        ]
+      },
+      "cultural": [
+        "general",
+        "indian",
+        "levantine",
+        "mediterranean"
+      ],
+      "prepMinutes": 2,
+      "sources": [
+        {
+          "url": "https://www.healthychildren.org/English/healthy-living/nutrition/Pages/milk-allergy-foods-and-ingredients-to-avoid.aspx",
+          "body": "American Academy of Pediatrics — Cow's Milk Alternatives / dairy for babies",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/cows-milk-and-milk-alternatives.html",
+          "body": "CDC — Cow's Milk and Milk Alternatives",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/foods-and-drinks-to-avoid-or-limit.html",
+          "body": "CDC — Foods and Drinks to Avoid or Limit",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.nhs.uk/baby/weaning-and-feeding/babys-first-solid-foods/",
+          "body": "NHS — Your baby's first solid foods",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.canada.ca/en/health-canada/services/canada-food-guide/resources/nutrition-healthy-term-infants/nutrition-healthy-term-infants-recommendations-birth-six-months/6-24-months.html",
+          "body": "Health Canada — Nutrition for Healthy Term Infants, 6 to 24 Months",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/sample-one-day-menu-for-an-8-to-12-month-old.aspx",
+          "body": "American Academy of Pediatrics — Sample Menu for a Baby 8 to 12 Months Old",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://ods.od.nih.gov/factsheets/Iron-HealthProfessional/",
+          "body": "NIH Office of Dietary Supplements — Iron",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        },
+        {
+          "url": "https://fdc.nal.usda.gov/",
+          "body": "USDA FoodData Central (fdcId 171284, plain whole milk yogurt; 2259794, Greek)",
+          "tier": "reference",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "tofu",
+        "barley",
+        "green-peas",
+        "spinach",
+        "mango",
+        "butternut-squash"
+      ],
+      "backgroundMd": "Yogurt is not a food that squeaks past the cow's-milk rule. Before twelve months\nit is the **preferred** form of cow's milk protein, and four bodies say so\nindependently: AAP calls plain, whole-fat or whole Greek yogurt \"a good first\nform of cow's milk protein\" and puts dairy foods at around six months; CDC says\nyogurt without added sugars can be introduced before twelve months; NHS puts it\nfrom around six months; Health Canada from six to nine.\n\n**Why the drink is prohibited and the food is not.** The rule against cow's milk\nbefore twelve months is about *large-volume unmodified* milk. CDC names three\nconcrete problems with it: risk of intestinal bleeding, more protein and mineral\nload than an immature kidney handles easily, and the wrong nutrient profile for\nan infant. AAP adds that cow's-milk protein can irritate the lining of the\nstomach and intestine, and frames the rule around **quantity**. The fourth\nproblem is displacement — a bottle of milk crowds out breast milk or formula and\nthe iron-rich food a baby needs at this age.\n\nYogurt escapes every one of those. It is eaten in food-sized portions rather\nthan drunk by the bottle — AAP's own 8-to-12-month sample menu puts it at 2 to 4\noz — so it does not displace the primary milk. And fermentation partially breaks\ndown both casein and lactose before the baby ever meets them. It is also the\nusual vehicle for introducing the milk allergen early, which is why it is\nrecommended rather than merely tolerated.\n\n**A real disagreement between national bodies, reported not resolved.** Health\nCanada permits pasteurized homogenized cow milk as the *main* milk source from\n**9 to 12 months** for an infant no longer breastfed. CDC and AAP say twelve\nmonths, not before. This record does not pick a winner. Nothing about that\ndisagreement touches yogurt, which all four bodies allow from around six months.\n\n**Iron is essentially zero** — 0.05 mg per 100 g — and this matters more than it\nsounds. Dairy calcium *inhibits* absorption of plant (non-heme) iron. So do not\nuse yogurt as the \"something alongside\" for an iron meal: pair [[tofu]],\n[[barley]] cereal, [[green-peas]] or [[spinach]] with a vitamin-C food like\n[[mango]] instead, and serve the yogurt at a different sitting.",
+      "safetyNoteMd": "Three hard rules, all of them about the pot you buy rather than how you serve it.\n\n**Plain only.** AAP is explicit about avoiding the added sugar commonly found in\nyogurt marketed to babies. No added sugars under 24 months.\n\n**Pasteurized only.** This applies to the yogurt and to any milk used to make\nit.\n\n**Whole-fat, not low-fat.** Reduced-fat dairy is an adult recommendation applied\nto the wrong body.\n\nYogurt itself is not a choking risk — it is already a safe consistency. The\nthing to check is what has been mixed *into* it: whole grapes, whole berries,\nchunks of dried fruit and granola clusters in an adult pot are all on the hazard\nlists in their own right.\n\nYogurt is not a substitute for breast milk or formula. It is a food that sits\nalongside them, not a drink that replaces them."
     }
   ],
   "index": {
     "tokens": {
-      "kabocha": [
-        "kabocha"
+      "apple": [
+        "apple",
+        "korean-pear"
+      ],
+      "apples": [
+        "apple"
+      ],
+      "applesauce": [
+        "apple"
+      ],
+      "sagwa": [
+        "apple"
+      ],
+      "사과": [
+        "apple"
+      ],
+      "fruit": [
+        "apple",
+        "avocado",
+        "banana",
+        "korean-pear",
+        "mango",
+        "pear"
+      ],
+      "avocado": [
+        "avocado"
+      ],
+      "aguacate": [
+        "avocado"
+      ],
+      "palta": [
+        "avocado"
+      ],
+      "hass": [
+        "avocado"
+      ],
+      "alligator": [
+        "avocado"
+      ],
+      "pear": [
+        "avocado",
+        "korean-pear",
+        "pear"
+      ],
+      "banana": [
+        "banana"
+      ],
+      "platano": [
+        "banana"
+      ],
+      "plátano": [
+        "banana"
+      ],
+      "banane": [
+        "banana"
+      ],
+      "바나나": [
+        "banana"
+      ],
+      "barley": [
+        "barley"
+      ],
+      "bori": [
+        "barley"
+      ],
+      "보리": [
+        "barley"
+      ],
+      "pearl": [
+        "barley"
+      ],
+      "pearled": [
+        "barley"
+      ],
+      "hulled": [
+        "barley"
+      ],
+      "cereal": [
+        "barley",
+        "oatmeal"
+      ],
+      "grain": [
+        "barley",
+        "oatmeal"
+      ],
+      "beef": [
+        "beef"
+      ],
+      "sogogi": [
+        "beef"
+      ],
+      "소고기": [
+        "beef"
+      ],
+      "ground": [
+        "beef"
+      ],
+      "minced": [
+        "beef"
+      ],
+      "carne": [
+        "beef"
+      ],
+      "de": [
+        "beef"
+      ],
+      "res": [
+        "beef"
+      ],
+      "animalprotein": [
+        "beef",
+        "chicken-thigh",
+        "egg",
+        "salmon"
+      ],
+      "black": [
+        "black-beans"
+      ],
+      "beans": [
+        "black-beans"
+      ],
+      "frijoles": [
+        "black-beans"
+      ],
+      "negros": [
+        "black-beans"
+      ],
+      "turtle": [
+        "black-beans"
+      ],
+      "plantprotein": [
+        "black-beans",
+        "lentils",
+        "peanut",
+        "tofu"
+      ],
+      "broccoli": [
+        "broccoli"
+      ],
+      "brocoli": [
+        "broccoli"
+      ],
+      "brócoli": [
+        "broccoli"
+      ],
+      "브로콜리": [
+        "broccoli"
+      ],
+      "vegetable": [
+        "broccoli",
+        "butternut-squash",
+        "carrot",
+        "cucumber",
+        "green-peas",
+        "kabocha",
+        "spinach",
+        "sweet-potato"
+      ],
+      "butternut": [
+        "butternut-squash"
       ],
       "squash": [
+        "butternut-squash",
+        "kabocha"
+      ],
+      "pumpkin": [
+        "butternut-squash",
+        "kabocha"
+      ],
+      "winter": [
+        "butternut-squash"
+      ],
+      "calabaza": [
+        "butternut-squash"
+      ],
+      "carrot": [
+        "carrot"
+      ],
+      "carrots": [
+        "carrot"
+      ],
+      "danggeun": [
+        "carrot"
+      ],
+      "당근": [
+        "carrot"
+      ],
+      "zanahoria": [
+        "carrot"
+      ],
+      "ninjin": [
+        "carrot"
+      ],
+      "chicken": [
+        "chicken-thigh"
+      ],
+      "thigh": [
+        "chicken-thigh"
+      ],
+      "dak": [
+        "chicken-thigh"
+      ],
+      "닭": [
+        "chicken-thigh"
+      ],
+      "dark": [
+        "chicken-thigh"
+      ],
+      "meat": [
+        "chicken-thigh"
+      ],
+      "pollo": [
+        "chicken-thigh"
+      ],
+      "cucumber": [
+        "cucumber"
+      ],
+      "oi": [
+        "cucumber"
+      ],
+      "오이": [
+        "cucumber"
+      ],
+      "english": [
+        "cucumber",
+        "spinach"
+      ],
+      "kirby": [
+        "cucumber"
+      ],
+      "persian": [
+        "cucumber"
+      ],
+      "egg": [
+        "egg"
+      ],
+      "eggs": [
+        "egg"
+      ],
+      "hen": [
+        "egg"
+      ],
+      "gyeran": [
+        "egg"
+      ],
+      "계란": [
+        "egg"
+      ],
+      "달걀": [
+        "egg"
+      ],
+      "huevo": [
+        "egg"
+      ],
+      "green": [
+        "green-peas"
+      ],
+      "peas": [
+        "green-peas"
+      ],
+      "garden": [
+        "green-peas"
+      ],
+      "petit": [
+        "green-peas"
+      ],
+      "pois": [
+        "green-peas"
+      ],
+      "wandukong": [
+        "green-peas"
+      ],
+      "완두콩": [
+        "green-peas"
+      ],
+      "kabocha": [
         "kabocha"
       ],
       "danhobak": [
@@ -243,12 +2621,98 @@
       "japanese": [
         "kabocha"
       ],
-      "pumpkin": [
-        "kabocha"
+      "korean": [
+        "korean-pear"
       ],
-      "vegetable": [
-        "kabocha",
-        "sweet-potato"
+      "bae": [
+        "korean-pear"
+      ],
+      "배": [
+        "korean-pear"
+      ],
+      "asian": [
+        "korean-pear"
+      ],
+      "nashi": [
+        "korean-pear"
+      ],
+      "sand": [
+        "korean-pear"
+      ],
+      "pyrus": [
+        "korean-pear"
+      ],
+      "pyrifolia": [
+        "korean-pear"
+      ],
+      "lentils": [
+        "lentils"
+      ],
+      "dal": [
+        "lentils"
+      ],
+      "daal": [
+        "lentils"
+      ],
+      "masoor": [
+        "lentils"
+      ],
+      "red": [
+        "lentils"
+      ],
+      "split": [
+        "lentils"
+      ],
+      "lentejas": [
+        "lentils"
+      ],
+      "mango": [
+        "mango"
+      ],
+      "mangga": [
+        "mango"
+      ],
+      "manga": [
+        "mango"
+      ],
+      "망고": [
+        "mango"
+      ],
+      "ataulfo": [
+        "mango"
+      ],
+      "honey": [
+        "mango"
+      ],
+      "tommy": [
+        "mango"
+      ],
+      "atkins": [
+        "mango"
+      ],
+      "oatmeal": [
+        "oatmeal"
+      ],
+      "fortified": [
+        "oatmeal"
+      ],
+      "infant": [
+        "oatmeal"
+      ],
+      "oat": [
+        "oatmeal"
+      ],
+      "oats": [
+        "oatmeal"
+      ],
+      "porridge": [
+        "oatmeal"
+      ],
+      "오트밀": [
+        "oatmeal"
+      ],
+      "귀리": [
+        "oatmeal"
       ],
       "peanut": [
         "peanut"
@@ -265,8 +2729,50 @@
       "땅콩": [
         "peanut"
       ],
-      "plantprotein": [
-        "peanut"
+      "european": [
+        "pear"
+      ],
+      "bartlett": [
+        "pear"
+      ],
+      "williams": [
+        "pear"
+      ],
+      "anjou": [
+        "pear"
+      ],
+      "comice": [
+        "pear"
+      ],
+      "salmon": [
+        "salmon"
+      ],
+      "yeoneo": [
+        "salmon"
+      ],
+      "연어": [
+        "salmon"
+      ],
+      "salmón": [
+        "salmon"
+      ],
+      "sake": [
+        "salmon"
+      ],
+      "spinach": [
+        "spinach"
+      ],
+      "sigeumchi": [
+        "spinach"
+      ],
+      "시금치": [
+        "spinach"
+      ],
+      "baby": [
+        "spinach"
+      ],
+      "palak": [
+        "spinach"
       ],
       "sweet": [
         "sweet-potato"
@@ -288,9 +2794,338 @@
       ],
       "yam": [
         "sweet-potato"
+      ],
+      "tofu": [
+        "tofu"
+      ],
+      "dubu": [
+        "tofu"
+      ],
+      "두부": [
+        "tofu"
+      ],
+      "bean": [
+        "tofu"
+      ],
+      "curd": [
+        "tofu",
+        "yogurt"
+      ],
+      "doufu": [
+        "tofu"
+      ],
+      "momen": [
+        "tofu"
+      ],
+      "silken": [
+        "tofu"
+      ],
+      "plain": [
+        "yogurt"
+      ],
+      "whole": [
+        "yogurt"
+      ],
+      "milk": [
+        "yogurt"
+      ],
+      "yogurt": [
+        "yogurt"
+      ],
+      "yoghurt": [
+        "yogurt"
+      ],
+      "greek": [
+        "yogurt"
+      ],
+      "dahi": [
+        "yogurt"
+      ],
+      "dairy": [
+        "yogurt"
       ]
     },
     "entries": [
+      {
+        "id": "apple",
+        "name": "Apple",
+        "nameNorm": "apple",
+        "aliasesNorm": [
+          "apples",
+          "applesauce",
+          "sagwa",
+          "사과"
+        ],
+        "categoryNorm": "fruit",
+        "tokens": [
+          "apple",
+          "apples",
+          "applesauce",
+          "sagwa",
+          "사과",
+          "fruit"
+        ]
+      },
+      {
+        "id": "avocado",
+        "name": "Avocado",
+        "nameNorm": "avocado",
+        "aliasesNorm": [
+          "aguacate",
+          "palta",
+          "hass",
+          "alligator pear"
+        ],
+        "categoryNorm": "fruit",
+        "tokens": [
+          "avocado",
+          "aguacate",
+          "palta",
+          "hass",
+          "alligator",
+          "pear",
+          "fruit"
+        ]
+      },
+      {
+        "id": "banana",
+        "name": "Banana",
+        "nameNorm": "banana",
+        "aliasesNorm": [
+          "platano",
+          "plátano",
+          "banane",
+          "바나나"
+        ],
+        "categoryNorm": "fruit",
+        "tokens": [
+          "banana",
+          "platano",
+          "plátano",
+          "banane",
+          "바나나",
+          "fruit"
+        ]
+      },
+      {
+        "id": "barley",
+        "name": "Barley",
+        "nameNorm": "barley",
+        "aliasesNorm": [
+          "bori",
+          "보리",
+          "pearl barley",
+          "pearled barley",
+          "hulled barley",
+          "barley cereal"
+        ],
+        "categoryNorm": "grain",
+        "tokens": [
+          "barley",
+          "bori",
+          "보리",
+          "pearl",
+          "pearled",
+          "hulled",
+          "cereal",
+          "grain"
+        ]
+      },
+      {
+        "id": "beef",
+        "name": "Beef",
+        "nameNorm": "beef",
+        "aliasesNorm": [
+          "sogogi",
+          "소고기",
+          "ground beef",
+          "minced beef",
+          "carne de res"
+        ],
+        "categoryNorm": "animalprotein",
+        "tokens": [
+          "beef",
+          "sogogi",
+          "소고기",
+          "ground",
+          "minced",
+          "carne",
+          "de",
+          "res",
+          "animalprotein"
+        ]
+      },
+      {
+        "id": "black-beans",
+        "name": "Black beans",
+        "nameNorm": "black beans",
+        "aliasesNorm": [
+          "frijoles negros",
+          "turtle beans",
+          "black turtle beans"
+        ],
+        "categoryNorm": "plantprotein",
+        "tokens": [
+          "black",
+          "beans",
+          "frijoles",
+          "negros",
+          "turtle",
+          "plantprotein"
+        ]
+      },
+      {
+        "id": "broccoli",
+        "name": "Broccoli",
+        "nameNorm": "broccoli",
+        "aliasesNorm": [
+          "brocoli",
+          "brócoli",
+          "브로콜리"
+        ],
+        "categoryNorm": "vegetable",
+        "tokens": [
+          "broccoli",
+          "brocoli",
+          "brócoli",
+          "브로콜리",
+          "vegetable"
+        ]
+      },
+      {
+        "id": "butternut-squash",
+        "name": "Butternut squash",
+        "nameNorm": "butternut squash",
+        "aliasesNorm": [
+          "butternut",
+          "butternut pumpkin",
+          "winter squash",
+          "calabaza"
+        ],
+        "categoryNorm": "vegetable",
+        "tokens": [
+          "butternut",
+          "squash",
+          "pumpkin",
+          "winter",
+          "calabaza",
+          "vegetable"
+        ]
+      },
+      {
+        "id": "carrot",
+        "name": "Carrot",
+        "nameNorm": "carrot",
+        "aliasesNorm": [
+          "carrots",
+          "danggeun",
+          "당근",
+          "zanahoria",
+          "ninjin"
+        ],
+        "categoryNorm": "vegetable",
+        "tokens": [
+          "carrot",
+          "carrots",
+          "danggeun",
+          "당근",
+          "zanahoria",
+          "ninjin",
+          "vegetable"
+        ]
+      },
+      {
+        "id": "chicken-thigh",
+        "name": "Chicken thigh",
+        "nameNorm": "chicken thigh",
+        "aliasesNorm": [
+          "chicken",
+          "dak",
+          "닭",
+          "dark meat chicken",
+          "pollo"
+        ],
+        "categoryNorm": "animalprotein",
+        "tokens": [
+          "chicken",
+          "thigh",
+          "dak",
+          "닭",
+          "dark",
+          "meat",
+          "pollo",
+          "animalprotein"
+        ]
+      },
+      {
+        "id": "cucumber",
+        "name": "Cucumber",
+        "nameNorm": "cucumber",
+        "aliasesNorm": [
+          "oi",
+          "오이",
+          "english cucumber",
+          "kirby",
+          "persian cucumber"
+        ],
+        "categoryNorm": "vegetable",
+        "tokens": [
+          "cucumber",
+          "oi",
+          "오이",
+          "english",
+          "kirby",
+          "persian",
+          "vegetable"
+        ]
+      },
+      {
+        "id": "egg",
+        "name": "Egg",
+        "nameNorm": "egg",
+        "aliasesNorm": [
+          "eggs",
+          "hen egg",
+          "gyeran",
+          "계란",
+          "달걀",
+          "huevo"
+        ],
+        "categoryNorm": "animalprotein",
+        "tokens": [
+          "egg",
+          "eggs",
+          "hen",
+          "gyeran",
+          "계란",
+          "달걀",
+          "huevo",
+          "animalprotein"
+        ]
+      },
+      {
+        "id": "green-peas",
+        "name": "Green peas",
+        "nameNorm": "green peas",
+        "aliasesNorm": [
+          "peas",
+          "garden peas",
+          "petit pois",
+          "wandukong",
+          "완두콩"
+        ],
+        "categoryNorm": "vegetable",
+        "tokens": [
+          "green",
+          "peas",
+          "garden",
+          "petit",
+          "pois",
+          "wandukong",
+          "완두콩",
+          "vegetable"
+        ]
+      },
       {
         "id": "kabocha",
         "name": "Kabocha squash",
@@ -310,6 +3145,109 @@
           "japanese",
           "pumpkin",
           "vegetable"
+        ]
+      },
+      {
+        "id": "korean-pear",
+        "name": "Korean pear",
+        "nameNorm": "korean pear",
+        "aliasesNorm": [
+          "bae",
+          "배",
+          "asian pear",
+          "nashi",
+          "sand pear",
+          "apple pear",
+          "pyrus pyrifolia"
+        ],
+        "categoryNorm": "fruit",
+        "tokens": [
+          "korean",
+          "pear",
+          "bae",
+          "배",
+          "asian",
+          "nashi",
+          "sand",
+          "apple",
+          "pyrus",
+          "pyrifolia",
+          "fruit"
+        ]
+      },
+      {
+        "id": "lentils",
+        "name": "Lentils",
+        "nameNorm": "lentils",
+        "aliasesNorm": [
+          "dal",
+          "daal",
+          "masoor",
+          "red lentils",
+          "split lentils",
+          "lentejas"
+        ],
+        "categoryNorm": "plantprotein",
+        "tokens": [
+          "lentils",
+          "dal",
+          "daal",
+          "masoor",
+          "red",
+          "split",
+          "lentejas",
+          "plantprotein"
+        ]
+      },
+      {
+        "id": "mango",
+        "name": "Mango",
+        "nameNorm": "mango",
+        "aliasesNorm": [
+          "mangga",
+          "manga",
+          "망고",
+          "ataulfo",
+          "honey mango",
+          "tommy atkins"
+        ],
+        "categoryNorm": "fruit",
+        "tokens": [
+          "mango",
+          "mangga",
+          "manga",
+          "망고",
+          "ataulfo",
+          "honey",
+          "tommy",
+          "atkins",
+          "fruit"
+        ]
+      },
+      {
+        "id": "oatmeal",
+        "name": "Oatmeal (fortified infant oat cereal)",
+        "nameNorm": "oatmeal fortified infant oat cereal",
+        "aliasesNorm": [
+          "oats",
+          "oat cereal",
+          "infant cereal",
+          "porridge",
+          "오트밀",
+          "귀리"
+        ],
+        "categoryNorm": "grain",
+        "tokens": [
+          "oatmeal",
+          "fortified",
+          "infant",
+          "oat",
+          "cereal",
+          "oats",
+          "porridge",
+          "오트밀",
+          "귀리",
+          "grain"
         ]
       },
       {
@@ -333,6 +3271,70 @@
         ]
       },
       {
+        "id": "pear",
+        "name": "Pear",
+        "nameNorm": "pear",
+        "aliasesNorm": [
+          "european pear",
+          "bartlett",
+          "williams",
+          "anjou",
+          "comice"
+        ],
+        "categoryNorm": "fruit",
+        "tokens": [
+          "pear",
+          "european",
+          "bartlett",
+          "williams",
+          "anjou",
+          "comice",
+          "fruit"
+        ]
+      },
+      {
+        "id": "salmon",
+        "name": "Salmon",
+        "nameNorm": "salmon",
+        "aliasesNorm": [
+          "yeoneo",
+          "연어",
+          "salmón",
+          "sake"
+        ],
+        "categoryNorm": "animalprotein",
+        "tokens": [
+          "salmon",
+          "yeoneo",
+          "연어",
+          "salmón",
+          "sake",
+          "animalprotein"
+        ]
+      },
+      {
+        "id": "spinach",
+        "name": "Spinach",
+        "nameNorm": "spinach",
+        "aliasesNorm": [
+          "sigeumchi",
+          "시금치",
+          "baby spinach",
+          "palak",
+          "english spinach"
+        ],
+        "categoryNorm": "vegetable",
+        "tokens": [
+          "spinach",
+          "sigeumchi",
+          "시금치",
+          "baby",
+          "palak",
+          "english",
+          "vegetable"
+        ]
+      },
+      {
         "id": "sweet-potato",
         "name": "Sweet potato",
         "nameNorm": "sweet potato",
@@ -353,6 +3355,56 @@
           "camote",
           "yam",
           "vegetable"
+        ]
+      },
+      {
+        "id": "tofu",
+        "name": "Tofu",
+        "nameNorm": "tofu",
+        "aliasesNorm": [
+          "dubu",
+          "두부",
+          "bean curd",
+          "doufu",
+          "momen",
+          "silken tofu"
+        ],
+        "categoryNorm": "plantprotein",
+        "tokens": [
+          "tofu",
+          "dubu",
+          "두부",
+          "bean",
+          "curd",
+          "doufu",
+          "momen",
+          "silken",
+          "plantprotein"
+        ]
+      },
+      {
+        "id": "yogurt",
+        "name": "Plain whole-milk yogurt",
+        "nameNorm": "plain whole-milk yogurt",
+        "aliasesNorm": [
+          "yoghurt",
+          "plain yogurt",
+          "greek yogurt",
+          "whole milk yogurt",
+          "curd",
+          "dahi"
+        ],
+        "categoryNorm": "dairy",
+        "tokens": [
+          "plain",
+          "whole",
+          "milk",
+          "yogurt",
+          "yoghurt",
+          "greek",
+          "curd",
+          "dahi",
+          "dairy"
         ]
       }
     ]

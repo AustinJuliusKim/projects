@@ -4,12 +4,7 @@ import { Stack, Title, Text, Badge, Group, Card, Button, Alert, Anchor, Divider 
 import { FOODS_BY_ID } from "../useLog.js";
 import { ACCEPTANCE_EXPOSURES } from "../store/projections.js";
 
-const TIER_LABEL = {
-  guideline: ["Guideline", "teal"],
-  trial: ["Trial", "blue"],
-  expert_opinion: ["Expert opinion", "grape"],
-  common_practice: ["Common practice", "gray"],
-};
+import { tierBadge } from "../tiers.js";
 
 export default function FoodView({ log }) {
   const { id } = useParams();
@@ -148,7 +143,7 @@ export default function FoodView({ log }) {
       <Divider label="Sources" labelPosition="left" />
       <Stack gap={6}>
         {food.sources.map((src) => {
-          const [label, color] = TIER_LABEL[src.tier] ?? ["Source", "gray"];
+          const [label, color] = tierBadge(src.tier);
           return (
             <Group key={src.url} gap="xs" wrap="nowrap" align="flex-start">
               <Badge size="xs" color={color} variant="light" style={{ flexShrink: 0 }}>
