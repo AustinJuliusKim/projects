@@ -53,6 +53,20 @@ relational mapping anyway, and `npm run check:sql` re-proves on every run that
 the canon could still be imported into it. That keeps "importable later" true
 as the canon grows instead of a claim discovered false in January.
 
+### Size, measured
+
+The whole canon is bundled so search is instant and works offline. Measured at
+3 foods and projected linearly: **~3.5 KB per food raw**, so a 110-food canon
+lands around **375 KB raw / ~152 KB gzipped** — roughly doubling the app's
+current transfer. Fine for something you install to the home screen once and
+then use offline, and still far better than a network round trip per lookup.
+
+If the canon ever grows past ~150 foods, the fix is to split rather than to
+add a server: ship a light index (id, name, aliases, category, age, badges)
+that browse and search need, and lazy-load the full record — prose, prep, and
+sources — per food page. The compiler already emits the index separately, so
+that's a build change, not a rewrite.
+
 ## Architecture
 
 Static SPA on S3 + CloudFront. **No Lambda, no database, no API.**
