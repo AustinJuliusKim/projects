@@ -1,0 +1,29 @@
+{
+  "name": "baby-solids",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run build:content && vite build",
+    "build:content": "node scripts/compile-content.js",
+    "check": "node scripts/compile-content.js --check",
+    "check:sql": "node scripts/emit-sql.js --dry-run",
+    "preview": "vite preview",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@baby/core": "file:../../packages/baby-core",
+    "@mantine/core": "^9.5.1",
+    "@mantine/hooks": "^9.5.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^6.26.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0",
+    "yaml": "^2.5.0",
+    "zod": "^4.0.0"
+  }
+}

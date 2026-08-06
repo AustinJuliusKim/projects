@@ -1,0 +1,361 @@
+{
+  "foods": [
+    {
+      "id": "kabocha",
+      "name": "Kabocha squash",
+      "aliases": [
+        "danhobak",
+        "단호박",
+        "kabocha",
+        "japanese pumpkin"
+      ],
+      "category": "vegetable",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "spear-two-finger",
+          "prepMd": "Steam or roast until completely soft, then cut into finger-length wedges about\ntwo fingers thick. Remove the skin for a beginner — kabocha skin stays chewy\neven when the flesh is soft, and chewy is the harder texture."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "Soft cubes around thumbnail size once the pincer grasp arrives."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "Serve it the way the rest of the table eats it — cubed in a soup, mashed as a\nside, or roasted in wedges. Skin can stay on now if it's roasted soft."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "low",
+        "requiredModification": "Steam or roast until a fork meets no resistance; skin removed for beginners."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "tags": [
+          "vitamin-a",
+          "fiber",
+          "vitamin-c"
+        ]
+      },
+      "cultural": [
+        "korean",
+        "japanese",
+        "general"
+      ],
+      "prepMinutes": 40,
+      "sources": [
+        {
+          "url": "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/Starting-Solid-Foods.aspx",
+          "body": "American Academy of Pediatrics",
+          "tier": "guideline",
+          "retrieved": "2026-08-05"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "sweet-potato"
+      ],
+      "backgroundMd": "Dense, sweet winter squash — 단호박 in Korean, where it's a common early\nweaning food, often steamed and mashed thin. Behaves almost identically to\n[[sweet-potato]] once cooked, so it's a natural second food if the first went\nwell: same shapes, same softness test, different flavour.",
+      "safetyNoteMd": "The raw squash is very hard and needs real force to cut — that firmness is\nexactly the hazard, so the softness test matters more here than with a\nsofter-fleshed vegetable. Press a cooked piece between thumb and forefinger\nbefore serving; if it holds its shape under pressure, cook it longer."
+    },
+    {
+      "id": "peanut",
+      "name": "Peanut",
+      "aliases": [
+        "peanut butter",
+        "groundnut",
+        "ttangkong",
+        "땅콩"
+      ],
+      "category": "plant_protein",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "thin-spread",
+          "servingNote": "Thinned to the consistency of a runny yoghurt — never a spoonful or a thick glob.",
+          "prepMd": "Stir about 1/4 teaspoon of smooth peanut butter into warm water, breast milk,\nformula, or a puree the baby already eats, until it's thin enough to pour off\na spoon. Offer it in the morning, at home, on a day you're not rushing —\nthat's a logistics choice, not a medical one: it means you're watching, and\nyour clinic is open.\n\nWatch for about two hours. IgE reactions happen within minutes to two hours,\nwhich is also why the familiar \"wait 3–5 days before the next new food\" rule\nadds nothing diagnostically — it just slows down variety."
+        },
+        {
+          "band": "9-11",
+          "geometry": "thin-spread",
+          "prepMd": "Same thinned form. Thickness, not quantity, is the hazard here: nut butter\nstiff enough to hold its shape can obstruct an airway."
+        },
+        {
+          "band": "12-17",
+          "geometry": "thin-spread",
+          "prepMd": "Still thinned or spread thinly — on a strip of toast, stirred into oatmeal or\nyoghurt. The maintenance target doesn't change: keep it in the rotation at\nleast three times a week rather than letting weeks lapse."
+        }
+      ],
+      "allergens": [
+        "peanut"
+      ],
+      "allergenRegion": "US",
+      "allergenProtocol": {
+        "allergen": "peanut",
+        "firstDose": "About 1/4 tsp of smooth peanut butter thinned with warm water, breast milk, or formula, stirred into a familiar puree.",
+        "maintenanceProteinGPerWeek": 6,
+        "maintenanceMinSessionsPerWeek": 3,
+        "medicalGate": "If your baby has severe eczema, an egg allergy, or both, talk to your pediatrician or an allergist BEFORE the first peanut exposure — that group may need testing and a supervised introduction between 4 and 6 months (NIAID 2017 addendum, Tier 1). Most other infants can be introduced at home. Do not ask for a broad allergy panel: in infants without symptoms its positive predictive value is very low, and false positives lead to unnecessary lifelong avoidance."
+      },
+      "choking": {
+        "level": "modify-required",
+        "note": "Whole peanuts are a high-risk choking hazard and are not appropriate before age 4.",
+        "requiredModification": "Never whole nuts and never a spoonful or thick glob of nut butter — thin it, or spread it very thinly."
+      },
+      "hardAgeRestrictionMonths": 48,
+      "nutrients": {
+        "ironType": "non_heme",
+        "tags": [
+          "protein",
+          "healthy-fat",
+          "niacin"
+        ]
+      },
+      "cultural": [
+        "general"
+      ],
+      "prepMinutes": 5,
+      "sources": [
+        {
+          "url": "https://www.niaid.nih.gov/sites/default/files/addendum-peanut-allergy-prevention-guidelines.pdf",
+          "body": "NIAID (Addendum Guidelines for the Prevention of Peanut Allergy, 2017)",
+          "tier": "guideline",
+          "retrieved": "2026-08-05"
+        },
+        {
+          "url": "https://www.nejm.org/doi/full/10.1056/NEJMoa1414850",
+          "body": "LEAP trial (NEJM 2015)",
+          "tier": "trial",
+          "retrieved": "2026-08-05"
+        },
+        {
+          "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10354996/",
+          "body": "CSACI — \"early introduction is not enough\" position statement",
+          "tier": "expert_opinion",
+          "retrieved": "2026-08-05"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [],
+      "backgroundMd": "The single most consequential food on this list. The LEAP trial randomized\ninfants at high risk to eat peanut or avoid it, and early, sustained\nintroduction reduced peanut allergy by roughly 81%. That result is why the\nold \"delay allergens\" advice was reversed.\n\nThe part that gets lost: **introduction is not the finish line.** LEAP's\nprotocol wasn't a taste, it was about 6 g of peanut protein a week across\nthree or more feedings, sustained for years. CSACI's position statement is\nblunt that occasional exposure may be worse than none — a single taste\nfollowed by months of nothing can raise the risk of sensitization rather than\nlower it. So this food has a maintenance schedule, not a checkbox.",
+      "safetyNoteMd": "Two separate risks, often confused.\n\n**Allergy** is managed by early, regular exposure — with the medical gate\nabove for babies with severe eczema or egg allergy.\n\n**Choking** is managed by form. Whole peanuts and tree nuts are firm, round,\nand airway-sized: AAP keeps them off the list until age 4. A spoonful of thick\npeanut butter is on the same list. Thinned or spread very thinly, peanut is\nfine from six months."
+    },
+    {
+      "id": "sweet-potato",
+      "name": "Sweet potato",
+      "aliases": [
+        "goguma",
+        "고구마",
+        "kumara",
+        "camote",
+        "yam"
+      ],
+      "category": "vegetable",
+      "firstOkMonths": 6,
+      "ageBands": [
+        {
+          "band": "6-8",
+          "geometry": "spear-two-finger",
+          "servingNote": "Expect more on the face and tray than in the mouth. That is the job at this age.",
+          "prepMd": "Roast or steam until a fork slides in with no resistance, then cut into\nfinger-length wedges about as thick as two of your fingers. Leave the skin on\nfor a beginner — it gives something to grip, and the flesh is what gets eaten.\n\nAt this age the palmar grasp means the whole piece is held in the fist with an\nend sticking out, so the baby controls the bite. Pieces cut small are actually\n*harder* now, not safer: they can't be picked up, and they end up scooped by\nthe handful."
+        },
+        {
+          "band": "9-11",
+          "geometry": "pincer-cube",
+          "prepMd": "Once the pincer grasp appears — usually around nine months — switch to soft\ncubes roughly the size of your thumbnail. Keep offering a few larger pieces\nalongside, since biting and tearing are their own skills worth practising."
+        },
+        {
+          "band": "12-17",
+          "geometry": "bite-size-mixed",
+          "prepMd": "Whatever the rest of the table is having — cubed, mashed, or in wedges. Keep\noffering some pieces big enough to bite from rather than only pincer-sized\nones; biting and tearing are still skills in progress."
+        }
+      ],
+      "allergens": [],
+      "allergenRegion": "US",
+      "choking": {
+        "level": "low",
+        "requiredModification": "Cook until it smashes easily between thumb and forefinger."
+      },
+      "nutrients": {
+        "ironType": "non_heme",
+        "tags": [
+          "vitamin-a",
+          "fiber",
+          "vitamin-c"
+        ]
+      },
+      "cultural": [
+        "general",
+        "korean"
+      ],
+      "prepMinutes": 45,
+      "sources": [
+        {
+          "url": "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/Starting-Solid-Foods.aspx",
+          "body": "American Academy of Pediatrics",
+          "tier": "guideline",
+          "retrieved": "2026-08-05"
+        },
+        {
+          "url": "https://www.healthychildren.org/English/health-issues/injuries-emergencies/Pages/Choking-Prevention.aspx",
+          "body": "American Academy of Pediatrics",
+          "tier": "guideline",
+          "retrieved": "2026-08-06"
+        }
+      ],
+      "relatedIds": [
+        "kabocha"
+      ],
+      "backgroundMd": "A soft, sweet root vegetable that holds its shape when roasted, which makes it\none of the easier first foods to hand over whole. Rich in beta-carotene, and\nits vitamin C helps the body absorb non-heme iron from the same meal — worth\npairing with beans, lentils, or fortified cereal.\n\nRelated: [[kabocha]] behaves almost identically once cooked.",
+      "safetyNoteMd": "Cooked sweet potato is low risk once it mashes with light pressure between two\nfingers. Undercooked pieces are firm enough to be a hazard, so test a piece\nbefore serving rather than trusting the timer.\n\nRaw sweet potato is a hard raw vegetable and is not appropriate at any age in\nthis range."
+    }
+  ],
+  "index": {
+    "tokens": {
+      "kabocha": [
+        "kabocha"
+      ],
+      "squash": [
+        "kabocha"
+      ],
+      "danhobak": [
+        "kabocha"
+      ],
+      "단호박": [
+        "kabocha"
+      ],
+      "japanese": [
+        "kabocha"
+      ],
+      "pumpkin": [
+        "kabocha"
+      ],
+      "vegetable": [
+        "kabocha",
+        "sweet-potato"
+      ],
+      "peanut": [
+        "peanut"
+      ],
+      "butter": [
+        "peanut"
+      ],
+      "groundnut": [
+        "peanut"
+      ],
+      "ttangkong": [
+        "peanut"
+      ],
+      "땅콩": [
+        "peanut"
+      ],
+      "plantprotein": [
+        "peanut"
+      ],
+      "sweet": [
+        "sweet-potato"
+      ],
+      "potato": [
+        "sweet-potato"
+      ],
+      "goguma": [
+        "sweet-potato"
+      ],
+      "고구마": [
+        "sweet-potato"
+      ],
+      "kumara": [
+        "sweet-potato"
+      ],
+      "camote": [
+        "sweet-potato"
+      ],
+      "yam": [
+        "sweet-potato"
+      ]
+    },
+    "entries": [
+      {
+        "id": "kabocha",
+        "name": "Kabocha squash",
+        "nameNorm": "kabocha squash",
+        "aliasesNorm": [
+          "danhobak",
+          "단호박",
+          "kabocha",
+          "japanese pumpkin"
+        ],
+        "categoryNorm": "vegetable",
+        "tokens": [
+          "kabocha",
+          "squash",
+          "danhobak",
+          "단호박",
+          "japanese",
+          "pumpkin",
+          "vegetable"
+        ]
+      },
+      {
+        "id": "peanut",
+        "name": "Peanut",
+        "nameNorm": "peanut",
+        "aliasesNorm": [
+          "peanut butter",
+          "groundnut",
+          "ttangkong",
+          "땅콩"
+        ],
+        "categoryNorm": "plantprotein",
+        "tokens": [
+          "peanut",
+          "butter",
+          "groundnut",
+          "ttangkong",
+          "땅콩",
+          "plantprotein"
+        ]
+      },
+      {
+        "id": "sweet-potato",
+        "name": "Sweet potato",
+        "nameNorm": "sweet potato",
+        "aliasesNorm": [
+          "goguma",
+          "고구마",
+          "kumara",
+          "camote",
+          "yam"
+        ],
+        "categoryNorm": "vegetable",
+        "tokens": [
+          "sweet",
+          "potato",
+          "goguma",
+          "고구마",
+          "kumara",
+          "camote",
+          "yam",
+          "vegetable"
+        ]
+      }
+    ]
+  },
+  "generatedAt": null
+}

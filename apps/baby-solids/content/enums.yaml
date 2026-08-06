@@ -1,0 +1,108 @@
+# Closed vocabularies for the food canon.
+#
+# The compiler rejects any value not listed here. That is not bureaucracy: a
+# typo in an allergen id or a choking level is a silent safety gap, and this
+# file is what turns it into a failed build. It also becomes the CHECK
+# constraints / lookup tables when the canon is imported relationally
+# (see SCHEMA.md).
+
+categories:
+  - fruit
+  - vegetable
+  - grain
+  - starch
+  - animal_protein
+  - plant_protein
+  - dairy
+  - fat
+  - herb_spice
+  - other
+
+ageBands:
+  - "6-8"
+  - "9-11"
+  - "12-17"
+  - "18-23"
+  - "24+"
+
+# Reusable prep shapes. ~15 of these replace ~1,600 per-food photographs:
+# organized by food x age the images explode, but the actual information
+# collapses to a small set of geometries. Each maps to one SVG component
+# drawn with a finger silhouette and a 1 cm rule for scale.
+geometries:
+  - spear-two-finger
+  - spear-finger-length
+  - thin-plank
+  - pincer-cube
+  - thin-spread
+  - halved-lengthwise-quartered
+  - shredded
+  - ground-and-moistened
+  - smashed
+  - soft-strip
+  - preloaded-spoon
+  - whole-soft
+  - crushed-fine
+  - bite-size-mixed
+  - avoid
+
+# The nine US major allergens (FASTER Act; sesame labeling effective
+# 2023-01-01). Canada recognizes ~11 (adds mustard, sulphites) and the EU/UK
+# 14 (adds celery, lupin, mustard, sulphites, molluscs) — hence
+# allergenRegions below. The list is a regional field, not a constant.
+allergens:
+  - milk
+  - egg
+  - fish
+  - crustacean_shellfish
+  - tree_nut
+  - peanut
+  - wheat
+  - soy
+  - sesame
+  # non-US priority allergens, valid but outside the default US 9
+  - mustard
+  - sulphites
+  - celery
+  - lupin
+  - mollusc
+
+allergenRegions:
+  - US
+  - CA
+  - EU
+
+chokingLevels:
+  - low
+  - modify-required
+  - avoid
+
+ironTypes:
+  - heme
+  - non_heme
+  - fortified
+  - none
+
+# How much weight a claim carries. Rendered as a visible badge; anything at
+# common_practice must not be presented as instruction from a guideline body.
+evidenceTiers:
+  - guideline # AAP, WHO, CDC, NHS, Health Canada, FDA
+  - trial # a named RCT or systematic review
+  - expert_opinion # e.g. CSACI's >=1x/week allergen cadence
+  - common_practice # widely done, not guideline-issued (most cut-size rules)
+
+amounts:
+  - none
+  - tasted
+  - some
+  - most
+
+culturalTags:
+  - general
+  - korean
+  - chinese
+  - japanese
+  - indian
+  - latin
+  - levantine
+  - southeast_asian
