@@ -42,7 +42,7 @@ const CHILD_TABLES = new Set([
 ]);
 
 /** Flat objects whose own keys map to columns. */
-const FLAT_OBJECTS = new Set(["choking", "nutrients", "allergenProtocol"]);
+const FLAT_OBJECTS = new Set(["choking", "nutrients", "allergenProtocol", "frequencyLimit"]);
 
 const q = (v) =>
   v === undefined || v === null ? "NULL" : typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "''")}'`;
@@ -82,7 +82,7 @@ function emit(foods) {
     }
 
     out.push(
-      `INSERT INTO foods (id, name, category, first_ok_months, choking_level, choking_note, iron_type, iron_mg_per_100g, protein_g_per_100g, fdc_id, prep_minutes, background_md, safety_note_md, hard_age_restriction_months, prohibited_before_months, prohibition_reason) VALUES (${[
+      `INSERT INTO foods (id, name, category, first_ok_months, choking_level, choking_note, iron_type, iron_mg_per_100g, protein_g_per_100g, fdc_id, prep_minutes, background_md, safety_note_md, hard_age_restriction_months, prohibited_before_months, prohibition_reason, max_per_week, frequency_limit_reason) VALUES (${[
         food.id,
         food.name,
         food.category,
@@ -99,6 +99,8 @@ function emit(foods) {
         food.hardAgeRestrictionMonths,
         food.prohibitedBeforeMonths,
         food.prohibitionReason,
+        food.frequencyLimit?.maxPerWeek,
+        food.frequencyLimit?.reason,
       ]
         .map(q)
         .join(", ")});`,

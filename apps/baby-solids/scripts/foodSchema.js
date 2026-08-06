@@ -68,6 +68,21 @@ export function buildFoodSchema(enums) {
     hardAgeRestrictionMonths: z.number().int().positive().optional(),
     prohibitedBeforeMonths: z.number().int().positive().optional(),
     prohibitionReason: z.string().optional(),
+    /**
+     * An upper bound on how often a food should be served, with the reason.
+     *
+     * Distinct from an age restriction: liver is excellent at six months and
+     * still shouldn't be served daily, because preformed vitamin A accumulates.
+     * Every other cap in the dataset is "not before N months"; this is the only
+     * shape that says "yes, but not this often", and without it the canon would
+     * have to bury that in prose where nothing can act on it.
+     */
+    frequencyLimit: z
+      .object({
+        maxPerWeek: z.number().positive(),
+        reason: z.string().min(1),
+      })
+      .optional(),
     nutrients: z
       .object({
         ironType: oneOf("ironTypes"),

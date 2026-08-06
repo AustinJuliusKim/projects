@@ -59,6 +59,14 @@ export default function FoodView({ log }) {
         </Alert>
       )}
 
+      {food.frequencyLimit && (
+        <Alert color="yellow" title="Good, but not too often" variant="light">
+          <Text size="sm">
+            At most {food.frequencyLimit.maxPerWeek}× a week. {food.frequencyLimit.reason}
+          </Text>
+        </Alert>
+      )}
+
       {food.backgroundMd && <Prose text={food.backgroundMd} />}
 
       <Divider label="How to serve it" labelPosition="left" />

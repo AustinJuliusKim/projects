@@ -45,6 +45,14 @@ grows, instead of being discovered false in January.
 | `hard_age_restriction_months` | `int` | e.g. 48 for whole nuts |
 | `prohibited_before_months` | `int` | e.g. 12 for honey |
 | `prohibition_reason` | `text` | |
+| `max_per_week` | `numeric` | serving-frequency ceiling — see below |
+| `frequency_limit_reason` | `text` | required when `max_per_week` is set |
+
+> **Why a frequency cap is its own thing.** Every other limit here is "not
+> before N months". Liver is the case that doesn't fit: it's excellent from six
+> months and still shouldn't be served daily, because preformed vitamin A
+> accumulates. Without a field for it, that caution would live only in prose,
+> where the app can't act on it.
 
 ### `food_age_bands`
 | column | type | notes |
