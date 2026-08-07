@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Solids">
+  <rect width="512" height="512" rx="112" fill="#0e0f13" />
+  <!-- A bowl, and three spears of food the size a six-month-old can hold. -->
+  <g fill="none" stroke="#8b5cf6" stroke-width="26" stroke-linecap="round">
+    <path d="M120 268a136 136 0 0 0 272 0" stroke-linejoin="round" />
+    <path d="M96 268h320" />
+    <path d="M200 236V150" />
+    <path d="M256 236V122" />
+    <path d="M312 236V150" />
+  </g>
+</svg>
