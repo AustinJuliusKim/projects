@@ -82,6 +82,12 @@ ironTypes:
   - non_heme
   - fortified
   - none
+  # "unknown" is not a hedge — it is the honest value when a food's iron was
+  # never verified. Several records exist whose USDA lookup was rate-limited,
+  # and forcing them to pick "none" or "non_heme" would state a fact nobody
+  # measured. A field that cannot say "we don't know" quietly manufactures
+  # certainty.
+  - unknown
 
 # How much weight a claim carries. Rendered as a visible badge; anything at
 # common_practice must not be presented as instruction from a guideline body.
@@ -116,3 +122,5 @@ culturalTags:
   - levantine
   - southeast_asian
   - mediterranean
+  - ethiopian
+  - west_african

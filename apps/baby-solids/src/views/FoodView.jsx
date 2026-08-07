@@ -27,9 +27,7 @@ export default function FoodView({ log }) {
         <Badge variant="light" color={food.choking.level === "low" ? "green" : "yellow"}>
           choking: {food.choking.level}
         </Badge>
-        <Badge variant="light" color={food.allergens.length ? "orange" : "gray"}>
-          {food.allergens.length ? food.allergens.join(", ") : "not a major allergen"}
-        </Badge>
+        <AllergenBadge food={food} />
         <Badge variant="light">iron: {food.nutrients.ironType.replace("_", "-")}</Badge>
       </Group>
 
@@ -141,6 +139,11 @@ export default function FoodView({ log }) {
       )}
 
       <Divider label="Sources" labelPosition="left" />
+      <Text size="xs" c="dimmed">
+        Dates are when the source was consulted. One caveat worth knowing: cdc.gov blocks
+        automated retrieval, so CDC text in this canon was read from archive captures rather than
+        the live page. The wording was checked; the live page may have moved on.
+      </Text>
       <Stack gap={6}>
         {food.sources.map((src) => {
           const [label, color] = tierBadge(src.tier);
@@ -165,18 +168,101 @@ export default function FoodView({ log }) {
   );
 }
 
-/** Markdown is authored as plain paragraphs; render them as such. */
+/** The nine allergens US labels must declare. */
+const US_NINE = new Set([
+  "milk",
+  "egg",
+  "fish",
+  "crustacean_shellfish",
+  "tree_nut",
+  "peanut",
+  "wheat",
+  "soy",
+  "sesame",
+]);
+
+/**
+ * The allergen chip, which has to carry three states rather than two.
+ *
+ * The missing one is the dangerous one. Molluscs — oyster, mussel, clam,
+ * scallop — are genuinely allergenic and can be severe, but they are NOT among
+ * the nine allergens US labels must declare; crustacean is. So a plain orange
+ * "mollusc" chip implies a packet will warn you, and a grey "not a major
+ * allergen" chip implies there is nothing to react to. Both mislead, in
+ * opposite directions, about a food sold on the same counter as shrimp.
+ *
+ * The third state says the true thing: real allergen, no US labelling duty,
+ * read the ingredients.
+ */
+function AllergenBadge({ food }) {
+  const listed = food.allergens.filter((a) => US_NINE.has(a));
+  const unlisted = food.allergens.filter((a) => !US_NINE.has(a));
+
+  if (listed.length) {
+    return (
+      <Badge variant="light" color="orange">
+        {listed.join(", ")}
+      </Badge>
+    );
+  }
+  if (unlisted.length) {
+    return (
+      <Badge variant="light" color="yellow">
+        {unlisted.join(", ")} — not US-labelled
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="light" color="gray">
+      not a major allergen
+    </Badge>
+  );
+}
+
+/**
+ * Renders authored prose: paragraphs, bullet lists, and **bold**.
+ *
+ * Deliberately not a Markdown library. The content is ours and uses a small,
+ * known subset, so a 30-line renderer beats a dependency that would also
+ * happily render images and links from a data file. But it does need to handle
+ * bold: records lean on it for the phrase that matters in a safety paragraph,
+ * and rendering `**never raw**` as literal asterisks is worse than not bolding
+ * at all — it reads as a typo in exactly the sentence a parent should trust.
+ */
 function Prose({ text, size = "md" }) {
+  const blocks = text.split(/\n{2,}/).filter(Boolean);
   return (
     <Stack gap="xs">
-      {text
-        .split(/\n{2,}/)
-        .filter(Boolean)
-        .map((para, i) => (
+      {blocks.map((block, i) => {
+        const lines = block.split("\n");
+        if (lines.every((l) => /^\s*[-*]\s+/.test(l))) {
+          return (
+            <Stack key={i} gap={4} pl="sm">
+              {lines.map((l, j) => (
+                <Text key={j} size={size}>
+                  • {inline(l.replace(/^\s*[-*]\s+/, ""))}
+                </Text>
+              ))}
+            </Stack>
+          );
+        }
+        return (
           <Text key={i} size={size}>
-            {para.replace(/\n/g, " ")}
+            {inline(block.replace(/\n/g, " "))}
           </Text>
-        ))}
+        );
+      })}
     </Stack>
+  );
+}
+
+/** Splits on **bold** spans, leaving everything else as text. */
+function inline(s) {
+  return s.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <b key={i}>{part.slice(2, -2)}</b>
+    ) : (
+      part
+    ),
   );
 }
