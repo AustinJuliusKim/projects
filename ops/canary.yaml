@@ -26,6 +26,23 @@ Description: >
 #   4. Confirm the SNS subscription email (check spam — see the AWS-SNS
 #      memory note: confirmations expire in 3 days).
 #
+# Redeploying an EXISTING stack (e.g. a runtime bump) is different: CanarySecret
+# is NoEcho, so it cannot be read back out of CloudFormation. Carry the stored
+# values forward instead of re-supplying them, and pass anything you are actually
+# changing explicitly — a parameter already stored on the stack overrides the
+# template Default, so editing a Default alone changes nothing:
+#
+#   aws cloudformation deploy --template-file ops/canary.yaml \
+#     --stack-name ChoicesCanary --region us-west-2 --profile admin \
+#     --capabilities CAPABILITY_IAM \
+#     --parameter-overrides \
+#       ParameterKey=RuntimeVersion,ParameterValue=syn-nodejs-5.2 \
+#       ParameterKey=CanarySecret,UsePreviousValue=true \
+#       ParameterKey=AlertEmail,UsePreviousValue=true
+#
+# Use the structured ParameterKey= form for EVERY override in that call; the CLI
+# rejects Key=Value shorthand mixed with structured entries.
+#
 # Intrinsics are written long-form (Ref:/Fn::*) on purpose: the repo's
 # template sanity check is a plain yaml.safe_load, which rejects !Ref tags.
 
@@ -55,10 +72,16 @@ Parameters:
       the alarm below assumes at most one run per day (Period 86400).
   RuntimeVersion:
     Type: String
-    Default: syn-nodejs-puppeteer-9.1
+    Default: syn-nodejs-5.2
     Description: >
-      Synthetics runtime. Override at deploy time if this version has been
-      deprecated in the region (aws synthetics describe-runtime-versions).
+      Synthetics runtime. This is the browser-free "NodeJS" line (Node 22.x) —
+      deliberately NOT syn-nodejs-puppeteer-*: the script below is pure fetch and
+      never launches a browser, so the Puppeteer/Chromium layer was dead weight.
+      Do not "upgrade" it back to a puppeteer runtime unless the script actually
+      starts driving a browser. Moved off syn-nodejs-puppeteer-9.1 on 2026-08-10,
+      ahead of AWS deprecating every Node.js 20 runtime on 2027-02-01.
+      Override at deploy time if this version has been deprecated in the region
+      (aws synthetics describe-runtime-versions).
 
 Resources:
   ArtifactsBucket:
@@ -149,8 +172,9 @@ Resources:
         Handler: index.handler
         Script: |
           // Golden path: createPairing -> claim A+B -> alternate cuts to a
-          // winner. Pure fetch (Node 18+ runtime); x-canary-secret keeps
-          // these games out of business analytics. Any throw fails the run.
+          // winner. Pure fetch (global fetch, Node 22 runtime — no browser and no
+          // synthetics library); x-canary-secret keeps these games out of
+          // business analytics. Any throw fails the run.
           const API = process.env.API_URL;
           const HEADERS = {
             "content-type": "application/json",
