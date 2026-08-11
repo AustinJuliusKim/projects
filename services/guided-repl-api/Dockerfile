@@ -2,7 +2,7 @@
 # buildApp() the Lambda deploy wraps, listening on :3001. Build from the
 # REPO ROOT so the file: protocol dependency resolves:
 #   docker build -f services/guided-repl-api/Dockerfile -t guided-repl-api .
-FROM node:20-slim
+FROM node:24-slim
 
 WORKDIR /repo
 COPY packages/guided-repl-protocol packages/guided-repl-protocol
