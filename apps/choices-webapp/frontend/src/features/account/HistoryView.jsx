@@ -4,6 +4,7 @@ import { authEnabled, hasSession, signIn } from "@/lib/auth.js";
 import { useMe } from "@/hooks/useMe.js";
 import AccountSkeleton from "@/features/account/AccountSkeleton.jsx";
 import Button from "@/components/Button.jsx";
+import SegmentedTabs from "@/components/SegmentedTabs.jsx";
 
 // Recent games arrive fully in one getMe call (hard-capped ≤10 free / ≤50
 // premium), so pagination is pure client-side slicing — no cursor/fetch.
@@ -99,28 +100,15 @@ export default function HistoryView() {
             )}
           </div>
 
-          {/* Segmented pill switches between the two lists — one at a time,
-              app-native rather than a long stacked scroll. */}
-          <div className="segmented" role="tablist" aria-label="History lists">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "winners"}
-              className={`seg-tab${tab === "winners" ? " active" : ""}`}
-              onClick={() => setTab("winners")}
-            >
-              Winners
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "recent"}
-              className={`seg-tab${tab === "recent" ? " active" : ""}`}
-              onClick={() => setTab("recent")}
-            >
-              Recent
-            </button>
-          </div>
+          <SegmentedTabs
+            label="History lists"
+            tabs={[
+              { id: "winners", label: "Winners" },
+              { id: "recent", label: "Recent" },
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
 
           {tab === "winners" ? (
             <div className="top-winners">
