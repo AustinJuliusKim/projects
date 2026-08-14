@@ -1,0 +1,445 @@
+@font-face {
+  font-family: "Pixel";
+  src: url("/fonts/pixel.woff2") format("woff2");
+  font-display: swap;
+}
+
+:root {
+  --cream: #f8edd8;
+  --ink: #2b2018;
+  --ketchup: #d64533;
+  --mustard: #e8a828;
+  --leaf: #5a9e4b;
+  --sky: #7ec4cf;
+  --paper: #fffaf0;
+  --px: 4px;
+  font-family: "Pixel", "Courier New", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--ink);
+  image-rendering: pixelated;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1rem;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* CRT scanlines over everything, purely decorative */
+.crt::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, 0.06) 2px 4px);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* chunky stepped "pixel" border via box-shadow */
+.pixel-frame,
+.tile,
+.btn,
+.reveal-card,
+.cookbook-panel,
+.counter-slot {
+  border: none;
+  box-shadow:
+    0 calc(-1 * var(--px)) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(-1 * var(--px)) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0 1.5rem;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--ketchup);
+  text-shadow: 3px 3px 0 var(--mustard);
+}
+
+h2,
+h3,
+h4 {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.btn {
+  background: var(--paper);
+  padding: 0.5rem 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+.btn:active {
+  transform: translateY(var(--px));
+}
+
+.btn-cook {
+  background: var(--ketchup);
+  color: var(--paper);
+  font-size: 1.1rem;
+  padding: 0.75rem 2.5rem;
+  margin-top: 1rem;
+}
+
+.btn-cook:disabled {
+  background: #b8a894;
+  color: #7b6f60;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---------- pantry ---------- */
+
+.pantry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pantry-hint {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+}
+
+.pantry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: calc(var(--px) * 3);
+  width: 100%;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 0.25rem;
+  background: var(--paper);
+}
+
+.tile[aria-pressed="true"] {
+  background: var(--mustard);
+}
+
+.tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tile-emoji {
+  font-size: 2rem;
+}
+
+.tile-name {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.counter {
+  display: flex;
+  gap: calc(var(--px) * 3);
+  margin-top: 1.25rem;
+}
+
+.counter-slot {
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  background: var(--paper);
+  color: #b8a894;
+}
+
+.counter-slot.filled {
+  background: var(--sky);
+  color: var(--ink);
+}
+
+/* ---------- cooking scene ---------- */
+
+.cooking {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 3rem;
+}
+
+.cooking-stage {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: grid;
+  place-items: center;
+}
+
+.pot {
+  font-size: 5rem;
+  animation: rattle 0.18s steps(2, end) infinite;
+}
+
+.puff {
+  position: absolute;
+  bottom: 60%;
+  font-size: 1.8rem;
+  animation: puff 0.9s steps(4) infinite;
+}
+
+.puff-1 { left: 25%; animation-delay: 0s; }
+.puff-2 { left: 45%; animation-delay: 0.3s; }
+.puff-3 { left: 62%; animation-delay: 0.6s; }
+
+.star {
+  position: absolute;
+  font-size: 1.4rem;
+  color: var(--mustard);
+  animation: star-pop 0.7s steps(3) infinite;
+}
+
+.star-1 { top: 18%; left: 12%; animation-delay: 0.1s; }
+.star-2 { top: 10%; right: 15%; animation-delay: 0.35s; }
+.star-3 { bottom: 22%; left: 8%; animation-delay: 0.55s; }
+.star-4 { bottom: 15%; right: 10%; animation-delay: 0.2s; }
+
+.cooking-caption {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  animation: blink 0.8s steps(1) infinite;
+}
+
+@keyframes rattle {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-3px, 1px) rotate(-3deg); }
+  50% { transform: translate(3px, -1px) rotate(3deg); }
+  75% { transform: translate(-2px, 0) rotate(-2deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes puff {
+  from { transform: translateY(0) scale(0.4); opacity: 0.9; }
+  to { transform: translateY(-60px) scale(1.4); opacity: 0; }
+}
+
+@keyframes star-pop {
+  0%, 100% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ---------- reveal ---------- */
+
+.reveal {
+  display: flex;
+  justify-content: center;
+}
+
+.reveal-card {
+  background: var(--paper);
+  padding: 1.5rem;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  animation: slam 0.35s steps(5);
+}
+
+@keyframes slam {
+  from { transform: scale(2.5); opacity: 0; }
+  60% { transform: scale(0.9); }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.new-badge {
+  position: absolute;
+  top: -0.75rem;
+  right: -0.5rem;
+  background: var(--leaf);
+  color: var(--paper);
+  padding: 0.3rem 0.6rem;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  transform: rotate(6deg);
+}
+
+.reveal-plate {
+  font-size: 4rem;
+  display: block;
+}
+
+.reveal-name {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.2rem;
+  color: var(--ketchup);
+}
+
+.reveal-flavor {
+  font-style: italic;
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+}
+
+.recipe {
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.recipe h3 {
+  font-size: 0.9rem;
+  border-bottom: var(--px) solid var(--ink);
+  padding-bottom: 0.35rem;
+}
+
+.recipe h4 {
+  font-size: 0.8rem;
+  margin: 0.75rem 0 0.25rem;
+  color: var(--leaf);
+}
+
+.recipe ul,
+.recipe ol {
+  margin: 0.25rem 0;
+  padding-left: 1.4rem;
+}
+
+.recipe li {
+  margin: 0.3rem 0;
+  line-height: 1.4;
+}
+
+/* ---------- cookbook ---------- */
+
+.cookbook {
+  position: fixed;
+  inset: 0;
+  background: rgba(43, 32, 24, 0.75);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 20;
+}
+
+.cookbook-panel {
+  background: var(--paper);
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+
+.cookbook-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.cookbook-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  flex: 1;
+}
+
+.cookbook-count {
+  font-size: 0.85rem;
+  color: var(--leaf);
+}
+
+.cookbook-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: calc(var(--px) * 3);
+  margin-top: 1rem;
+}
+
+.cookbook-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem 0.25rem;
+  font-size: 1.6rem;
+  background: var(--cream);
+  border: none;
+  opacity: 0.5;
+}
+
+.cookbook-slot.found {
+  background: var(--paper);
+  opacity: 1;
+  box-shadow:
+    0 calc(-1 * var(--px)) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(-1 * var(--px)) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink);
+}
+
+.cookbook-slot-name {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.cookbook-detail {
+  text-align: center;
+  padding-top: 0.75rem;
+}
+
+.cookbook-detail .btn {
+  float: left;
+}
+
+.cookbook-detail .recipe {
+  clear: both;
+}
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .pot,
+  .star,
+  .cooking-caption {
+    animation: none;
+  }
+  .puff {
+    animation-duration: 2s;
+  }
+  .reveal-card {
+    animation: none;
+  }
+}
