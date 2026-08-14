@@ -79,7 +79,9 @@ export default function AdminView() {
   }, []);
 
   return (
-    <div className="admin-view" aria-busy={status === "loading"}>
+    // Layout (the .admin-view column) is owned by AdminScreen since the
+    // Dashboard/Flags split — this renders panel content only.
+    <div aria-busy={status === "loading"}>
       <header className="admin-head">
         <h1>Activity</h1>
         <p className="admin-sub">owner-only · anonymous aggregates · live</p>
