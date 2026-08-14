@@ -3,8 +3,6 @@ import { authEnabled, hasSession, getProfile, signIn, signOut } from "@/lib/auth
 import { invalidateMe } from "@/hooks/useMe.js";
 import Button from "@/components/Button.jsx";
 
-const ADMIN_FLAG = "choices:admin";
-
 function ProfileRow() {
   const profile = getProfile();
   const name = profile?.name ?? profile?.email ?? "Signed in";
@@ -27,11 +25,15 @@ function ProfileRow() {
   );
 }
 
-// Settings tab: account (sign in/out), Premium link, and the owner-only admin
-// link (unlocked by a #/admin visit, see AdminView.jsx).
+// Settings tab: account (sign in/out), Premium link, and the admin link.
+// Admin visibility keys on the session's Cognito "admin" group claim — the
+// same check as the #/admin route gate in main.jsx, so the row shows exactly
+// where the route renders (installed PWAs have no URL bar to type it). UX
+// only: a tampered local session can conjure the row, but every admin action
+// re-verifies the JWT server-side (assertAdmin / assertFlagAdmin) and 403s.
 export default function SettingsView() {
   const signedIn = hasSession();
-  const isAdmin = authEnabled && localStorage.getItem(ADMIN_FLAG) === "1";
+  const isAdmin = Boolean(getProfile()?.groups?.includes("admin"));
 
   function onSignOut() {
     invalidateMe();
