@@ -3,6 +3,7 @@ import type { Dish, IngredientId } from "./game/types.ts";
 import { cook } from "./game/logic.ts";
 import { useCookbook } from "./hooks/useCookbook.ts";
 import { Pantry } from "./components/Pantry.tsx";
+import { KitchenScene } from "./components/KitchenScene.tsx";
 import { CookingScene } from "./components/CookingScene.tsx";
 import { DishReveal } from "./components/DishReveal.tsx";
 import { Cookbook } from "./components/Cookbook.tsx";
@@ -59,11 +60,20 @@ export default function App() {
         )}
       </header>
       <main>
-        {phase === "pantry" && <Pantry selected={selected} onToggle={toggle} onCook={startCooking} />}
-        {phase === "cooking" && <CookingScene onDone={finishCooking} />}
-        {phase === "reveal" && resultRef.current && (
-          <DishReveal dish={resultRef.current.dish} isNew={isNew} onCookAgain={cookAgain} />
-        )}
+        <KitchenScene>
+          {phase === "pantry" && (
+            <Pantry selected={selected} onToggle={toggle} onCook={startCooking} />
+          )}
+          {phase === "cooking" && <CookingScene selected={selected} onDone={finishCooking} />}
+          {phase === "reveal" && resultRef.current && (
+            <DishReveal
+              dish={resultRef.current.dish}
+              isNew={isNew}
+              isMystery={resultRef.current.isMystery}
+              onCookAgain={cookAgain}
+            />
+          )}
+        </KitchenScene>
       </main>
       {showCookbook && <Cookbook discovered={discovered} onClose={() => setShowCookbook(false)} />}
     </div>
