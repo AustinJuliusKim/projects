@@ -234,6 +234,23 @@ export const EVENT_TYPES = Object.freeze({
       updated_by: oneOf("admin"),
     }),
   },
+  // Bundle F — onboarding (added 2026-08-14, additive). Pre-pairing by
+  // nature, so never pairing-scoped: shown/dismissed counts give the
+  // completion rate, last_step gives the drop-off point. No per-user join.
+  onboarding_shown: {
+    schema_v: 1,
+    validate: shape({ variant: oneOf("full", "condensed") }),
+    client: "none",
+  },
+  onboarding_dismissed: {
+    schema_v: 1,
+    validate: shape({
+      variant: oneOf("full", "condensed"),
+      outcome: oneOf("completed", "skipped"),
+      last_step: intIn(1, 5),
+    }),
+    client: "none",
+  },
 });
 
 // Types the client may send through the `track` action, mapped to their

@@ -704,6 +704,7 @@ test("getMe requires sign-in and gates streaks/history for free accounts", async
       },
       recentGames,
       premium: { status: "none" },
+      onboardedAt: 1_750_000_000_000,
     },
   });
 
@@ -712,6 +713,7 @@ test("getMe requires sign-in and gates streaks/history for free accounts", async
   );
   assert.equal(res.statusCode, 200);
   const me = JSON.parse(res.body);
+  assert.equal(me.onboarded, true);
   assert.equal(me.stats.gamesPlayed, 15);
   assert.equal(me.stats.currentStreak, undefined); // premium-gated at the API
   assert.equal(me.stats.topWinners, undefined);
@@ -763,6 +765,54 @@ test("getMe creates the user skeleton on first visit", async () => {
   const me = JSON.parse(res.body);
   assert.equal(me.stats.gamesPlayed, 0);
   assert.equal(me.premium.status, "none");
+  assert.equal(me.onboarded, false);
+});
+
+test("setOnboarded requires sign-in", async () => {
+  const res = await handler(postEvent({ action: "setOnboarded" }));
+  assert.equal(res.statusCode, 401);
+  assert.equal(ddbMock.commandCalls(PutCommand).length, 0);
+});
+
+test("setOnboarded stamps onboardedAt on an existing user", async () => {
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 2, stats: {}, recentGames: [], premium: { status: "none" } },
+  });
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(postEvent({ action: "setOnboarded" }, AUTH));
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(JSON.parse(res.body), { ok: true, onboarded: true });
+  const put = ddbMock.commandCalls(PutCommand)[0].args[0].input;
+  assert.equal(typeof put.Item.onboardedAt, "number");
+  assert.equal(put.Item.version, 3);
+  assert.equal(put.ConditionExpression, "version = :v");
+  assert.deepEqual(put.ExpressionAttributeValues, { ":v": 2 });
+});
+
+test("setOnboarded is an idempotent no-op when already onboarded", async () => {
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({
+    Item: { pk: "USER#u-1", userId: "u-1", version: 2, onboardedAt: 1_750_000_000_000 },
+  });
+
+  const res = await handler(postEvent({ action: "setOnboarded" }, AUTH));
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(JSON.parse(res.body), { ok: true, onboarded: true });
+  assert.equal(ddbMock.commandCalls(PutCommand).length, 0);
+});
+
+test("setOnboarded creates a complete skeleton for a first-time user", async () => {
+  ddbMock.on(GetCommand, { Key: { pk: "USER#u-1" } }).resolves({});
+  ddbMock.on(PutCommand).resolves({});
+
+  const res = await handler(postEvent({ action: "setOnboarded" }, AUTH));
+  assert.equal(res.statusCode, 200);
+  const put = ddbMock.commandCalls(PutCommand)[0].args[0].input;
+  assert.equal(put.Item.pk, "USER#u-1");
+  assert.equal(put.Item.email, "u1@example.com");
+  assert.equal(typeof put.Item.onboardedAt, "number");
+  assert.equal(put.Item.ttl, undefined);
+  assert.equal(put.ConditionExpression, "attribute_not_exists(version)");
 });
 
 // Fake Stripe: constructEvent validates our fake signature; checkout/portal

@@ -21,8 +21,9 @@ const TABS = [
 ];
 
 // Feather-style icons, 24x24, stroke="currentColor" (set on the <svg>);
-// sparkle is the one filled glyph.
-const ICONS = {
+// sparkle is the one filled glyph. Exported so the onboarding NavPeek renders
+// the same glyphs — the tour illustration can't drift from the real nav.
+export const ICONS = {
   home: (
     <>
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />

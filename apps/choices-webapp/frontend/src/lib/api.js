@@ -1,6 +1,7 @@
 // Thin fetch wrappers around the game API (Function URL or CloudFront /api).
 import { getIdToken, getProfile } from "@/lib/auth.js";
 import { writeStreak } from "@/lib/streakCache.js";
+import { markOnboarded } from "@/lib/onboardingStore.js";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -103,8 +104,16 @@ export const getMe = async () => {
   const data = await post("getMe", {}, await authHeaders());
   const premium = ["active", "past_due"].includes(data.premium?.status);
   writeStreak(getProfile()?.sub, data.stats, premium);
+  // Cross-device onboarding suppression: any getMe that says the account
+  // already onboarded quiets this device too.
+  if (data.onboarded) markOnboarded("synced");
   return data;
 };
+// Durable onboarding marker on the USER# record. Fire-and-forget from the
+// overlay (localStorage is authoritative for this device); idempotent
+// server-side, so no dedupe needed here.
+export const setOnboarded = async () =>
+  post("setOnboarded", {}, await authHeaders());
 // Owner-only activity dashboard. Auth header required; the backend gates on
 // ADMIN_SUBS and returns anonymous aggregates only. No retry — the poll is it.
 export const getAdminOverview = async () =>

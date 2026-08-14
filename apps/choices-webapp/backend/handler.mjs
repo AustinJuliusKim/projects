@@ -5,8 +5,9 @@
 // rematches. B joins by entering a short human CODE inside the app.
 //
 // Actions: createPairing | claimSeat | getState | eliminate | rematch |
-// subscribe | linkClick | getMe | createCheckoutSession | createPortalSession
-// | getPairHistory | placesSuggest | placeDetails | fillMyFour
+// subscribe | linkClick | getMe | setOnboarded | createCheckoutSession
+// | createPortalSession | getPairHistory | placesSuggest | placeDetails
+// | fillMyFour
 // (+ POST /api/stripe-webhook, routed by path, raw-body signature verified)
 //
 // Accounts are optional: a Cognito ID token in the authorization header
@@ -200,6 +201,8 @@ export async function handler(event) {
         return reply(200, await doFillMyFour(body, user));
       case "getMe":
         return reply(200, await doGetMe(user));
+      case "setOnboarded":
+        return reply(200, await doSetOnboarded(user));
       case "createCheckoutSession":
         return reply(200, await doCreateCheckoutSession(user, body));
       case "createPortalSession":
@@ -956,7 +959,31 @@ async function doGetMe(user) {
     recentGames: recentGames.slice(0, premium ? RECENT_GAMES_CAP : FREE_RECENT_GAMES),
     historyLocked: !premium && recentGames.length > FREE_RECENT_GAMES,
     billingAvailable: billingEnabled(),
+    onboarded: Boolean(item.onboardedAt),
   };
+}
+
+// Durable "has seen the first-run tour" marker on the USER# record, so a
+// signed-in user isn't re-onboarded on a new device. Timestamp (not a bool)
+// for cohort queries. Same optimistic-lock loop shape as bumpUserAiUses;
+// the client fires this on every dismiss without dedupe, so already-set is
+// an early return with no write.
+async function doSetOnboarded(user) {
+  if (!user) throw new HttpError(401, "Sign in required.", "SIGN_IN_REQUIRED");
+  for (let attempt = 0; ; attempt++) {
+    const item =
+      (await loadUser(user.sub)) ??
+      { ...emptyUser(user.sub), email: user.email, name: user.name };
+    if (item.onboardedAt) return { ok: true, onboarded: true };
+    item.onboardedAt = Date.now();
+    item.updatedAt = Date.now();
+    try {
+      await ddb.send(new PutCommand(versionedPut(item).Put));
+      return { ok: true, onboarded: true };
+    } catch (err) {
+      if (err?.name !== "ConditionalCheckFailedException" || attempt >= 1) throw err;
+    }
+  }
 }
 
 // Load the USER# item, persisting the skeleton on first visit so billing

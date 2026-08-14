@@ -5,6 +5,7 @@ export const CLIENT_FLAG_DEFAULTS = Object.freeze({
   release_reveal_card: true,
   release_realtime_subscribe: false,
   release_polling_demoted: false,
+  release_onboarding: false,
 });
 
 // State shape: { flags: {name: bool}, hydrated: bool }.
