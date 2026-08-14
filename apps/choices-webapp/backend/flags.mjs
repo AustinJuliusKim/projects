@@ -42,6 +42,12 @@ export const FLAG_DEFS = Object.freeze({
     type: "release",
     public: true,
   },
+  release_onboarding: {
+    default: false,
+    description: "First-run onboarding overlay (full carousel + condensed join card).",
+    type: "release",
+    public: true,
+  },
 });
 
 // Injected I/O (house style: node:test has no ergonomic ESM mocking).

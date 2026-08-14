@@ -1790,3 +1790,104 @@ button.game-code-line {
   border: 1px solid var(--red);
   color: var(--red);
 }
+
+/* --- First-run onboarding overlay (release_onboarding) --- */
+
+/* Backdrop covers everything including the bottom nav (z 60); the tour's
+   step 4 shows a NavPeek lookalike instead of pointing at the real bar. */
+.onboard-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(11, 16, 32, 0.92);
+  display: grid;
+  place-items: center;
+  padding: calc(env(safe-area-inset-top) + 20px) 20px
+    calc(env(safe-area-inset-bottom) + 20px);
+}
+
+.onboard-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px 24px 24px;
+}
+
+.onboard-head {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 28px;
+}
+
+.onboard-art {
+  font-size: 2.5rem;
+  text-align: center;
+  margin: 4px 0 12px;
+}
+
+.onboard-title {
+  font-size: 1.35rem;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.onboard-body {
+  color: var(--muted);
+  text-align: center;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.onboard-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.onboard-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.onboard-dot.active {
+  background: var(--indigo);
+}
+
+/* Static lookalike of the bottom nav pill for the "your app" step —
+   position: static so it sits inside the card, not over the backdrop. */
+.onboard-navpeek {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  margin: 0 auto 16px;
+  width: fit-content;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.onboard-navpeek-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  min-height: 40px;
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.onboard-navpeek-tab svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* iOS scrolls the page behind fixed overlays without this. */
+body.no-scroll {
+  overflow: hidden;
+}

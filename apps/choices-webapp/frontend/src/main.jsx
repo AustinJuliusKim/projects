@@ -13,6 +13,7 @@ import CancelView from "@/features/premium/CancelView.jsx";
 const AdminScreen = React.lazy(() => import("@/features/admin/AdminScreen.jsx"));
 import TopBar from "@/components/TopBar.jsx";
 import BottomNav from "@/components/BottomNav.jsx";
+import { Onboarding } from "@/features/onboarding/useOnboardingGate.jsx";
 import { registerServiceWorker } from "@/lib/push.js";
 import { initRum } from "@/lib/rum.js";
 import { track } from "@/lib/api.js";
@@ -126,6 +127,7 @@ function App() {
       <TopBar hash={hash} hasIdentity={!!identity} />
       {renderView()}
       <BottomNav hash={hash} />
+      <Onboarding hash={hash} identity={identity} />
     </>
   );
 }

@@ -58,11 +58,13 @@ const HAPPY = {
     default_new: false,
     updated_by: "admin",
   },
+  onboarding_shown: { variant: "full" },
+  onboarding_dismissed: { variant: "full", outcome: "skipped", last_step: 2 },
 };
 
-test("registry covers the frozen catalog (25 types) + pairing_deleted + bundle E", () => {
+test("registry covers the frozen catalog (25 types) + pairing_deleted + bundles E–F", () => {
   const types = Object.keys(EVENT_TYPES);
-  assert.equal(types.length, 27);
+  assert.equal(types.length, 29);
   assert.deepEqual(new Set(types), new Set(Object.keys(HAPPY)));
 });
 
@@ -144,6 +146,8 @@ test("client scopes cover exactly the trackable types", () => {
     fill4_swapped: "optional",
     paywall_viewed: "optional",
     client_error: "none",
+    onboarding_shown: "none",
+    onboarding_dismissed: "none",
   });
 });
 

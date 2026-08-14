@@ -35,3 +35,9 @@ export function FlagsProvider({ children }) {
 export function useFlag(name, fallback) {
   return resolveFlag(useContext(FlagsContext), name, fallback);
 }
+
+// Whether the one getFlags fetch has resolved (or failed) — for surfaces
+// that must not flash in when a server override lands over a false default.
+export function useFlagsHydrated() {
+  return useContext(FlagsContext).hydrated;
+}
