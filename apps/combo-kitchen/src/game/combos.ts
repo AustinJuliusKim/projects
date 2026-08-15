@@ -4,7 +4,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "carbonara",
     name: "Carbonara Pasta",
-    plateEmoji: "🍝",
     combo: ["cheese", "bacon", "pasta"],
     flavorText: "Silky, salty, and gone in five minutes.",
     recipe: {
@@ -28,7 +27,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "meat-pot-pie",
     name: "Meat Pot Pie",
-    plateEmoji: "🥧",
     combo: ["meat", "potato", "flour"],
     flavorText: "A roof of pastry over a stew worth protecting.",
     recipe: {
@@ -52,7 +50,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "oyakodon",
     name: "Oyakodon Bowl",
-    plateEmoji: "🍛",
     combo: ["chicken", "rice", "egg"],
     flavorText: "Chicken and egg, reunited over rice.",
     recipe: {
@@ -76,7 +73,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "loco-moco",
     name: "Loco Moco",
-    plateEmoji: "🍚",
     combo: ["rice", "meat", "egg"],
     flavorText: "A burger patty, gravy, and a fried egg walk onto rice.",
     recipe: {
@@ -100,7 +96,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "margherita-pizza",
     name: "Margherita Pizza",
-    plateEmoji: "🍕",
     combo: ["cheese", "flour", "tomato"],
     flavorText: "Three ingredients, one flag, zero regrets.",
     recipe: {
@@ -123,7 +118,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "bolognese",
     name: "Spaghetti Bolognese",
-    plateEmoji: "🍝",
     combo: ["meat", "pasta", "tomato"],
     flavorText: "Sunday afternoon in a pot.",
     recipe: {
@@ -147,7 +141,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "croque-madame",
     name: "Croque Madame",
-    plateEmoji: "🥪",
     combo: ["bread", "cheese", "egg"],
     flavorText: "A grilled cheese that went to finishing school.",
     recipe: {
@@ -171,7 +164,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "kedgeree",
     name: "Kedgeree",
-    plateEmoji: "🍚",
     combo: ["egg", "fish", "rice"],
     flavorText: "Smoky rice with a colonial-era passport.",
     recipe: {
@@ -195,7 +187,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "pancakes",
     name: "Fluffy Pancakes",
-    plateEmoji: "🥞",
     combo: ["egg", "flour", "milk"],
     flavorText: "Breakfast's most reliable applause line.",
     recipe: {
@@ -218,7 +209,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "lava-cake",
     name: "Chocolate Lava Cake",
-    plateEmoji: "🍰",
     combo: ["chocolate", "egg", "flour"],
     flavorText: "Undercooked on purpose, celebrated for it.",
     recipe: {
@@ -242,7 +232,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "apple-fritters",
     name: "Apple Fritters",
-    plateEmoji: "🍩",
     combo: ["apple", "egg", "flour"],
     flavorText: "The fair came to your kitchen.",
     recipe: {
@@ -266,7 +255,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "loaded-baked-potato",
     name: "Loaded Baked Potato",
-    plateEmoji: "🥔",
     combo: ["bacon", "cheese", "potato"],
     flavorText: "A potato living its absolute best life.",
     recipe: {
@@ -289,7 +277,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "bacon-egg-sando",
     name: "Bacon & Egg Sando",
-    plateEmoji: "🥪",
     combo: ["bacon", "bread", "egg"],
     flavorText: "The reason alarms get snoozed only once.",
     recipe: {
@@ -313,7 +300,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "shakshuka",
     name: "Shakshuka",
-    plateEmoji: "🍳",
     combo: ["bread", "egg", "tomato"],
     flavorText: "Eggs poached in a slow-simmered argument of spices.",
     recipe: {
@@ -337,7 +323,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "arroz-con-pollo",
     name: "Arroz con Pollo",
-    plateEmoji: "🥘",
     combo: ["chicken", "rice", "tomato"],
     flavorText: "One pot, whole household fed, zero complaints.",
     recipe: {
@@ -361,7 +346,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "fish-and-chips",
     name: "Fish and Chips",
-    plateEmoji: "🍟",
     combo: ["fish", "flour", "potato"],
     flavorText: "Fried in batter, wrapped in nostalgia.",
     recipe: {
@@ -384,7 +368,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "rice-pudding",
     name: "Rice Pudding",
-    plateEmoji: "🍮",
     combo: ["egg", "milk", "rice"],
     flavorText: "Dessert that doubles as a hug.",
     recipe: {
@@ -408,7 +391,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "chocolate-bread-pudding",
     name: "Chocolate Bread Pudding",
-    plateEmoji: "🍫",
     combo: ["bread", "chocolate", "milk"],
     flavorText: "Stale bread's redemption arc.",
     recipe: {
@@ -432,7 +414,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "cheeseburger",
     name: "Cheeseburger",
-    plateEmoji: "🍔",
     combo: ["bread", "cheese", "meat"],
     flavorText: "Perfected in a parking lot, honored forever.",
     recipe: {
@@ -456,7 +437,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "chicken-katsu",
     name: "Chicken Katsu",
-    plateEmoji: "🍗",
     combo: ["chicken", "egg", "flour"],
     flavorText: "Crunch you can hear from the next room.",
     recipe: {
@@ -480,7 +460,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "mac-and-cheese",
     name: "Mac and Cheese",
-    plateEmoji: "🧀",
     combo: ["cheese", "milk", "pasta"],
     flavorText: "Comfort, measured in cheese pulls.",
     recipe: {
@@ -504,7 +483,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "beef-stew",
     name: "Hearty Beef Stew",
-    plateEmoji: "🍲",
     combo: ["meat", "potato", "tomato"],
     flavorText: "Patience you can eat with a spoon.",
     recipe: {
@@ -528,7 +506,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "apple-cheddar-melt",
     name: "Apple Cheddar Melt",
-    plateEmoji: "🥪",
     combo: ["apple", "bread", "cheese"],
     flavorText: "Sweet, sharp, and suspiciously sophisticated.",
     recipe: {
@@ -552,7 +529,6 @@ export const DISHES: readonly Dish[] = [
   {
     id: "french-toast",
     name: "French Toast",
-    plateEmoji: "🍞",
     combo: ["bread", "egg", "milk"],
     flavorText: "Yesterday's bread, today's headliner.",
     recipe: {

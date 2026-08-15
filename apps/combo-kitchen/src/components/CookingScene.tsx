@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { IngredientId } from "../game/types.ts";
-import { ingredientById } from "../game/ingredients.ts";
+import { PixelSprite } from "../sprites/PixelSprite.tsx";
 
 export const COOK_DURATION_MS = 2500;
 const POOF_MS = 400;
@@ -35,50 +35,40 @@ export function CookingScene({ selected, onDone }: Props) {
     };
   }, [onDone]);
 
-  const pokers = [
-    ...selected.map((id) => ingredientById(id)?.emoji ?? "❓"),
-    "🥄",
-    "✦",
-    "✦",
-  ];
+  const pokers = [...selected, "spoon", "star", "star"];
 
   return (
     <section className="cooking" aria-label="Cooking in progress">
       <div className="cooking-stage">
         <div className={`rumble-cloud${poofing ? " poofing" : ""}`}>
-          <span className="cloud-blob blob-1" aria-hidden="true">☁️</span>
-          <span className="cloud-blob blob-2" aria-hidden="true">☁️</span>
-          <span className="cloud-blob blob-3" aria-hidden="true">☁️</span>
-          <span className="cloud-blob blob-4" aria-hidden="true">☁️</span>
-          <span className="cloud-blob blob-5" aria-hidden="true">☁️</span>
-          <span className="cloud-bang bang-1" aria-hidden="true">💥</span>
-          <span className="cloud-bang bang-2" aria-hidden="true">💥</span>
-          {pokers.map((emoji, i) => {
+          <PixelSprite name="cloud" className="cloud-blob blob-1" />
+          <PixelSprite name="cloud" className="cloud-blob blob-2" />
+          <PixelSprite name="cloud" className="cloud-blob blob-3" />
+          <PixelSprite name="cloud" className="cloud-blob blob-4" />
+          <PixelSprite name="cloud" className="cloud-blob blob-5" />
+          <PixelSprite name="bang" className="cloud-bang bang-1" />
+          <PixelSprite name="bang" className="cloud-bang bang-2" />
+          {pokers.map((name, i) => {
             const { delay, ...position } = POKE_SPOTS[i % POKE_SPOTS.length];
             return (
-              <span
-                key={i}
-                className={`poker${emoji === "✦" ? " poker-star" : ""}`}
-                style={{ ...position, animationDelay: delay }}
-                aria-hidden="true"
-              >
-                {emoji}
+              <span key={i} className="poker" style={{ ...position, animationDelay: delay }}>
+                <PixelSprite name={name} className={name === "star" ? "poker-sprite poker-star" : "poker-sprite"} />
               </span>
             );
           })}
         </div>
         {poofing && (
           <>
-            <span className="steam steam-1" aria-hidden="true">💨</span>
-            <span className="steam steam-2" aria-hidden="true">💨</span>
+            <PixelSprite name="puff" className="steam steam-1" />
+            <PixelSprite name="puff" className="steam steam-2" />
           </>
         )}
-        <span className="pot" aria-hidden="true">🍲</span>
+        <PixelSprite name="pot" className="pot" />
         <div className="stove" aria-hidden="true">
           <div className="burner" />
         </div>
-        <span className="puff puff-1" aria-hidden="true">💨</span>
-        <span className="puff puff-2" aria-hidden="true">💨</span>
+        <PixelSprite name="puff" className="puff puff-1" />
+        <PixelSprite name="puff" className="puff puff-2" />
       </div>
       <p className="cooking-caption">Cooking…</p>
     </section>

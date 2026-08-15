@@ -1,4 +1,5 @@
 import type { Dish } from "../game/types.ts";
+import { PixelSprite } from "../sprites/PixelSprite.tsx";
 
 interface Props {
   dish: Dish;
@@ -22,7 +23,7 @@ export function DishReveal({ dish, isNew, isMystery, onCookAgain }: Props) {
         {isNew && <span className="new-badge">New!</span>}
         {SPARKLE_SPOTS.map((spot, i) => (
           <span key={i} className="sparkle" style={spot} aria-hidden="true">
-            ✦
+            <PixelSprite name="star" className="sparkle-sprite" />
           </span>
         ))}
         <div className={`praise-banner${isMystery ? " praise-mystery" : ""}`}>
@@ -30,9 +31,7 @@ export function DishReveal({ dish, isNew, isMystery, onCookAgain }: Props) {
         </div>
         <div className="plate-spot">
           <div className="sunburst" aria-hidden="true" />
-          <span className="reveal-plate" aria-hidden="true">
-            {dish.plateEmoji}
-          </span>
+          <PixelSprite name={dish.id} className="reveal-plate" />
         </div>
         <h2 className="reveal-name">{dish.name}</h2>
         <p className="reveal-flavor">{dish.flavorText}</p>

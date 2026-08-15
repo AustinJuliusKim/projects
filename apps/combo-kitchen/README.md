@@ -21,6 +21,15 @@ npm run dev      # vite dev server
 npm run build    # tsc -b && vite build
 ```
 
+## House rule: no emoji
+
+This game never uses emoji (or any unicode picture-glyph — dingbats, arrows,
+pictographs) as graphics. Every visual is 8-bit pixel art: a 16x16 grid in
+`src/sprites/data.ts`, drawn from a shared palette and rendered by
+`src/sprites/PixelSprite.tsx` as crisp SVG. Need a new graphic? Draw a sprite.
+The rule is enforced by `test/no-emoji.test.mjs`, which fails the suite if any
+banned codepoint appears anywhere in `src/` or `index.html`.
+
 ## Layout
 
 - `src/game/` — pure, DOM-free game logic and data (ingredients, dish combos,

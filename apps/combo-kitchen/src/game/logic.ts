@@ -43,12 +43,10 @@ export function mysteryDish(
 ): Dish {
   const sorted = [...ids].sort();
   const names = sorted.map((id) => ingredientById(id)?.name.toLowerCase() ?? id);
-  const emojis = sorted.map((id) => ingredientById(id)?.emoji ?? "❓");
   const flavorText = MYSTERY_FLAVOR[Math.floor(rng() * MYSTERY_FLAVOR.length)];
   return {
     id: "mystery-stew",
     name: "Mystery Stew",
-    plateEmoji: "🥣",
     combo: [sorted[0], sorted[1], sorted[2]],
     flavorText,
     recipe: {
@@ -60,8 +58,8 @@ export function mysteryDish(
         "Seasoning: courage",
       ],
       steps: [
-        `Stare at the ${emojis[0]} for a while. Add it anyway.`,
-        `Introduce the ${emojis[1]} to the ${emojis[2]}. They will not get along.`,
+        `Stare at the ${names[0]} for a while. Add it anyway.`,
+        `Introduce the ${names[1]} to the ${names[2]}. They will not get along.`,
         "Stir until something changes. Anything.",
         "Simmer until the kitchen smells like a decision.",
         "Serve with confidence. Confidence is the garnish.",

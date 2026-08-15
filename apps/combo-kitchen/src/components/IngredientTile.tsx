@@ -1,4 +1,5 @@
 import type { Ingredient } from "../game/types.ts";
+import { PixelSprite } from "../sprites/PixelSprite.tsx";
 
 interface Props {
   ingredient: Ingredient;
@@ -16,9 +17,7 @@ export function IngredientTile({ ingredient, selected, disabled, onToggle }: Pro
       disabled={disabled && !selected}
       onClick={() => onToggle(ingredient.id)}
     >
-      <span className="tile-emoji" aria-hidden="true">
-        {ingredient.emoji}
-      </span>
+      <PixelSprite name={ingredient.id} className="tile-sprite" />
       <span className="tile-name">{ingredient.name}</span>
     </button>
   );

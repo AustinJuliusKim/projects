@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PixelSprite } from "../sprites/PixelSprite.tsx";
 
 interface Props {
   children: ReactNode;
@@ -14,14 +15,14 @@ export function KitchenScene({ children }: Props) {
       <div className="kitchen-backdrop" aria-hidden="true">
         <div className="scene-backsplash" />
         <div className="scene-window">
-          <span className="scene-cloud">☁️</span>
+          <PixelSprite name="cloud" className="scene-cloud" />
           <div className="scene-curtain scene-curtain-l" />
           <div className="scene-curtain scene-curtain-r" />
         </div>
         <div className="scene-shelf">
-          <span>🫙</span>
-          <span>🍯</span>
-          <span>🧂</span>
+          <PixelSprite name="jar" className="shelf-sprite" />
+          <PixelSprite name="honey" className="shelf-sprite" />
+          <PixelSprite name="salt" className="shelf-sprite" />
         </div>
         <div className="scene-counter" />
       </div>

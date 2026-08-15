@@ -18,7 +18,6 @@ export type IngredientId =
 export interface Ingredient {
   id: IngredientId;
   name: string;
-  emoji: string;
 }
 
 export interface Recipe {
@@ -26,10 +25,10 @@ export interface Recipe {
   steps: string[];
 }
 
+// Dish ids double as sprite keys in src/sprites/data.ts.
 export interface Dish {
   id: string;
   name: string;
-  plateEmoji: string;
   combo: [IngredientId, IngredientId, IngredientId];
   flavorText: string;
   recipe: Recipe;

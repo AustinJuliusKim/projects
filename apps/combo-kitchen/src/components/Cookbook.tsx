@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Dish } from "../game/types.ts";
 import { DISHES } from "../game/combos.ts";
+import { PixelSprite } from "../sprites/PixelSprite.tsx";
 
 interface Props {
   discovered: Dish[];
@@ -26,11 +27,11 @@ export function Cookbook({ discovered, onClose }: Props) {
         {open ? (
           <div className="cookbook-detail">
             <button type="button" className="btn" onClick={() => setOpen(null)}>
-              ← All dishes
+              All dishes
             </button>
-            <span className="reveal-plate" aria-hidden="true">
-              {open.plateEmoji}
-            </span>
+            <div className="plate-spot">
+              <PixelSprite name={open.id} className="reveal-plate" />
+            </div>
             <h3 className="reveal-name">{open.name}</h3>
             <p className="reveal-flavor">{open.flavorText}</p>
             <div className="recipe">
@@ -58,12 +59,12 @@ export function Cookbook({ discovered, onClose }: Props) {
                   className="cookbook-slot found"
                   onClick={() => setOpen(dish)}
                 >
-                  <span aria-hidden="true">{dish.plateEmoji}</span>
+                  <PixelSprite name={dish.id} className="slot-dish-sprite" />
                   <span className="cookbook-slot-name">{dish.name}</span>
                 </button>
               ) : (
                 <div key={dish.id} className="cookbook-slot">
-                  <span aria-hidden="true">❓</span>
+                  <PixelSprite name="question" className="slot-dish-sprite" />
                   <span className="cookbook-slot-name">???</span>
                 </div>
               ),

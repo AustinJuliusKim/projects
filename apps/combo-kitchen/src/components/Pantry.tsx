@@ -1,6 +1,7 @@
 import type { IngredientId } from "../game/types.ts";
-import { INGREDIENTS, ingredientById } from "../game/ingredients.ts";
+import { INGREDIENTS } from "../game/ingredients.ts";
 import { IngredientTile } from "./IngredientTile.tsx";
+import { PixelSprite } from "../sprites/PixelSprite.tsx";
 
 interface Props {
   selected: IngredientId[];
@@ -26,10 +27,10 @@ export function Pantry({ selected, onToggle, onCook }: Props) {
       </div>
       <div className="counter" aria-live="polite">
         {[0, 1, 2].map((slot) => {
-          const ingredient = selected[slot] ? ingredientById(selected[slot]) : undefined;
+          const id = selected[slot];
           return (
-            <span key={slot} className={`counter-slot${ingredient ? " filled" : ""}`}>
-              {ingredient ? ingredient.emoji : "·"}
+            <span key={slot} className={`counter-slot${id ? " filled" : ""}`}>
+              {id ? <PixelSprite name={id} className="slot-sprite" /> : "·"}
             </span>
           );
         })}

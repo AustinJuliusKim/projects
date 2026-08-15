@@ -4,6 +4,7 @@ import { cook } from "./game/logic.ts";
 import { useCookbook } from "./hooks/useCookbook.ts";
 import { Pantry } from "./components/Pantry.tsx";
 import { KitchenScene } from "./components/KitchenScene.tsx";
+import { PixelSprite } from "./sprites/PixelSprite.tsx";
 import { CookingScene } from "./components/CookingScene.tsx";
 import { DishReveal } from "./components/DishReveal.tsx";
 import { Cookbook } from "./components/Cookbook.tsx";
@@ -54,8 +55,9 @@ export default function App() {
       <header className="app-header">
         <h1>Combo Kitchen</h1>
         {phase !== "cooking" && (
-          <button type="button" className="btn" onClick={() => setShowCookbook(true)}>
-            📖 Cookbook
+          <button type="button" className="btn btn-cookbook" onClick={() => setShowCookbook(true)}>
+            <PixelSprite name="book" className="btn-sprite" />
+            Cookbook
           </button>
         )}
       </header>
