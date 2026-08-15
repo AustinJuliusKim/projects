@@ -1,0 +1,8 @@
+{
+  "StackName": "ComboKitchen",
+  "Region": "us-west-2",
+  "CustomDomain": "",
+  "CertificateArn": "",
+  "RoleArn": "FILL_AFTER_BOOTSTRAP",
+  "WebAclArn": ""
+}

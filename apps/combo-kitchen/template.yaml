@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Combo Kitchen: static site (Vite build) served via private S3 + CloudFront (OAC, SPA fallback).
+  No backend — plain CloudFormation (not SAM). Mirrors apps/portfolio/template.yaml minus the
+  prerender viewer-request function (single page, no router).
+
+Parameters:
+  CustomDomain:
+    Type: String
+    Default: ""
+    Description: Optional custom domain for the site (leave blank to use the CloudFront URL)
+  CertificateArn:
+    Type: String
+    Default: ""
+    Description: ACM certificate ARN in us-east-1 for CustomDomain (required if CustomDomain is set)
+  WebAclArn:
+    Type: String
+    Default: ""
+    Description: >
+      Pin for the WAF web ACL already attached to the distribution. The CloudFront
+      Free pricing plan attaches a protection-pack ACL out of band, and a distribution
+      on that plan cannot have its web ACL removed — leaving this blank makes every
+      distribution update fail with "You can't remove or replace the web ACL for your
+      distribution". Set it to the live ACL ARN so updates leave it alone.
+      Drop the pin (back to "") if the Free plan is ever removed.
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref CustomDomain, ""]]
+  HasWebAcl: !Not [!Equals [!Ref WebAclArn, ""]]
+
+Resources:
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  SiteOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  SiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        WebACLId: !If [HasWebAcl, !Ref WebAclArn, !Ref "AWS::NoValue"]
+        Aliases: !If [HasCustomDomain, [!Ref CustomDomain], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasCustomDomain
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins:
+          - Id: SiteS3Origin
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt SiteOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: SiteS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          # AWS managed "CachingOptimized" policy
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          AllowedMethods: [GET, HEAD, OPTIONS]
+        CustomErrorResponses:
+          # With OAC + an S3 REST origin, every missing key returns 403 — without
+          # this fallback any bad path would serve raw S3 error XML.
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${SiteBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution.Id}"
+
+Outputs:
+  SiteBucketName:
+    Description: S3 bucket to upload the built frontend (aws s3 sync dist/)
+    Value: !Ref SiteBucket
+  DistributionId:
+    Description: CloudFront distribution ID (for cache invalidations)
+    Value: !Ref SiteDistribution
+  DistributionDomainName:
+    Description: CloudFront domain to point your DNS alias at
+    Value: !GetAtt SiteDistribution.DomainName
+  SiteUrl:
+    Description: The game's URL (open this!)
+    Value: !If
+      - HasCustomDomain
+      - !Sub "https://${CustomDomain}"
+      - !Sub "https://${SiteDistribution.DomainName}"
