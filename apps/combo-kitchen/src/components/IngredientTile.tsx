@@ -17,7 +17,7 @@ export function IngredientTile({ ingredient, selected, disabled, onToggle }: Pro
       disabled={disabled && !selected}
       onClick={() => onToggle(ingredient.id)}
     >
-      <PixelSprite name={ingredient.id} className="tile-sprite" />
+      <PixelSprite name={ingredient.id} className="tile-sprite" center />
       <span className="tile-name">{ingredient.name}</span>
     </button>
   );

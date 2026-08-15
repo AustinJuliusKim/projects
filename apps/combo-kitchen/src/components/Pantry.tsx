@@ -30,7 +30,7 @@ export function Pantry({ selected, onToggle, onCook }: Props) {
           const id = selected[slot];
           return (
             <span key={slot} className={`counter-slot${id ? " filled" : ""}`}>
-              {id ? <PixelSprite name={id} className="slot-sprite" /> : "·"}
+              {id ? <PixelSprite name={id} className="slot-sprite" center /> : "·"}
             </span>
           );
         })}

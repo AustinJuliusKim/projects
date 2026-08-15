@@ -30,7 +30,7 @@ export function Cookbook({ discovered, onClose }: Props) {
               All dishes
             </button>
             <div className="plate-spot">
-              <PixelSprite name={open.id} className="reveal-plate" />
+              <PixelSprite name={open.id} className="reveal-plate" center />
             </div>
             <h3 className="reveal-name">{open.name}</h3>
             <p className="reveal-flavor">{open.flavorText}</p>
@@ -59,12 +59,12 @@ export function Cookbook({ discovered, onClose }: Props) {
                   className="cookbook-slot found"
                   onClick={() => setOpen(dish)}
                 >
-                  <PixelSprite name={dish.id} className="slot-dish-sprite" />
+                  <PixelSprite name={dish.id} className="slot-dish-sprite" center />
                   <span className="cookbook-slot-name">{dish.name}</span>
                 </button>
               ) : (
                 <div key={dish.id} className="cookbook-slot">
-                  <PixelSprite name="question" className="slot-dish-sprite" />
+                  <PixelSprite name="question" className="slot-dish-sprite" center />
                   <span className="cookbook-slot-name">???</span>
                 </div>
               ),

@@ -316,17 +316,17 @@ h4 {
 
 .cooking-stage {
   position: relative;
-  width: 280px;
-  height: 280px;
+  width: 420px;
+  height: 420px;
 }
 
 .stove {
   position: absolute;
-  bottom: 8px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
-  width: 180px;
-  height: 46px;
+  width: 270px;
+  height: 69px;
   background: #4a3d31;
   box-shadow:
     0 calc(-1 * var(--px)) 0 0 var(--ink),
@@ -337,40 +337,40 @@ h4 {
 
 .burner {
   position: absolute;
-  top: 6px;
+  top: 9px;
   left: 50%;
   transform: translateX(-50%);
-  width: 110px;
-  height: 12px;
-  background: repeating-linear-gradient(90deg, var(--ink) 0 10px, #6b5b49 10px 20px);
+  width: 165px;
+  height: 18px;
+  background: repeating-linear-gradient(90deg, var(--ink) 0 15px, #6b5b49 15px 30px);
 }
 
 .pot {
   position: absolute;
-  bottom: 42px;
+  bottom: 63px;
   left: 50%;
   transform: translateX(-50%);
-  width: 88px;
-  height: 88px;
+  width: 132px;
+  height: 132px;
   animation: rattle 0.18s steps(2, end) infinite;
 }
 
 @keyframes rattle {
   0% { transform: translateX(-50%) translate(0, 0) rotate(0deg); }
-  25% { transform: translateX(-50%) translate(-3px, 1px) rotate(-3deg); }
-  50% { transform: translateX(-50%) translate(3px, -1px) rotate(3deg); }
-  75% { transform: translateX(-50%) translate(-2px, 0) rotate(-2deg); }
+  25% { transform: translateX(-50%) translate(-5px, 2px) rotate(-3deg); }
+  50% { transform: translateX(-50%) translate(5px, -2px) rotate(3deg); }
+  75% { transform: translateX(-50%) translate(-3px, 0) rotate(-2deg); }
   100% { transform: translateX(-50%) translate(0, 0) rotate(0deg); }
 }
 
 /* the cartoon scuffle cloud hiding the pot */
 .rumble-cloud {
   position: absolute;
-  bottom: 60px;
+  bottom: 90px;
   left: 50%;
-  margin-left: -110px;
-  width: 220px;
-  height: 150px;
+  margin-left: -165px;
+  width: 330px;
+  height: 225px;
   animation:
     cloud-drop 0.3s steps(4),
     cloud-wobble 0.22s steps(2, end) 0.3s infinite;
@@ -382,20 +382,20 @@ h4 {
 
 .cloud-blob {
   position: absolute;
-  width: 84px;
-  height: 84px;
+  width: 126px;
+  height: 126px;
 }
 
 .blob-1 { top: 28%; left: 4%; }
 .blob-2 { top: 6%; left: 26%; }
 .blob-3 { top: 30%; right: 2%; }
-.blob-4 { top: 42%; left: 30%; width: 92px; height: 92px; }
+.blob-4 { top: 42%; left: 30%; width: 138px; height: 138px; }
 .blob-5 { top: 12%; right: 20%; }
 
 .cloud-bang {
   position: absolute;
-  width: 30px;
-  height: 30px;
+  width: 45px;
+  height: 45px;
   animation: bang-flash 0.5s steps(2) infinite;
 }
 
@@ -410,25 +410,25 @@ h4 {
 }
 
 .poker-sprite {
-  width: 34px;
-  height: 34px;
+  width: 51px;
+  height: 51px;
 }
 
 .poker-star {
-  width: 26px;
-  height: 26px;
+  width: 39px;
+  height: 39px;
 }
 
 @keyframes cloud-drop {
-  from { transform: translateY(-90px) scale(0.3); opacity: 0; }
+  from { transform: translateY(-135px) scale(0.3); opacity: 0; }
   to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 @keyframes cloud-wobble {
   0% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(-6px, 2px) rotate(-2deg); }
-  50% { transform: translate(6px, -2px) rotate(2deg); }
-  75% { transform: translate(-4px, 1px) rotate(-1deg); }
+  25% { transform: translate(-9px, 3px) rotate(-2deg); }
+  50% { transform: translate(9px, -3px) rotate(2deg); }
+  75% { transform: translate(-6px, 2px) rotate(-1deg); }
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 
@@ -451,8 +451,8 @@ h4 {
 .steam {
   position: absolute;
   bottom: 70%;
-  width: 36px;
-  height: 36px;
+  width: 54px;
+  height: 54px;
   animation: puff-rise 0.5s steps(4) forwards;
 }
 
@@ -461,9 +461,9 @@ h4 {
 
 .puff {
   position: absolute;
-  bottom: 18px;
-  width: 28px;
-  height: 28px;
+  bottom: 27px;
+  width: 42px;
+  height: 42px;
   animation: puff-rise 0.9s steps(4) infinite;
 }
 
@@ -472,7 +472,7 @@ h4 {
 
 @keyframes puff-rise {
   from { transform: translateY(0) scale(0.4); opacity: 0.9; }
-  to { transform: translateY(-60px) scale(1.4); opacity: 0; }
+  to { transform: translateY(-90px) scale(1.4); opacity: 0; }
 }
 
 .cooking-caption {
@@ -709,23 +709,33 @@ h4 {
 }
 
 .cookbook-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
   padding-top: 0.75rem;
 }
 
 .cookbook-detail .btn {
-  float: left;
+  align-self: flex-start;
 }
 
 .cookbook-detail .recipe {
-  clear: both;
+  width: 100%;
 }
 
 /* ---------- small screens ---------- */
 
 @media (max-width: 520px) {
   .scene-window { width: 84px; height: 78px; top: 7vh; }
-  .scene-shelf { width: 100px; font-size: 1.1rem; }
+  .scene-shelf { width: 100px; }
+  .scene-shelf .shelf-sprite { width: 22px; height: 22px; }
+  /* the 150% cooking stage overflows narrow phones — shrink it back down */
+  .cooking-stage {
+    transform: scale(0.7);
+    transform-origin: bottom center;
+    margin-top: -120px;
+  }
 }
 
 /* ---------- reduced motion ---------- */

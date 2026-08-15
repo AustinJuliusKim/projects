@@ -31,7 +31,7 @@ export function DishReveal({ dish, isNew, isMystery, onCookAgain }: Props) {
         </div>
         <div className="plate-spot">
           <div className="sunburst" aria-hidden="true" />
-          <PixelSprite name={dish.id} className="reveal-plate" />
+          <PixelSprite name={dish.id} className="reveal-plate" center />
         </div>
         <h2 className="reveal-name">{dish.name}</h2>
         <p className="reveal-flavor">{dish.flavorText}</p>
