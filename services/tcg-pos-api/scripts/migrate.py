@@ -54,7 +54,9 @@ def main() -> None:
 
     import psycopg
 
-    with psycopg.connect(database_url) as conn:
+    # Session pooler (:5432) for migrations, but keep the same pooler-safe
+    # settings as the API: no server-side prepares, bounded connect time.
+    with psycopg.connect(database_url, prepare_threshold=None, connect_timeout=10) as conn:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS schema_migrations "
             "(name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())"
