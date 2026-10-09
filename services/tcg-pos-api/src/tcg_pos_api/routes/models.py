@@ -161,3 +161,58 @@ class PriceSuggestion(BaseModel):
     stale: bool | None = None
     attribution: list[str] = []
     note: str | None = None
+
+
+# --- TCGplayer import ---------------------------------------------------------
+
+
+class ImportRow(BaseModel):
+    row: int  # line number in the CSV (header is line 1)
+    status: Literal["matched", "unmatched", "skipped"]
+    reason: str | None = None
+    product_name: str | None = None
+    set_name: str | None = None
+    set_code: str | None = None
+    number: str | None = None
+    condition: Condition | None = None
+    finish: Finish | None = None
+    lang: str | None = None
+    qty: int | None = None
+    price_cents: int | None = None
+    printing_id: uuid.UUID | None = None
+
+
+class ImportChange(BaseModel):
+    """One inventory grain the import touches (rows at the same grain are
+    summed). `delta` is what the ledger records; 0 means qty is already right."""
+
+    printing_id: uuid.UUID
+    condition: Condition
+    finish: Finish
+    lang: str
+    rows: list[int]
+    current_qty: int
+    target_qty: int
+    delta: int
+    current_price_cents: int | None
+    price_cents: int | None
+    item_id: uuid.UUID | None = None
+
+
+class ImportTotals(BaseModel):
+    rows: int
+    matched: int
+    unmatched: int
+    skipped: int
+    grains: int
+    changed: int
+    qty_delta: int
+
+
+class ImportResult(BaseModel):
+    dry_run: bool
+    location_id: uuid.UUID
+    snapshot_id: str | None
+    totals: ImportTotals
+    changes: list[ImportChange]
+    rows: list[ImportRow]
