@@ -17,6 +17,12 @@ done yet; check items off as they are.
   one): tenant data and card-catalog data have different blast radii and
   backup needs, and the POS must not be able to break the public catalog.
   `inventory_item.printing_id` already has no cross-DB FK.
+- [ ] **Disable the Data API** for the POS Supabase project (Project
+  Settings → Data API → off). The POS is only reached through tcg-pos-api;
+  PostgREST's `anon`/`authenticated` roles have no business in this schema.
+  `0003_supabase_lockdown.sql` also revokes everything from those roles
+  (and their default privileges) as a second wall, and enables RLS with no
+  policy on `schema_migrations` — but don't rely on that alone.
 - [ ] Create a login role to own the schema and run migrations as it
   (as mtg-api does with `mtg_ingest`). `0001_core.sql` creates the
   `tcg_pos_app` NOLOGIN role, so the migrating role needs `CREATEROLE` the
