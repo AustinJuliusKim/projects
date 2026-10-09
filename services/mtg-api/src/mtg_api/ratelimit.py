@@ -54,6 +54,14 @@ SEARCH_ANONYMOUS_LIMIT = 240
 SEARCH_FREE_LIMIT = 600
 SEARCH_SUPPORTER_LIMIT = 1200  # unchanged — already generous for this traffic shape
 
+# /v1/prices/* gets its own `:prices` counter (TCG Pricing API design §5) so
+# a POS bulk-repricing sweep can't starve the same caller's card lookups, or
+# vice versa. Placeholders like the tiers above.
+PRICES_PREFIX = "/v1/prices/"
+PRICES_ANONYMOUS_LIMIT = 60
+PRICES_FREE_LIMIT = 300
+PRICES_SUPPORTER_LIMIT = 1200
+
 WINDOW_SECONDS = 60
 
 # No rate check (and no DB touch) on these — public, static, no DB. Deliberately
@@ -131,11 +139,20 @@ def _extract_key(request: Request) -> str | None:
 def identify(conn: psycopg.Connection, request: Request) -> tuple[str, int]:
     """(identifier, requests/min limit) for this request.
 
-    Search/autocomplete get a distinct identifier suffix (`:search`) so
-    their counter never shares a row with the caller's general traffic —
-    see SEARCH_PATHS' comment above.
+    Search/autocomplete and /v1/prices/* get distinct identifier suffixes
+    (`:search`, `:prices`) so their counters never share a row with the
+    caller's general traffic — see SEARCH_PATHS' and PRICES_PREFIX's comments.
     """
-    is_search = request.url.path in SEARCH_PATHS
+    path = request.url.path
+    if path in SEARCH_PATHS:
+        suffix = ":search"
+        limits = (SEARCH_ANONYMOUS_LIMIT, SEARCH_FREE_LIMIT, SEARCH_SUPPORTER_LIMIT)
+    elif path.startswith(PRICES_PREFIX):
+        suffix = ":prices"
+        limits = (PRICES_ANONYMOUS_LIMIT, PRICES_FREE_LIMIT, PRICES_SUPPORTER_LIMIT)
+    else:
+        suffix = ""
+        limits = (ANONYMOUS_LIMIT, FREE_LIMIT, SUPPORTER_LIMIT)
     key = _extract_key(request)
     if key:
         key_sha256 = hash_key(key)
@@ -144,16 +161,9 @@ def identify(conn: psycopg.Connection, request: Request) -> tuple[str, int]:
             (key_sha256,),
         ).fetchone()
         if row is not None:
-            tier = row[0]
-            if is_search:
-                limit = SEARCH_SUPPORTER_LIMIT if tier == "supporter" else SEARCH_FREE_LIMIT
-            else:
-                limit = SUPPORTER_LIMIT if tier == "supporter" else FREE_LIMIT
-            identifier = f"key:{key_sha256}"
-            return (f"{identifier}:search" if is_search else identifier), limit
-    identifier = f"ip:{client_ip(request)}"
-    limit = SEARCH_ANONYMOUS_LIMIT if is_search else ANONYMOUS_LIMIT
-    return (f"{identifier}:search" if is_search else identifier), limit
+            limit = limits[2] if row[0] == "supporter" else limits[1]
+            return f"key:{key_sha256}{suffix}", limit
+    return f"ip:{client_ip(request)}{suffix}", limits[0]
 
 
 def _window_start(now: datetime) -> datetime:

@@ -35,6 +35,10 @@ than a per-minute window; if the limiter's window shape changes later, this
 table is the source of truth for what's actually deployed, not the research
 doc's recommendation.
 
+`/v1/prices/*` counts against a **separate** per-caller bucket at the same
+per-tier numbers, so bulk repricing never eats into card-lookup budget (and
+vice versa).
+
 ### The 429 contract
 
 Every response carries:
@@ -106,6 +110,60 @@ Standing rules for anything built on this API:
 If your own product caches or redistributes data from this API at scale,
 carry the same Scryfall + Wizards of the Coast copyright notices forward.
 
+## Prices
+
+Daily price snapshots under `/v1/prices`, taken once a day at **21:00 UTC**.
+Every snapshot is immutable and named `YYYY-MM-DD.n`; a correction is a new
+revision (`.2`, `.3`, ...) with a changelog line, never an edit.
+
+| Endpoint | What it returns |
+| --- | --- |
+| `GET /v1/prices/{game}/{sku_id}` | Current price object for one SKU |
+| `POST /v1/prices/batch` | Up to 200 lookups by `sku_id`, `tcgplayer_id`, `scryfall_id`, or `set` + `number` (optional `finish`) |
+| `GET /v1/prices/{game}/{sku_id}/history?from=&to=&series=&snapshot=` | Daily points per source, at most 366 days per page (`next_from` continues) |
+| `GET /v1/prices/{game}/movers?window=1d\|7d\|30d&direction=up\|down&min_price=&min_change=&snapshot=` | Biggest movers, computed once per snapshot |
+| `GET /v1/prices/{game}/sets/{set_code}` | Every priced SKU in a set, for bulk repricing |
+| `GET /v1/prices/snapshots`, `/v1/prices/snapshots/{snapshot_id}` | Snapshot manifests: sources that succeeded or failed, row counts, frozen ECB EUR/USD rate, changelog |
+| `GET /v1/prices/status` | Per-source last success, lag in hours, `stale` flag |
+
+`game` is `mtg` today. A **SKU** is one sellable thing: (printing, finish,
+condition, language). Foil and etched are separate SKUs, never multipliers.
+
+Price object rules:
+
+- **Money is integer cents** in the source's own currency, named in the key
+  (`mtgjson_tcgplayer_retail_usd: 1410`, `cardmarket_guide_trend_eur: 1190`).
+  Currencies are never converted or blended; the snapshot manifest carries
+  the ECB rate if you want to convert yourself.
+- **No price means absent, not zero.** A SKU without data has an empty
+  `open` object and `null` change values.
+- **Provenance on every source**: `provenance[]` gives each source's
+  `lane`, `method`, `as_of`, `observed_at` and `stale`. `stale` is true when
+  the source's feed is more than 36 hours past its last success; the
+  top-level `stale` is true if any contributing source is.
+- `own` (a listing-based index) is `null` until that index ships. Listing-
+  and sales-based series are separate objects and are never averaged.
+- `change` (1d/7d/30d) and movers are computed from `change_source`
+  (`mtgjson_tcgplayer`, USD).
+
+Caching: responses carry `X-Price-Snapshot`, an `ETag` (send it back as
+`If-None-Match` for a `304`), and `Cache-Control: max-age` until the next
+21:00 UTC snapshot. Requests pinned with `?snapshot=` (history, movers) and
+snapshot manifests are cacheable forever: a pinned response never changes.
+
+### Price attribution
+
+Prices come from open sources, credited in every response's `attribution`
+array; carry those credits forward wherever you show the numbers:
+
+- [MTGJSON](https://mtgjson.com) (MIT): TCGplayer, Card Kingdom, Cardsphere,
+  Mana Pool and Cardmarket price points.
+- [Cardmarket](https://www.cardmarket.com)'s public price guide (EUR), shown
+  with attribution and not to be re-sold as a price feed.
+- [Scryfall](https://scryfall.com) (trend only), not to be paywalled.
+
+Price data is never paywalled either: a key only buys rate limit.
+
 ## Versioning & changes
 
 Every endpoint lives under `/v1`. That prefix is a stability promise:
@@ -122,6 +180,9 @@ A breaking change that can't be done additively gets a new prefix
 
 ## Changelog
 
+- 2026-10-09 — Additive: `/v1/prices` (daily immutable price snapshots,
+  batch lookup, history, movers, per-set prices, snapshot manifests and
+  status) with its own rate-limit bucket. See [Prices](#prices).
 - 2026-08-05 — Additive: `/similar` results carry a new `combo` object
   (`{produces, count, popularity}`, `null` when the pair has no known-combo
   relationship) — structured version of the "known combo: ..." text that

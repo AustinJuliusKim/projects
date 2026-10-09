@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from mtg_api.ratelimit import RateLimitMiddleware
-from mtg_api.routes import cards, feedback, health, sets, similar
+from mtg_api.routes import cards, feedback, health, prices, sets, similar
 
 ATTRIBUTION = (
     "Card data © Wizards of the Coast, provided by Scryfall. Unofficial Fan "
@@ -38,12 +38,16 @@ def create_app() -> FastAPI:
             "X-RateLimit-Remaining",
             "X-RateLimit-Reset",
             "Retry-After",
+            # Price responses: conditional requests and snapshot pinning.
+            "ETag",
+            "X-Price-Snapshot",
         ],
     )
     app.include_router(cards.router, prefix="/v1")
     app.include_router(similar.router, prefix="/v1")
     app.include_router(sets.router, prefix="/v1")
     app.include_router(feedback.router, prefix="/v1")
+    app.include_router(prices.router, prefix="/v1")
     app.include_router(health.router, prefix="/v1")
 
     @app.get("/", include_in_schema=False)
@@ -63,6 +67,14 @@ def create_app() -> FastAPI:
                 "/v1/cards/{oracle_id}/printings",
                 "/v1/sets",
                 "/v1/sets/{code}",
+                "/v1/prices/{game}/{sku_id}",
+                "/v1/prices/{game}/{sku_id}/history",
+                "/v1/prices/{game}/movers",
+                "/v1/prices/{game}/sets/{set_code}",
+                "/v1/prices/batch",
+                "/v1/prices/snapshots",
+                "/v1/prices/snapshots/{snapshot_id}",
+                "/v1/prices/status",
                 "/v1/healthz",
             ],
             "attribution": ATTRIBUTION,
