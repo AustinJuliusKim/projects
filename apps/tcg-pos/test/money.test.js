@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { formatCents } from "../src/money.js";
+import { displayCents, formatCents } from "../src/money.js";
 
 test("formatCents formats integer cents as dollars", () => {
   assert.equal(formatCents(0), "$0.00");
@@ -21,5 +21,13 @@ test("formatCents renders unknown as the fallback, never $0.00", () => {
 test("formatCents refuses non-integer input", () => {
   for (const bad of [12.5, "1234", NaN, Infinity, 2 ** 60]) {
     assert.throws(() => formatCents(bad), TypeError, String(bad));
+  }
+});
+
+test("displayCents renders bad values as a dash instead of throwing", () => {
+  assert.equal(displayCents(1234), "$12.34");
+  assert.equal(displayCents(null, { fallback: "unpriced" }), "unpriced");
+  for (const bad of [12.5, "1234", NaN, Infinity, {}, 2 ** 60]) {
+    assert.equal(displayCents(bad), "—", String(bad));
   }
 });

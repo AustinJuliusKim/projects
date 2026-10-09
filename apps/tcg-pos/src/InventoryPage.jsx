@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Alert, Group, Loader, Pagination, Stack, Table, Text, TextInput } from "@mantine/core";
 
 import { isAbortError, listInventory } from "./api.js";
-import { formatCents } from "./money.js";
+import { displayCents } from "./money.js";
 
 const PAGE_SIZE = 50;
 
@@ -18,6 +18,8 @@ export default function InventoryPage() {
   useEffect(() => {
     if (!tenantId) {
       setData(null);
+      setError(null);
+      setLoading(false);
       return undefined;
     }
     const ctrl = new AbortController();
@@ -31,7 +33,11 @@ export default function InventoryPage() {
       .catch((e) => {
         if (!isAbortError(e)) setError(e.message);
       })
-      .finally(() => setLoading(false));
+      // An aborted request was superseded by a newer one (or the tenant was
+      // cleared); leave the spinner to whoever is current.
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoading(false);
+      });
     return () => ctrl.abort();
   }, [tenantId, locationId, page]);
 
@@ -88,7 +94,7 @@ export default function InventoryPage() {
                   <Table.Td>{item.finish}</Table.Td>
                   <Table.Td>{item.lang}</Table.Td>
                   <Table.Td ta="right">{item.qty}</Table.Td>
-                  <Table.Td ta="right">{formatCents(item.price_cents, { fallback: "unpriced" })}</Table.Td>
+                  <Table.Td ta="right">{displayCents(item.price_cents, { fallback: "unpriced" })}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

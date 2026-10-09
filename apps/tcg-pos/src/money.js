@@ -16,3 +16,14 @@ export function formatCents(cents, { fallback = "—" } = {}) {
   const rest = String(abs % 100).padStart(2, "0");
   return `${sign}$${dollars}.${rest}`;
 }
+
+// For rendering: like formatCents, but a bad value (a float, a string) shows
+// as the dash instead of throwing and taking the whole page down. The
+// strictness stays in formatCents; this is the display boundary.
+export function displayCents(cents, { fallback = "—" } = {}) {
+  try {
+    return formatCents(cents, { fallback });
+  } catch {
+    return "—";
+  }
+}
