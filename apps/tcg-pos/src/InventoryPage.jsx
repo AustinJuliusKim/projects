@@ -1,22 +1,24 @@
 import { useEffect, useState } from "react";
-import { Alert, Group, Loader, Pagination, Stack, Table, Text, TextInput } from "@mantine/core";
+import { Alert, Loader, Pagination, Stack, Table, Text } from "@mantine/core";
 
 import { isAbortError, listInventory } from "./api.js";
 import { displayCents } from "./money.js";
+import { isUuid } from "./receive.js";
 
 const PAGE_SIZE = 50;
 
-// TODO(auth): the tenant is typed in by hand until login supplies it.
-export default function InventoryPage() {
-  const [tenantId, setTenantId] = useState("");
-  const [locationId, setLocationId] = useState("");
+// Tenant and location come from the store fields in App; App remounts this
+// page (key) when they change, which resets the page number.
+export default function InventoryPage({ tenantId, locationId }) {
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  // Don't fire requests for a half-typed id.
+  const ready = isUuid(tenantId) && (!locationId || isUuid(locationId));
 
   useEffect(() => {
-    if (!tenantId) {
+    if (!ready) {
       setData(null);
       setError(null);
       setLoading(false);
@@ -39,36 +41,16 @@ export default function InventoryPage() {
         if (!ctrl.signal.aborted) setLoading(false);
       });
     return () => ctrl.abort();
-  }, [tenantId, locationId, page]);
+  }, [ready, tenantId, locationId, page]);
 
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
   return (
     <Stack>
-      <Group align="flex-end">
-        <TextInput
-          label="Tenant ID"
-          value={tenantId}
-          onChange={(e) => {
-            setTenantId(e.currentTarget.value.trim());
-            setPage(1);
-          }}
-          w={340}
-        />
-        <TextInput
-          label="Location ID (optional)"
-          value={locationId}
-          onChange={(e) => {
-            setLocationId(e.currentTarget.value.trim());
-            setPage(1);
-          }}
-          w={340}
-        />
-        {loading && <Loader size="sm" />}
-      </Group>
+      {loading && <Loader size="sm" />}
 
       {error && <Alert color="red">{error}</Alert>}
-      {!tenantId && <Text c="dimmed">Enter a tenant ID to load inventory.</Text>}
+      {!ready && <Text c="dimmed">Enter a tenant ID (and optionally a location ID) to load inventory.</Text>}
 
       {data && (
         <>
