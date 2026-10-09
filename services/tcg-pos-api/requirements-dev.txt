@@ -4,7 +4,6 @@
 -r src/requirements.txt
 # The package itself, editable, so `import tcg_pos_api` resolves.
 -e .
-httpx==0.28.1
 pytest==8.4.1
 ruff==0.12.5
 uvicorn==0.52.1

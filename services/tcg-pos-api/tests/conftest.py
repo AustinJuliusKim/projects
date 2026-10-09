@@ -118,3 +118,90 @@ def adjust_body(tenant, **overrides):
     }
     body.update({k: str(v) if isinstance(v, uuid.UUID) else v for k, v in overrides.items()})
     return body
+
+
+# --- fake mtg-api ----------------------------------------------------------
+
+
+def price_object(printing_id, finish, open_values, *, sku_id=1, condition="NM", lang="en"):
+    """One mtg-api price object, shaped like POST /v1/prices/batch returns."""
+    return {
+        "game": "mtg",
+        "sku_id": sku_id,
+        "printing_id": str(printing_id),
+        "finish": finish,
+        "condition": condition,
+        "lang": lang,
+        "snapshot_id": "2026-10-09.1",
+        "as_of": "2026-10-09",
+        "own": None,
+        "open": open_values,
+        "change": {"1d": None, "7d": None, "30d": None},
+        "change_source": "mtgjson_tcgplayer",
+        "stale": False,
+        "attribution": ["MTGJSON", "Scryfall"],
+        "provenance": [],
+    }
+
+
+class FakeMtgApi:
+    """In-memory stand-in for services/mtg-api, served through
+    httpx.MockTransport. `printings` maps (set, number) -> printing id;
+    `prices` maps (printing id, finish) -> open-lane dict."""
+
+    def __init__(self, sets=None, printings=None, prices=None):
+        self.sets = sets or []
+        self.printings = printings or {}
+        self.prices = prices or {}
+        self.calls = []
+
+    def _lookup(self, item):
+        if item.get("scryfall_id"):
+            pid = item["scryfall_id"]
+        else:
+            pid = self.printings.get((str(item.get("set", "")).lower(), item.get("number")))
+        finishes = [item["finish"]] if item.get("finish") else ["nonfoil", "foil", "etched"]
+        out = [
+            price_object(pid, f, self.prices[(str(pid), f)], sku_id=i)
+            for i, f in enumerate(finishes)
+            if pid and (str(pid), f) in self.prices
+        ]
+        return {"query": item, "prices": out, "error": None if out else "not found"}
+
+    def handler(self, request):
+        import json
+
+        import httpx
+
+        self.calls.append((request.method, request.url.path))
+        if request.method == "GET" and request.url.path == "/v1/sets":
+            return httpx.Response(200, json=self.sets)
+        if request.method == "POST" and request.url.path == "/v1/prices/batch":
+            items = json.loads(request.content)["items"]
+            assert len(items) <= 200
+            return httpx.Response(
+                200,
+                json={"snapshot_id": "2026-10-09.1", "results": [self._lookup(i) for i in items]},
+            )
+        return httpx.Response(404, json={"detail": "not found"})
+
+
+@pytest.fixture
+def fake_catalog(client):
+    """Route the app's mtg-api calls to a FakeMtgApi (no network)."""
+    import httpx
+
+    from tcg_pos_api.catalog import Catalog, get_catalog
+
+    fake = FakeMtgApi()
+
+    def _override():
+        catalog = Catalog("http://mtg-api.test", transport=httpx.MockTransport(fake.handler))
+        try:
+            yield catalog
+        finally:
+            catalog.close()
+
+    client.app.dependency_overrides[get_catalog] = _override
+    yield fake
+    client.app.dependency_overrides.pop(get_catalog, None)

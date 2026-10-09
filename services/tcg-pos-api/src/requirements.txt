@@ -2,5 +2,6 @@
 # Dev/test tooling lives in ../requirements-dev.txt, which includes this
 # file. Pins match services/mtg-api.
 fastapi==0.141.1
+httpx==0.28.1
 mangum==0.21.0
 psycopg[binary]==3.2.9

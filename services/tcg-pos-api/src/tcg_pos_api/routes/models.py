@@ -84,6 +84,10 @@ class InventoryAdjust(BaseModel):
     )
     reason: Reason
     channel: Channel = "adjustment"
+    # Optional: set the shelf price in the same transaction (e.g. when
+    # receiving stock). Omitted leaves the price as is; it is recorded in
+    # the adjust's audit row, never in the quantity ledger.
+    price_cents: int | None = Field(None, strict=True, ge=0, le=INT32_MAX)
 
     @field_validator("delta")
     @classmethod
@@ -107,3 +111,53 @@ class CreditChange(BaseModel):
     # strict: a "12.00" string is almost certainly dollars — refuse to coerce it to 12 cents.
     amount_cents: int = Field(..., strict=True, gt=0, le=INT32_MAX, description="Integer cents")
     reason: Reason
+
+
+class InventoryPriceUpdate(BaseModel):
+    """Set (or clear, with null) an item's shelf price. Price changes are
+    audit-logged; the ledger only ever records quantity."""
+
+    price_cents: int | None = Field(..., strict=True, ge=0, le=INT32_MAX)
+
+
+# --- pricing -----------------------------------------------------------------
+
+BasisPoints = Annotated[int, Field(strict=True, ge=0, le=100_000)]
+
+
+class PriceRule(BaseModel):
+    """Condition multipliers in basis points (10000 = 100%), a floor, and a
+    round-up step. See migrations/0005_price_rule.sql for the formula."""
+
+    nm_bp: BasisPoints
+    lp_bp: BasisPoints
+    mp_bp: BasisPoints
+    hp_bp: BasisPoints
+    dmg_bp: BasisPoints
+    min_price_cents: int = Field(..., strict=True, ge=0, le=INT32_MAX)
+    round_up_to_cents: int = Field(..., strict=True, ge=1, le=10_000)
+
+
+class PriceRuleOut(PriceRule):
+    is_default: bool
+    updated_at: datetime.datetime | None = None
+
+
+class PriceSuggestion(BaseModel):
+    printing_id: uuid.UUID
+    finish: Finish
+    condition: Condition
+    # None when mtg-api has no USD reference for this printing/finish — never 0.
+    suggested_cents: int | None
+    reference_cents: int | None
+    reference_source: str | None
+    multiplier_bp: int
+    rule: PriceRule
+    # Provenance of the reference, straight from mtg-api.
+    snapshot_id: str | None
+    sku_id: int | None = None
+    sku_condition: str | None = None
+    sku_lang: str | None = None
+    stale: bool | None = None
+    attribution: list[str] = []
+    note: str | None = None

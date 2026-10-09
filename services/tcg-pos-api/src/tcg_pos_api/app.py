@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from tcg_pos_api.routes import credit, health, inventory
+from tcg_pos_api.routes import credit, health, inventory, pricing
 
 
 def create_app() -> FastAPI:
@@ -18,10 +18,11 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
         allow_headers=["*"],
     )
     app.include_router(inventory.router, prefix="/v1")
+    app.include_router(pricing.router, prefix="/v1")
     app.include_router(credit.router, prefix="/v1")
     app.include_router(health.router, prefix="/v1")
 
@@ -34,6 +35,9 @@ def create_app() -> FastAPI:
             "endpoints": [
                 "/v1/inventory",
                 "/v1/inventory/adjust",
+                "/v1/inventory/{item_id}",
+                "/v1/pricing/rule",
+                "/v1/pricing/suggest",
                 "/v1/customers/{customer_id}/credit",
                 "/v1/customers/{customer_id}/credit/issue",
                 "/v1/customers/{customer_id}/credit/redeem",

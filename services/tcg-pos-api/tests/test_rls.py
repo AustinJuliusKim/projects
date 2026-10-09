@@ -22,6 +22,7 @@ TENANT_TABLES = [
     "credit_ledger",
     "buylist",
     "buylist_offer",
+    "price_rule",
 ]
 
 
@@ -43,6 +44,7 @@ def two_tenants(client, make_tenant, admin_conn):
             "qty) VALUES (%s, %s, gen_random_uuid(), 'NM', 'foil', 1)",
             (t["id"], bl),
         )
+        admin_conn.execute("INSERT INTO price_rule (tenant_id) VALUES (%s)", (t["id"],))
         client.post("/v1/inventory/adjust", json=adjust_body(t), headers=headers(t))
         client.post(
             f"/v1/customers/{t['customer_id']}/credit/issue",

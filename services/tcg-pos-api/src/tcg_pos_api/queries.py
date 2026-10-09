@@ -145,3 +145,61 @@ def insert_credit_ledger(
         "VALUES (%s, %s, %s, %s)",
         (customer_id, delta_cents, reason, actor),
     )
+
+
+def lock_item(conn: psycopg.Connection, item_id: uuid.UUID) -> dict | None:
+    return conn.execute(
+        f"SELECT {ITEM_COLUMNS} FROM inventory_item WHERE id = %s FOR UPDATE", (item_id,)
+    ).fetchone()
+
+
+def find_item(conn: psycopg.Connection, grain: dict[str, Any]) -> dict | None:
+    """The item at this grain, if any — a plain read (no lock, no insert),
+    for previews."""
+    return conn.execute(
+        f"SELECT {ITEM_COLUMNS} FROM inventory_item "
+        "WHERE location_id = %(location_id)s AND game = %(game)s "
+        "AND printing_id = %(printing_id)s "
+        "AND condition = %(condition)s AND finish = %(finish)s AND lang = %(lang)s",
+        grain,
+    ).fetchone()
+
+
+def set_item_price(conn: psycopg.Connection, item_id: uuid.UUID, price_cents: int | None) -> dict:
+    return conn.execute(
+        f"UPDATE inventory_item SET price_cents = %s, updated_at = now() WHERE id = %s "
+        f"RETURNING {ITEM_COLUMNS}",
+        (price_cents, item_id),
+    ).fetchone()
+
+
+def location_exists(conn: psycopg.Connection, location_id: uuid.UUID) -> bool:
+    row = conn.execute("SELECT 1 FROM location WHERE id = %s", (location_id,)).fetchone()
+    return row is not None
+
+
+# --- price rule ------------------------------------------------------------
+
+PRICE_RULE_COLUMNS = (
+    "nm_bp, lp_bp, mp_bp, hp_bp, dmg_bp, min_price_cents, round_up_to_cents, updated_at"
+)
+
+
+def get_price_rule(conn: psycopg.Connection, *, lock: bool = False) -> dict | None:
+    """This tenant's rule row, or None when it still uses the defaults."""
+    sql = f"SELECT {PRICE_RULE_COLUMNS} FROM price_rule"
+    return conn.execute(sql + (" FOR UPDATE" if lock else "")).fetchone()
+
+
+def upsert_price_rule(conn: psycopg.Connection, rule: dict[str, int]) -> dict:
+    return conn.execute(
+        "INSERT INTO price_rule (nm_bp, lp_bp, mp_bp, hp_bp, dmg_bp, min_price_cents, "
+        "round_up_to_cents) VALUES (%(nm_bp)s, %(lp_bp)s, %(mp_bp)s, %(hp_bp)s, %(dmg_bp)s, "
+        "%(min_price_cents)s, %(round_up_to_cents)s) "
+        "ON CONFLICT (tenant_id) DO UPDATE SET nm_bp = EXCLUDED.nm_bp, lp_bp = EXCLUDED.lp_bp, "
+        "mp_bp = EXCLUDED.mp_bp, hp_bp = EXCLUDED.hp_bp, dmg_bp = EXCLUDED.dmg_bp, "
+        "min_price_cents = EXCLUDED.min_price_cents, "
+        "round_up_to_cents = EXCLUDED.round_up_to_cents, updated_at = now() "
+        f"RETURNING {PRICE_RULE_COLUMNS}",
+        rule,
+    ).fetchone()

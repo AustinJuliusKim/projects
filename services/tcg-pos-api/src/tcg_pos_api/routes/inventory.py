@@ -12,6 +12,7 @@ from tcg_pos_api.routes.models import (
     InventoryAdjustResult,
     InventoryItem,
     InventoryPage,
+    InventoryPriceUpdate,
 )
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
@@ -61,6 +62,8 @@ def adjust(actor: Actor, conn: TenantConn, body: InventoryAdjust) -> InventoryAd
             409, f"adjustment would overflow qty (on hand {before['qty']}, delta {body.delta})"
         )
     after = queries.set_item_qty(conn, before["id"], new_qty)
+    if body.price_cents is not None and body.price_cents != after["price_cents"]:
+        after = queries.set_item_price(conn, after["id"], body.price_cents)
     ledger_id = queries.insert_inventory_ledger(
         conn,
         item_id=after["id"],
@@ -79,3 +82,28 @@ def adjust(actor: Actor, conn: TenantConn, body: InventoryAdjust) -> InventoryAd
         after=after,
     )
     return InventoryAdjustResult(item=InventoryItem(**after), ledger_id=ledger_id)
+
+
+@router.patch("/{item_id}", response_model=InventoryItem)
+def set_price(
+    actor: Actor, conn: TenantConn, item_id: uuid.UUID, body: InventoryPriceUpdate
+) -> InventoryItem:
+    """Set or clear (null) an item's shelf price. Quantity is untouched and no
+    ledger row is written — the ledger is quantity only; the price change is
+    an audit_log row in the same transaction."""
+    before = queries.lock_item(conn, item_id)
+    if before is None:
+        raise HTTPException(404, "no inventory item with that id")
+    if before["price_cents"] == body.price_cents:
+        return InventoryItem(**before)
+    after = queries.set_item_price(conn, item_id, body.price_cents)
+    queries.write_audit(
+        conn,
+        actor=actor,
+        action="inventory.price",
+        entity="inventory_item",
+        entity_id=item_id,
+        before=before,
+        after=after,
+    )
+    return InventoryItem(**after)
