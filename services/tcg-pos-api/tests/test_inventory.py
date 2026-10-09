@@ -186,3 +186,80 @@ def test_ledger_tables_reject_update_and_delete(client, make_tenant, admin_conn,
         f"SELECT count(*) AS n FROM {table} WHERE tenant_id = %s", (t["id"],)
     ).fetchone()["n"]
     assert n == 1
+
+
+def test_adjust_rejects_qty_overflow(client, make_tenant, admin_conn):
+    t = make_tenant()
+    printing = uuid.uuid4()
+    resp = client.post(
+        "/v1/inventory/adjust",
+        json=adjust_body(t, printing_id=printing, delta=2**31 - 1),
+        headers=headers(t),
+    )
+    assert resp.status_code == 200, resp.text
+    resp = client.post(
+        "/v1/inventory/adjust", json=adjust_body(t, printing_id=printing, delta=1),
+        headers=headers(t),
+    )
+    assert resp.status_code == 409
+    assert "overflow" in resp.json()["detail"]
+    qty = admin_conn.execute(
+        "SELECT qty FROM inventory_item WHERE tenant_id = %s", (t["id"],)
+    ).fetchone()["qty"]
+    assert qty == 2**31 - 1
+
+
+def test_inventory_page_is_capped(client, make_tenant):
+    t = make_tenant()
+    resp = client.get("/v1/inventory", params={"page": 10**12}, headers=headers(t))
+    assert resp.status_code == 422
+    resp = client.get("/v1/inventory", params={"page": 100_000}, headers=headers(t))
+    assert resp.status_code == 200 and resp.json()["items"] == []
+
+
+def test_adjust_text_fields_are_bounded_and_nul_free(client, make_tenant):
+    t = make_tenant()
+    for bad in (
+        {"reason": "bad\x00reason"},
+        {"reason": "x" * 501},
+        {"reason": "   "},
+        {"lang": "english"},
+        {"lang": "e"},
+        {"lang": "e\x00"},
+        {"game": "pokemon"},
+        {"game": "x" * 10_000},
+    ):
+        resp = client.post("/v1/inventory/adjust", json=adjust_body(t, **bad), headers=headers(t))
+        assert resp.status_code == 422, bad
+    resp = client.post(
+        "/v1/inventory/adjust", json=adjust_body(t), headers=headers(t, actor="a" * 201)
+    )
+    assert resp.status_code == 400
+
+
+def test_lang_is_case_normalised_into_one_grain(client, make_tenant):
+    t = make_tenant()
+    printing = uuid.uuid4()
+    first = client.post(
+        "/v1/inventory/adjust",
+        json=adjust_body(t, printing_id=printing, lang=" JA "),
+        headers=headers(t),
+    ).json()["item"]
+    second = client.post(
+        "/v1/inventory/adjust",
+        json=adjust_body(t, printing_id=printing, lang="ja", reason="  more  "),
+        headers=headers(t),
+    ).json()["item"]
+    assert first["lang"] == "ja"
+    assert second["id"] == first["id"] and second["qty"] == 8
+
+
+def test_db_rejects_bad_lang_and_game(make_tenant, admin_conn):
+    t = make_tenant()
+    for col, val in (("lang", "EN"), ("lang", "english"), ("game", "pokemon")):
+        with pytest.raises(psycopg.errors.CheckViolation):
+            admin_conn.execute(
+                f"INSERT INTO inventory_item (tenant_id, location_id, printing_id, condition, "
+                f"finish, {col}) VALUES (%s, %s, gen_random_uuid(), 'NM', 'foil', %s)",
+                (t["id"], t["location_id"], val),
+            )

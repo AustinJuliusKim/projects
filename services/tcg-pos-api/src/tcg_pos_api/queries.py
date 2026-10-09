@@ -78,7 +78,8 @@ def lock_or_create_item(conn: psycopg.Connection, grain: dict[str, Any]) -> tupl
     ).fetchone()
     row = conn.execute(
         f"SELECT {ITEM_COLUMNS} FROM inventory_item "
-        "WHERE location_id = %(location_id)s AND printing_id = %(printing_id)s "
+        "WHERE location_id = %(location_id)s AND game = %(game)s "
+        "AND printing_id = %(printing_id)s "
         "AND condition = %(condition)s AND finish = %(finish)s AND lang = %(lang)s "
         "FOR UPDATE",
         grain,

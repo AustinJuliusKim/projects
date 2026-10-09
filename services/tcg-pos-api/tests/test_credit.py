@@ -116,3 +116,12 @@ def test_credit_ledger_rejects_update_and_delete(client, make_tenant, admin_conn
         with app_conn(t["id"]) as conn, pytest.raises(psycopg.errors.InsufficientPrivilege):
             conn.execute(stmt)
     assert client.get(_url(t), headers=headers(t)).json()["balance_cents"] == 100
+
+
+def test_credit_reason_is_bounded_and_nul_free(client, make_tenant):
+    t = make_tenant()
+    for reason in ("a\x00b", "x" * 501, " ", ""):
+        resp = client.post(
+            _url(t, "issue"), json={"amount_cents": 1, "reason": reason}, headers=headers(t)
+        )
+        assert resp.status_code == 422, reason

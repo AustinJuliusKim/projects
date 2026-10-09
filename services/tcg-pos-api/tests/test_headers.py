@@ -52,3 +52,15 @@ def test_writes_require_actor(client):
         "/v1/inventory/adjust", json=_adjust(), headers={"X-Tenant-Id": str(uuid.uuid4())}
     )
     assert resp.status_code == 401
+
+
+def test_actor_is_bounded_and_nul_free(client):
+    from fastapi import HTTPException
+
+    from tcg_pos_api.deps import actor
+
+    assert actor("  alice ") == "alice"
+    for bad in ("a" * 201, "al\x00ice"):
+        with pytest.raises(HTTPException) as exc:
+            actor(bad)
+        assert exc.value.status_code == 400

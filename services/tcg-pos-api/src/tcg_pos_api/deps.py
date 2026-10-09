@@ -35,11 +35,17 @@ def tenant_id(
         raise HTTPException(400, "X-Tenant-Id must be a UUID") from None
 
 
+ACTOR_MAX = 200
+
+
 def actor(x_actor: Annotated[str | None, Header()] = None) -> str:
     # TODO(auth): same as tenant_id — becomes the authenticated user's id.
     if not x_actor or not x_actor.strip():
         raise HTTPException(401, "X-Actor header is required for writes")
-    return x_actor.strip()
+    value = x_actor.strip()
+    if len(value) > ACTOR_MAX or "\x00" in value:
+        raise HTTPException(400, f"X-Actor must be at most {ACTOR_MAX} characters, no NUL bytes")
+    return value
 
 
 def _tenant_conn(

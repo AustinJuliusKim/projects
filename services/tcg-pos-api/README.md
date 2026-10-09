@@ -16,10 +16,12 @@ before deploying anything.
   RLS enabled and forced, with policy `tenant_id = current_tenant_id()`
   (the transaction-local `app.tenant_id` GUC). Requests run as the NOLOGIN
   role `tcg_pos_app` (`SET LOCAL ROLE`), which has no DELETE anywhere.
-- **Inventory** — `inventory_item` at the grain tenant × location ×
+- **Inventory** — `inventory_item` at the grain tenant × location × game ×
   printing × condition × finish × language. `printing_id` is the Scryfall
   printing id from the catalog (mtg-api's database), deliberately without
   an FK. Every quantity change is an append-only `inventory_ledger` row.
+  `game` is `mtg` only for now (CHECK); `lang` is a lowercase 2–3 letter
+  code (`en`, `ja`, `zhs`), lower-cased by the API before validation.
 - **Store credit** — `customer`, append-only `credit_ledger`, balance via
   the `customer_credit_balance` view.
 - **Buylist** — `buylist`, `buylist_offer` (schema only for now).

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from tcg_pos_api import queries
 from tcg_pos_api.deps import Actor, TenantConn
 from tcg_pos_api.routes.models import (
+    INT32_MAX,
     InventoryAdjust,
     InventoryAdjustResult,
     InventoryItem,
@@ -15,13 +16,16 @@ from tcg_pos_api.routes.models import (
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
+PAGE_MAX = 100_000
+
 
 @router.get("", response_model=InventoryPage)
 def list_inventory(
     conn: TenantConn,
     location_id: uuid.UUID | None = None,
     printing_id: uuid.UUID | None = None,
-    page: Annotated[int, Query(ge=1)] = 1,
+    # Capped so OFFSET ((page - 1) * page_size) stays far inside bigint.
+    page: Annotated[int, Query(ge=1, le=PAGE_MAX)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> InventoryPage:
     total, rows = queries.list_inventory(
@@ -51,6 +55,10 @@ def adjust(actor: Actor, conn: TenantConn, body: InventoryAdjust) -> InventoryAd
     if new_qty < 0:
         raise HTTPException(
             409, f"adjustment would make qty negative (on hand {before['qty']}, delta {body.delta})"
+        )
+    if new_qty > INT32_MAX:
+        raise HTTPException(
+            409, f"adjustment would overflow qty (on hand {before['qty']}, delta {body.delta})"
         )
     after = queries.set_item_qty(conn, before["id"], new_qty)
     ledger_id = queries.insert_inventory_ledger(
