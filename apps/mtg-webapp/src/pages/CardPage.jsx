@@ -13,8 +13,15 @@ import {
   Group,
 } from "@mantine/core";
 
-import { getCard, getPrintings, getRulings, isAbortError } from "../api.js";
+import {
+  getCard,
+  getPrintingPrices,
+  getPrintings,
+  getRulings,
+  isAbortError,
+} from "../api.js";
 import { addCard, loadDeck, saveDeck } from "../deck.js";
+import { pricesByPrinting, printingPriceCells } from "../prices.js";
 import SimilarPanel from "../components/SimilarPanel.jsx";
 import { CardPageSkeleton } from "../components/Skeletons.jsx";
 
@@ -23,11 +30,13 @@ export default function CardPage() {
   const [card, setCard] = useState(null);
   const [printings, setPrintings] = useState([]);
   const [rulings, setRulings] = useState([]);
+  const [prices, setPrices] = useState({ byPrinting: {}, snapshotId: null, attribution: [] });
   const [error, setError] = useState(null);
 
   useEffect(() => {
     setCard(null);
     setError(null);
+    setPrices({ byPrinting: {}, snapshotId: null, attribution: [] });
     const controller = new AbortController();
     const opts = { signal: controller.signal };
     getCard(oracleId, opts)
@@ -36,7 +45,16 @@ export default function CardPage() {
         if (!isAbortError(e)) setError(e.message);
       });
     getPrintings(oracleId, opts)
-      .then(setPrintings)
+      .then((rows) => {
+        setPrintings(rows);
+        // Prices are optional: without a snapshot the table falls back to
+        // the legacy Scryfall columns on each printing.
+        if (rows.length === 0) return;
+        return getPrintingPrices(
+          rows.map((p) => p.id),
+          opts,
+        ).then((responses) => setPrices(pricesByPrinting(responses)));
+      })
       .catch(() => {});
     getRulings(oracleId, opts)
       .then(setRulings)
@@ -104,22 +122,34 @@ export default function CardPage() {
                       <Table.Th>#</Table.Th>
                       <Table.Th>Rarity</Table.Th>
                       <Table.Th>USD</Table.Th>
+                      <Table.Th>USD foil</Table.Th>
                       <Table.Th>EUR</Table.Th>
+                      <Table.Th>7d</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {printings.map((p) => (
-                      <Table.Tr key={p.id}>
-                        <Table.Td>{p.set_name || p.set_code}</Table.Td>
-                        <Table.Td>{p.collector_number}</Table.Td>
-                        <Table.Td>{p.rarity}</Table.Td>
-                        <Table.Td>{p.price_usd != null ? `$${p.price_usd}` : "—"}</Table.Td>
-                        <Table.Td>{p.price_eur != null ? `€${p.price_eur}` : "—"}</Table.Td>
-                      </Table.Tr>
-                    ))}
+                    {printings.map((p) => {
+                      const cells = printingPriceCells(p, prices.byPrinting);
+                      return (
+                        <Table.Tr key={p.id}>
+                          <Table.Td>{p.set_name || p.set_code}</Table.Td>
+                          <Table.Td>{p.collector_number}</Table.Td>
+                          <Table.Td>{p.rarity}</Table.Td>
+                          <Table.Td>{cells.usd}</Table.Td>
+                          <Table.Td>{cells.usdFoil}</Table.Td>
+                          <Table.Td>{cells.eur}</Table.Td>
+                          <Table.Td>{cells.change7d}</Table.Td>
+                        </Table.Tr>
+                      );
+                    })}
                   </Table.Tbody>
                 </Table>
               </Paper>
+              {prices.snapshotId && (
+                <Text size="xs" c="dimmed" mt={4}>
+                  Prices: {prices.attribution.join(", ")} · snapshot {prices.snapshotId}
+                </Text>
+              )}
             </div>
           )}
 
