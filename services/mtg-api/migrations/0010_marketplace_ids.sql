@@ -11,12 +11,17 @@
 --
 -- price_updated_at gives the legacy Scryfall price columns the timestamp they
 -- never had: load.update_prices bumps it inside its IS DISTINCT FROM guard,
--- so it records when a price last actually changed, not when we last looked.
+-- so it records when a price last actually changed, not when we last looked;
+-- new printings default to their insert time.
 ALTER TABLE printings
   ADD COLUMN tcgplayer_id integer,
   ADD COLUMN tcgplayer_etched_id integer,
   ADD COLUMN cardmarket_id integer,
   ADD COLUMN price_updated_at timestamptz;
+
+-- Set after the ADD so existing rows stay NULL (unknown) rather than all
+-- claiming the migration time; rows inserted from now on start stamped.
+ALTER TABLE printings ALTER COLUMN price_updated_at SET DEFAULT now();
 
 CREATE INDEX printings_set_collector_idx ON printings (set_code, collector_number);
 CREATE INDEX printings_tcgplayer_id_idx ON printings (tcgplayer_id) WHERE tcgplayer_id IS NOT NULL;
