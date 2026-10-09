@@ -1,0 +1,71 @@
+name: tcg prices daily
+
+# Daily price snapshot (vault: "TCG Pricing API Design 2026-09" §6): fixed
+# 21:00 UTC, after TCGCSV (20:00) and the Cardmarket guide refresh. Each run
+# publishes snapshot YYYY-MM-DD.n; a manual re-run makes the next revision
+# and never alters an earlier one. A failed feed still publishes the others
+# and fails the job, so the failure email fires.
+#
+# Double-gated: the MTG_DATABASE_URL secret, and the TCG_PRICES_ENABLED repo
+# variable. Daily history is ~90MB/day of price_daily rows at full MTG scale,
+# which Supabase Free (~155MB headroom) cannot hold — leave the variable
+# unset until the project is on Pro (see the phase B ops tasks).
+on:
+  schedule:
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+    inputs:
+      feeds:
+        description: "Comma-separated: mtgjson, cardmarket_guide, scryfall"
+        default: "mtgjson,cardmarket_guide,scryfall"
+      changelog:
+        description: "Why this revision exists (re-runs and corrections)"
+        default: ""
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      group: tcg-prices-daily
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: services/mtg-api
+    env:
+      DATABASE_URL: ${{ secrets.MTG_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check database secret and enable flag
+        id: guard
+        env:
+          ENABLED: ${{ vars.TCG_PRICES_ENABLED }}
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ "$ENABLED" != "true" ]; then
+            echo "MTG_DATABASE_URL unset or TCG_PRICES_ENABLED != true — skipping snapshot." >> "$GITHUB_STEP_SUMMARY"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.configured == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/mtg-api/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+        if: steps.guard.outputs.configured == 'true'
+      - run: python scripts/migrate.py
+        if: steps.guard.outputs.configured == 'true'
+      - name: Snapshot
+        if: steps.guard.outputs.configured == 'true'
+        env:
+          FEEDS: ${{ github.event.inputs.feeds || 'mtgjson,cardmarket_guide,scryfall' }}
+          CHANGELOG: ${{ github.event.inputs.changelog }}
+        run: |
+          if [ -n "$CHANGELOG" ]; then
+            python -m mtg_api.prices.run --feeds "$FEEDS" --changelog "$CHANGELOG"
+          else
+            python -m mtg_api.prices.run --feeds "$FEEDS"
+          fi
