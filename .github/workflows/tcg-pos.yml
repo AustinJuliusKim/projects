@@ -13,6 +13,9 @@ on:
       - "apps/tcg-pos/**"
       - ".github/workflows/tcg-pos.yml"
 
+permissions:
+  contents: read
+
 # Test-only: no deploy jobs until the API has real auth (see
 # services/tcg-pos-api/OPS.md).
 jobs:
