@@ -5,7 +5,7 @@ import datetime
 import uuid
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Card(BaseModel):
@@ -155,7 +155,8 @@ class PriceBatchItem(BaseModel):
 
 
 class PriceBatchRequest(BaseModel):
-    items: list[PriceBatchItem]
+    # Rejected at validation, before any lookup runs (routes.prices.BATCH_MAX).
+    items: list[PriceBatchItem] = Field(max_length=200)
 
 
 class PriceBatchResult(BaseModel):
@@ -241,6 +242,8 @@ class SourceStatus(BaseModel):
     currency: str
     feed: str
     last_success_at: datetime.datetime | None = None
+    # When the feed published the data last loaded; lag and stale use this.
+    published_at: datetime.datetime | None = None
     lag_hours: float | None = None
     stale: bool
 

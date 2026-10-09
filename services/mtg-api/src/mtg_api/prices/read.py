@@ -7,6 +7,7 @@ from typing import Any
 
 import psycopg
 
+from mtg_api.prices.snapshot import FRESH_DAYS
 from mtg_api.prices.sources import VALUE_COLS
 
 PUBLIC_LANES = ("own", "open")
@@ -27,8 +28,10 @@ def next_snapshot_at(now: datetime | None = None) -> datetime:
 
 def latest_snapshot(conn: psycopg.Connection, game: str) -> dict[str, Any] | None:
     return conn.execute(
+        # By day, not by seq: a back-dated correction run is newer by seq but
+        # is not the latest day.
         "SELECT seq, snapshot_id, as_of FROM price_snapshots WHERE game = %s "
-        "ORDER BY seq DESC LIMIT 1",
+        "ORDER BY as_of DESC, revision DESC LIMIT 1",
         (game,),
     ).fetchone()
 
@@ -48,22 +51,44 @@ def list_snapshots(conn: psycopg.Connection, game: str, limit: int) -> list[dict
 
 
 def source_status(conn: psycopg.Connection, now: datetime | None = None) -> list[dict]:
-    """Public sources with their feed's last successful run and staleness."""
+    """Public sources with their feed's last successful run and staleness.
+    Lag and staleness are measured from when the feed *published* the data
+    we last loaded (ingest_runs.bulk_updated_at), not from when our job ran:
+    a job that keeps succeeding on an upstream that stopped publishing is
+    still stale."""
     now = now or datetime.now(UTC)
     rows = conn.execute(
         "SELECT ps.code AS source, ps.name, ps.lane, ps.series, ps.currency, ps.feed, "
-        "ps.stale_after_hours, r.last_success_at "
+        "ps.stale_after_hours, r.last_success_at, r.published_at "
         "FROM price_sources ps LEFT JOIN LATERAL ("
-        "  SELECT max(finished_at) AS last_success_at FROM ingest_runs "
-        "  WHERE source = 'prices:' || ps.feed AND status = 'ok'"
+        "  SELECT max(finished_at) AS last_success_at, max(bulk_updated_at) AS published_at "
+        "  FROM ingest_runs WHERE source = 'prices:' || ps.feed AND status = 'ok'"
         ") r ON true WHERE ps.lane = ANY(%s) ORDER BY ps.id",
         (list(PUBLIC_LANES),),
     ).fetchall()
     for row in rows:
-        last = row["last_success_at"]
-        row["lag_hours"] = round((now - last).total_seconds() / 3600, 2) if last else None
-        row["stale"] = last is None or now - last > timedelta(hours=row["stale_after_hours"])
+        published = row["published_at"]
+        row["lag_hours"] = round((now - published).total_seconds() / 3600, 2) if published else None
+        row["stale"] = published is None or now - published > timedelta(
+            hours=row["stale_after_hours"]
+        )
     return rows
+
+
+def public_source_codes(conn: psycopg.Connection) -> set[str]:
+    rows = conn.execute(
+        "SELECT code FROM price_sources WHERE lane = ANY(%s)", (list(PUBLIC_LANES),)
+    ).fetchall()
+    return {r["code"] for r in rows}
+
+
+def public_manifest(conn: psycopg.Connection, snap: dict[str, Any]) -> dict[str, Any]:
+    """A manifest with licensed / qa-only source codes and volumes removed."""
+    public = public_source_codes(conn)
+    counts = {
+        k: v for k, v in (snap["row_counts"] or {}).items() if k.startswith("_") or k in public
+    }
+    return {**snap, "row_counts": counts}
 
 
 def skus_for_lookup(conn: psycopg.Connection, game: str, item: dict[str, Any]) -> list[int]:
@@ -107,10 +132,15 @@ def skus_in_set(conn: psycopg.Connection, game: str, set_code: str) -> list[int]
 
 
 def price_objects(
-    conn: psycopg.Connection, game: str, sku_ids: list[int], snapshot: dict[str, Any]
+    conn: psycopg.Connection,
+    game: str,
+    sku_ids: list[int],
+    snapshot: dict[str, Any],
+    status: list[dict] | None = None,
 ) -> list[dict[str, Any]]:
     """Public price objects for these SKUs, in sku_ids order. A SKU with no
-    public price still gets an object, with an empty `open` and no change."""
+    public price still gets an object, with an empty `open` and no change.
+    Pass `status` (source_status()) when building many in one request."""
     if not sku_ids:
         return []
     skus = conn.execute(
@@ -127,7 +157,10 @@ def price_objects(
         "WHERE c.sku_id = ANY(%s) AND ps.lane = ANY(%s) ORDER BY c.sku_id, ps.id",
         (sku_ids, list(PUBLIC_LANES)),
     ).fetchall()
-    stale_by_feed = {s["feed"]: s["stale"] for s in source_status(conn)}
+    status = status if status is not None else source_status(conn)
+    stale_by_feed = {s["feed"]: s["stale"] for s in status}
+    # A row its feed has stopped refreshing is stale even if the feed isn't.
+    fresh_since = snapshot["as_of"] - timedelta(days=FRESH_DAYS)
     by_sku: dict[int, list[dict]] = {}
     for row in prices:
         by_sku.setdefault(row["sku_id"], []).append(row)
@@ -147,7 +180,7 @@ def price_objects(
             for col in COUNT_COLS:
                 if row[col] is not None:
                     open_values[f"{row['code']}_{col}"] = row[col]
-            stale = stale_by_feed.get(row["feed"], True)
+            stale = stale_by_feed.get(row["feed"], True) or row["as_of"] < fresh_since
             provenance.append(
                 {
                     "source": row["code"],

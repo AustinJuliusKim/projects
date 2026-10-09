@@ -7,14 +7,14 @@ from typing import Any
 
 
 def to_cents(value: Any) -> int | None:
-    """Major units -> cents, or None for missing, unparseable or negative
-    values. Never 0 for "no price"."""
+    """Major units -> cents, or None for missing, unparseable, negative or
+    zero values: feeds use 0 for "no price", and no card sells for nothing."""
     if value is None or value == "":
         return None
     try:
         amount = Decimal(str(value))
     except InvalidOperation:
         return None
-    if not amount.is_finite() or amount < 0:
+    if not amount.is_finite() or amount <= 0:
         return None
     return int((amount * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))

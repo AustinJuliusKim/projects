@@ -13,7 +13,7 @@ import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
-from mtg_api.deps import get_conn
+from mtg_api.deps import get_snapshot_conn
 from mtg_api.prices import read
 from mtg_api.routes.models import (
     MoversResponse,
@@ -28,24 +28,39 @@ from mtg_api.routes.models import (
 
 router = APIRouter(prefix="/prices", tags=["prices"])
 
-Conn = Annotated[psycopg.Connection, Depends(get_conn)]
+# One REPEATABLE READ transaction per request: the snapshot id, ETag and
+# the price rows all come from the same view even while a snapshot commits.
+Conn = Annotated[psycopg.Connection, Depends(get_snapshot_conn)]
 
 BATCH_MAX = 200
 HISTORY_MAX_DAYS = 366
 STATUS_MAX_AGE = 60
+# Past 21:00 UTC with today's snapshot not yet published: poll, don't cache.
+PENDING_MAX_AGE = 300
 PINNED_MAX_AGE = 31_536_000
 
 
-def _cache_seconds() -> int:
-    return max(60, int((read.next_snapshot_at() - datetime.now(UTC)).total_seconds()))
+def _cache_seconds(as_of: date | None = None) -> int:
+    """Until the next scheduled snapshot, unless today's is already due and
+    hasn't landed (the job takes minutes and cron can start late): then a
+    short max-age, so caches don't hold yesterday's prices for a whole day."""
+    now = datetime.now(UTC)
+    due = now.replace(hour=read.SNAPSHOT_HOUR_UTC, minute=0, second=0, microsecond=0)
+    if as_of is not None and now >= due and as_of < now.date():
+        return PENDING_MAX_AGE
+    return max(60, int((read.next_snapshot_at(now) - now).total_seconds()))
 
 
 def snapshot_response(
-    request: Request, payload: BaseModel, snapshot_id: str | None, max_age: int | None = None
+    request: Request,
+    payload: BaseModel,
+    snapshot_id: str | None,
+    max_age: int | None = None,
+    as_of: date | None = None,
 ) -> Response:
     body = json.dumps(payload.model_dump(mode="json"), separators=(",", ":")).encode()
     etag = '"' + hashlib.sha256(body).hexdigest()[:32] + '"'
-    age = _cache_seconds() if max_age is None else max_age
+    age = _cache_seconds(as_of) if max_age is None else max_age
     headers = {"ETag": etag, "Cache-Control": f"public, max-age={age}"}
     if age == PINNED_MAX_AGE:
         headers["Cache-Control"] += ", immutable"
@@ -103,7 +118,10 @@ def snapshots(
     conn: Conn, game: str = "mtg", limit: Annotated[int, Query(ge=1, le=100)] = 30
 ) -> list[SnapshotManifest]:
     _game(game)
-    return [SnapshotManifest(**s) for s in read.list_snapshots(conn, game, limit)]
+    return [
+        SnapshotManifest(**read.public_manifest(conn, s))
+        for s in read.list_snapshots(conn, game, limit)
+    ]
 
 
 @router.get("/snapshots/{snapshot_id}", response_model=SnapshotManifest)
@@ -112,7 +130,12 @@ def snapshot(request: Request, conn: Conn, snapshot_id: str, game: str = "mtg") 
     snap = read.snapshot_by_id(conn, game, snapshot_id)
     if snap is None:
         raise HTTPException(404, "no snapshot with that id")
-    return snapshot_response(request, SnapshotManifest(**snap), snapshot_id, max_age=PINNED_MAX_AGE)
+    return snapshot_response(
+        request,
+        SnapshotManifest(**read.public_manifest(conn, snap)),
+        snapshot_id,
+        max_age=PINNED_MAX_AGE,
+    )
 
 
 @router.post("/batch", response_model=PriceBatchResponse)
@@ -120,13 +143,14 @@ def batch(conn: Conn, body: PriceBatchRequest) -> PriceBatchResponse:
     if len(body.items) > BATCH_MAX:
         raise HTTPException(422, f"at most {BATCH_MAX} items per batch")
     snap = _latest(conn, "mtg")
+    status = read.source_status(conn)
     results = []
     for item in body.items:
         if item.game not in read.GAMES:
             results.append({"query": item, "prices": [], "error": "unknown game"})
             continue
         sku_ids = read.skus_for_lookup(conn, item.game, item.model_dump())
-        prices = read.price_objects(conn, item.game, sku_ids, snap)
+        prices = read.price_objects(conn, item.game, sku_ids, snap, status)
         results.append({"query": item, "prices": prices, "error": None if prices else "not found"})
     return PriceBatchResponse(snapshot_id=snap["snapshot_id"], results=results)
 
@@ -156,7 +180,11 @@ def movers(
         movers=rows,
     )
     return snapshot_response(
-        request, payload, snap["snapshot_id"], PINNED_MAX_AGE if pinned else None
+        request,
+        payload,
+        snap["snapshot_id"],
+        PINNED_MAX_AGE if pinned else None,
+        as_of=snap["as_of"],
     )
 
 
@@ -173,7 +201,7 @@ def set_prices(request: Request, conn: Conn, game: str, set_code: str) -> Respon
         snapshot_id=snap["snapshot_id"],
         prices=read.price_objects(conn, game, sku_ids, snap),
     )
-    return snapshot_response(request, payload, snap["snapshot_id"])
+    return snapshot_response(request, payload, snap["snapshot_id"], as_of=snap["as_of"])
 
 
 @router.get("/{game}/{sku_id}/history", response_model=PriceHistory)
@@ -215,7 +243,11 @@ def price_history(
         series=read.history(conn, sku_id, snap["seq"], start, end, names),
     )
     return snapshot_response(
-        request, payload, snap["snapshot_id"], PINNED_MAX_AGE if pinned else None
+        request,
+        payload,
+        snap["snapshot_id"],
+        PINNED_MAX_AGE if pinned else None,
+        as_of=snap["as_of"],
     )
 
 
@@ -226,4 +258,6 @@ def price(request: Request, conn: Conn, game: str, sku_id: int) -> Response:
     objects = read.price_objects(conn, game, [sku_id], snap)
     if not objects:
         raise HTTPException(404, "no SKU with that id")
-    return snapshot_response(request, PriceObject(**objects[0]), snap["snapshot_id"])
+    return snapshot_response(
+        request, PriceObject(**objects[0]), snap["snapshot_id"], as_of=snap["as_of"]
+    )

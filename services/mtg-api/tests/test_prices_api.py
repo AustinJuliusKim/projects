@@ -249,7 +249,7 @@ def test_status_marks_a_source_stale_after_36_hours(client, db):
     assert not any(s["stale"] for s in fresh["sources"] if s["feed"] != "own")
 
     db.execute(
-        "UPDATE ingest_runs SET finished_at = now() - interval '37 hours' "
+        "UPDATE ingest_runs SET bulk_updated_at = now() - interval '37 hours' "
         "WHERE source = 'prices:cardmarket_guide'"
     )
     db.commit()

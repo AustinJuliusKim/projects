@@ -5,7 +5,7 @@ network."""
 
 import copy
 import json
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -30,28 +30,35 @@ def fx_rate():
     return fx.parse_ecb_usd(read("ecb_daily.xml"))
 
 
-def mtgjson_lines(day: date, scale: dict[str, Decimal] | None = None) -> list[str]:
-    """cardPrices.csv for `day`, with each listed uuid's prices multiplied."""
+def mtgjson_lines(
+    day: date, scale: dict[str, Decimal] | None = None, drop: set[str] = frozenset()
+) -> list[str]:
+    """cardPrices.csv for `day`, with each listed uuid's prices multiplied and
+    the `drop` uuids left out (a card leaving the feed)."""
     scale = scale or {}
     lines = read("mtgjson_cardPrices.csv").replace(FIXTURE_DAY.isoformat(), day.isoformat())
     out = []
     for line in lines.splitlines():
         parts = line.split(",")
+        if parts[-1] in drop:
+            continue
         if parts[-1] in scale and parts[4]:
             parts[4] = str((Decimal(parts[4]) * scale[parts[-1]]).quantize(Decimal("0.01")))
         out.append(",".join(parts))
     return out
 
 
-def feeds(day: date, scale: dict[str, Decimal] | None = None, fail: str | None = None):
+def feeds(day: date, scale=None, fail: str | None = None, drop: set[str] = frozenset()):
     """Feed callables shaped like run.py's, reading fixtures for `day`."""
     uuid_map = mtgjson.parse_identifiers(read("mtgjson_cardIdentifiers.csv").splitlines())
-    published = datetime(day.year, day.month, day.day, 9)
+    # "Just published": staleness is measured from publish time, and tests
+    # must not depend on how far the fixture day is from the wall clock.
+    published = datetime.now(UTC)
 
     def mtgjson_feed(conn, client):
         if fail == "mtgjson":
             raise RuntimeError("mtgjson down")
-        return mtgjson.observations(mtgjson_lines(day, scale), uuid_map), published
+        return mtgjson.observations(mtgjson_lines(day, scale, drop), uuid_map), published
 
     def cardmarket_feed(conn, client):
         doc = copy.deepcopy(json.loads(read("cardmarket_price_guide.json")))
@@ -73,9 +80,9 @@ def feeds(day: date, scale: dict[str, Decimal] | None = None, fail: str | None =
     }
 
 
-def snapshot_day(conn, day: date, scale=None, fail=None, changelog=None):
+def snapshot_day(conn, day: date, scale=None, fail=None, changelog=None, drop=frozenset()):
     result, _ = run_snapshot(
-        conn, feeds(day, scale, fail), day, None, fx_rate=fx_rate(), changelog=changelog
+        conn, feeds(day, scale, fail, drop), day, None, fx_rate=fx_rate(), changelog=changelog
     )
     return result
 
