@@ -1,0 +1,3 @@
+# setuptools editable-install metadata (root .gitignore covers .venv/,
+# __pycache__/, *.py[cod])
+*.egg-info/
