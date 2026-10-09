@@ -7,6 +7,9 @@ Parameters:
     Type: String
     NoEcho: true
     Description: Postgres connection string (Supabase transaction pooler, port 6543)
+  MtgApiBase:
+    Type: String
+    Description: Base URL of services/mtg-api (catalog + prices), e.g. its HttpApi or CloudFront origin, no trailing slash
 
 Globals:
   Function:
@@ -24,6 +27,7 @@ Resources:
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
+          MTG_API_BASE: !Ref MtgApiBase
       Events:
         Api:
           Type: HttpApi

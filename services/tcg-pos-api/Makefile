@@ -22,6 +22,10 @@ PYTEST     := $(VENV)/bin/pytest
 DATABASE_URL ?= postgres://postgres:postgres@localhost:54330/postgres
 export DATABASE_URL
 
+# Card catalog + prices (services/mtg-api). Local default: mtg-api served on :8000.
+MTG_API_BASE ?= http://localhost:8000
+export MTG_API_BASE
+
 STACK_NAME ?= TcgPosApi
 AWS_REGION ?= us-west-2
 
@@ -73,7 +77,7 @@ test-db: up ## Start the local db, then run the full suite incl. DB-backed tests
 
 ci: lint migrate-dry-run test-db ## Everything CI's "api" job runs, locally
 
-serve: ## Run the API locally against DATABASE_URL — http://127.0.0.1:8000/docs
+serve: ## Run the API locally against DATABASE_URL + MTG_API_BASE — http://127.0.0.1:8001/docs
 	$(PY) scripts/serve-local.py
 
 # ============================================================================

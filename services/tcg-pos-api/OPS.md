@@ -39,4 +39,21 @@ done yet; check items off as they are.
 - [ ] No deploy job exists yet. When added (mirroring `mtg.yml`'s gated
   `deploy` job): a `TCG_POS_DATABASE_URL` repo secret, an OIDC deploy
   role, and a `TCG_POS_DEPLOY_ENABLED` repo variable gate.
-- [ ] First `sam deploy` manual with `DatabaseUrl=<transaction pooler :6543>`.
+- [ ] First `sam deploy` manual with `DatabaseUrl=<transaction pooler :6543>`
+  and `MtgApiBase=<deployed mtg-api base URL>`.
+
+## 3. Catalog / prices (mtg-api)
+
+- [ ] `MTG_API_BASE` (SAM parameter `MtgApiBase`) points at the deployed
+  `services/mtg-api`. The POS calls its public `/v1/sets`, `/v1/cards/*`
+  and `POST /v1/prices/batch`; if mtg-api's rate limiter applies to the
+  POS's egress, give the POS a key or an allowlist before stores import.
+- [ ] The app needs `VITE_MTG_API_BASE` at build time (card search runs
+  in the browser against mtg-api directly).
+- [ ] TCGplayer import does one `/v1/sets` call and ⌈rows/200⌉ batch calls
+  inside the request. At the 2000-row cap that is 11 mtg-api calls; check
+  real latency against the 10 s Lambda timeout (and API Gateway's 30 s)
+  before raising either the row cap or the timeout.
+- [ ] `DB_CONNECT_TIMEOUT` (default 5 s) must stay below the Lambda
+  timeout. Connections already use `prepare_threshold=None` for the
+  transaction pooler.
