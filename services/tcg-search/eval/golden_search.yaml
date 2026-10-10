@@ -1,0 +1,154 @@
+# Golden set for search relevance (scripts/eval_search.py). Each query has
+# graded judgments: 3 = the card the searcher means, 2 = also clearly right,
+# 1 = acceptable. Unlisted results count as 0.
+#
+# Categories:
+#   nav       the exact card name, typed normally
+#   typo      a misspelled card name (zero results here is a gate failure)
+#   accent    accents / punctuation / split-card names typed loosely
+#   nickname  community nicknames (data/nicknames.yaml)
+#   syntax    Scryfall-style filters; judged against the most-played cards that
+#             satisfy the filter (relevance sort falls back to popularity)
+#
+# Ship gate (plan §7): name-finding success@1 (nav+typo+accent+nickname)
+# >= 0.95, mean nDCG@10 >= 0.80, zero-result typos = 0.
+#
+# Every name here must exist in mtg_dev; the eval lists any that don't.
+
+queries:
+  # --- nav ------------------------------------------------------------------
+  - {q: sol ring, category: nav, relevant: {Sol Ring: 3}}
+  - {q: lightning bolt, category: nav, relevant: {Lightning Bolt: 3}}
+  - {q: counterspell, category: nav, relevant: {Counterspell: 3}}
+  - {q: llanowar elves, category: nav, relevant: {Llanowar Elves: 3}}
+  - {q: birds of paradise, category: nav, relevant: {Birds of Paradise: 3}}
+  - {q: swords to plowshares, category: nav, relevant: {Swords to Plowshares: 3}}
+  - {q: dark ritual, category: nav, relevant: {Dark Ritual: 3}}
+  - {q: brainstorm, category: nav, relevant: {Brainstorm: 3}}
+  - {q: thoughtseize, category: nav, relevant: {Thoughtseize: 3}}
+  - {q: cultivate, category: nav, relevant: {Cultivate: 3}}
+  - {q: rhystic study, category: nav, relevant: {Rhystic Study: 3}}
+  - {q: the one ring, category: nav, relevant: {The One Ring: 3}}
+  - {q: ragavan, category: nav, relevant: {"Ragavan, Nimble Pilferer": 3}}
+  - {q: jace the mind sculptor, category: nav, relevant: {"Jace, the Mind Sculptor": 3}}
+  - {q: urza's saga, category: nav, relevant: {Urza's Saga: 3}}
+  - {q: opt, category: nav, relevant: {Opt: 3}}
+  - {q: emrakul the aeons torn, category: nav, relevant: {"Emrakul, the Aeons Torn": 3}}
+  - {q: kenrith, category: nav,
+     relevant: {"Kenrith, the Returned King": 3, "Kenrith's Transformation": 1}}
+  - {q: insectile aberration, category: nav,
+     relevant: {"Delver of Secrets // Insectile Aberration": 3}}
+  - {q: demonic tutor, category: nav, relevant: {Demonic Tutor: 3}}
+  - {q: giant growth, category: nav, relevant: {Giant Growth: 3}}
+  - {q: snapcaster, category: nav, relevant: {Snapcaster Mage: 3}}
+  - {q: the ur dragon, category: nav, relevant: {The Ur-Dragon: 3}}
+  - {q: sword of fire and ice, category: nav,
+     relevant: {Sword of Fire and Ice: 3, Sword of Fire and Ice and War and Peace: 1}}
+  - {q: underground sea, category: nav, relevant: {Underground Sea: 3}}
+
+  # --- typo -----------------------------------------------------------------
+  - {q: tarmogyof, category: typo, relevant: {Tarmogoyf: 3}}
+  - {q: counterspel, category: typo, relevant: {Counterspell: 3}}
+  - {q: lightening bolt, category: typo, relevant: {Lightning Bolt: 3}}
+  - {q: brainstrom, category: typo, relevant: {Brainstorm: 3}}
+  - {q: thoughtsieze, category: typo, relevant: {Thoughtseize: 3}}
+  - {q: sol rign, category: typo, relevant: {Sol Ring: 3}}
+  - {q: swords to plowshare, category: typo, relevant: {Swords to Plowshares: 3}}
+  - {q: birds of paradice, category: typo, relevant: {Birds of Paradise: 3}}
+  - {q: llanowar elfs, category: typo, relevant: {Llanowar Elves: 3}}
+  - {q: cyclonic rfit, category: typo, relevant: {Cyclonic Rift: 3}}
+  - {q: demonic tudor, category: typo, relevant: {Demonic Tutor: 3}}
+  - {q: rhystic studdy, category: typo, relevant: {Rhystic Study: 3}}
+  - {q: snapcaster mgae, category: typo, relevant: {Snapcaster Mage: 3}}
+  - {q: jace the mind sculpter, category: typo, relevant: {"Jace, the Mind Sculptor": 3}}
+  - {q: craterhoof behemot, category: typo, relevant: {Craterhoof Behemoth: 3}}
+  - {q: force of wil, category: typo, relevant: {Force of Will: 3}}
+  - {q: goblin gide, category: typo, relevant: {Goblin Guide: 3}}
+
+  # --- accent / punctuation -------------------------------------------------
+  - {q: lim dul, category: accent,
+     relevant: {Lim-Dûl the Necromancer: 3, Lim-Dûl's Vault: 3, Lim-Dûl's Hex: 1,
+                Lim-Dûl's High Guard: 1, Lim-Dûl's Paladin: 1, Lim-Dûl's Cohort: 1}}
+  - {q: lim-dul's vault, category: accent, relevant: {Lim-Dûl's Vault: 3}}
+  - {q: aether vial, category: accent, relevant: {Aether Vial: 3}}
+  - {q: æther vial, category: accent, relevant: {Aether Vial: 3}}
+  - {q: fire ice, category: accent, relevant: {Fire // Ice: 3}}
+  - {q: fire // ice, category: accent, relevant: {Fire // Ice: 3}}
+  - {q: fireice, category: accent, relevant: {Fire // Ice: 3}}
+  - {q: jotun grunt, category: accent, relevant: {Jötun Grunt: 3}}
+  - {q: seance, category: accent, relevant: {Séance: 3}}
+  - {q: dandan, category: accent, relevant: {Dandân: 3}}
+  - {q: juzam djinn, category: accent, relevant: {Juzám Djinn: 3}}
+  - {q: urzas saga, category: accent, relevant: {Urza's Saga: 3}}
+  - {q: nevinyrrals disk, category: accent, relevant: {Nevinyrral's Disk: 3}}
+  - {q: kiki jiki, category: accent, relevant: {"Kiki-Jiki, Mirror Breaker": 3}}
+
+  # --- nickname -------------------------------------------------------------
+  - {q: bolt, category: nickname, relevant: {Lightning Bolt: 3}}
+  - {q: goyf, category: nickname, relevant: {Tarmogoyf: 3}}
+  - {q: jtms, category: nickname, relevant: {"Jace, the Mind Sculptor": 3}}
+  - {q: bob, category: nickname, relevant: {Dark Confidant: 3}}
+  - {q: sfm, category: nickname, relevant: {Stoneforge Mystic: 3}}
+  - {q: fow, category: nickname, relevant: {Force of Will: 3}}
+  - {q: stp, category: nickname, relevant: {Swords to Plowshares: 3}}
+  - {q: t3feri, category: nickname, relevant: {"Teferi, Time Raveler": 3}}
+  - {q: thoracle, category: nickname, relevant: {Thassa's Oracle: 3}}
+  - {q: coco, category: nickname, relevant: {Collected Company: 3}}
+  - {q: lotus, category: nickname, relevant: {Black Lotus: 3, Lotus Petal: 1}}
+  - {q: pte, category: nickname, relevant: {Path to Exile: 3}}
+  - {q: shocks, category: nickname,
+     relevant: {Hallowed Fountain: 3, Watery Grave: 3, Blood Crypt: 3, Stomping Ground: 3,
+                Temple Garden: 3, Godless Shrine: 3, Overgrown Tomb: 3, Breeding Pool: 3,
+                Steam Vents: 3, Sacred Foundry: 3}}
+  - {q: fetches, category: nickname,
+     relevant: {Flooded Strand: 3, Polluted Delta: 3, Bloodstained Mire: 3,
+                Wooded Foothills: 3, Windswept Heath: 3, Marsh Flats: 3, Scalding Tarn: 3,
+                Verdant Catacombs: 3, Arid Mesa: 3, Misty Rainforest: 3}}
+  - {q: tron, category: nickname,
+     relevant: {Urza's Tower: 3, Urza's Mine: 3, Urza's Power Plant: 3}}
+
+  # --- syntax ---------------------------------------------------------------
+  - q: t:dragon c:r mv<=4
+    category: syntax
+    relevant: {"Atsushi, the Blazing Sky": 2, Vengeful Ancestor: 2, Leyline Tyrant: 2,
+               Thunderbreak Regent: 1, "Decadent Dragon // Expensive Taste": 1,
+               Thundermane Dragon: 1, Parapet Thrasher: 1, Dragonborn Champion: 1}
+  - q: o:"draw a card" t:instant id<=u
+    category: syntax
+    relevant: {Arcane Denial: 2, Opt: 2, Consider: 2, Borne Upon a Wind: 1,
+               Mystic Confluence: 1, Long River's Pull: 1, Cryptic Command: 1,
+               Thought Scour: 1, Refute: 1, Think Twice: 1}
+  - q: is:reserved t:land
+    category: syntax
+    relevant: {Underground Sea: 2, Volcanic Island: 2, Tundra: 2, Tropical Island: 1,
+               Badlands: 1, Scrubland: 1, Bayou: 1, Taiga: 1, Plateau: 1, Gaea's Cradle: 1,
+               Savannah: 1}
+  - q: s:alpha r:rare
+    category: syntax
+    relevant: {Birds of Paradise: 2, Mana Vault: 2, Underground Sea: 2, Tundra: 1,
+               Tropical Island: 1, Badlands: 1, Scrubland: 1, Bayou: 1, Taiga: 1}
+  - q: t:planeswalker c:g f:modern
+    category: syntax
+    relevant: {"Nissa, Who Shakes the World": 2, "Grist, the Hunger Tide": 2,
+               "Garruk, Primal Hunter": 2, "Tyvar, Jubilant Brawler": 1,
+               "Kiora, Behemoth Beckoner": 1, Wrenn and Seven: 1, Wrenn and Realmbreaker: 1,
+               "Domri, Anarch of Bolas": 1}
+  - q: mv=1 t:instant c:r
+    category: syntax
+    relevant: {Lightning Bolt: 3, Red Elemental Blast: 2, Pyroblast: 2,
+               Redirect Lightning: 1, Great Train Heist: 1, Expedite: 1, Flashback: 1, Shock: 1}
+  - q: t:creature kw:flying c=w mv<=2
+    category: syntax
+    relevant: {Selfless Spirit: 2, "Giada, Font of Hope": 2, Grateful Apparition: 2,
+               Transcendent Envoy: 1, Flumph: 1, Youthful Valkyrie: 1, Healer's Hawk: 1,
+               Lifecreed Duo: 1}
+  - q: t:legendary t:creature id=wubrg f:commander
+    category: syntax
+    relevant: {"Morophon, the Boundless": 2, "Esika, God of the Tree // The Prismatic Bridge": 2,
+               The Ur-Dragon: 2, "Jodah, the Unifier": 1, Tiamat: 1,
+               "Kenrith, the Returned King": 1, "Ramos, Dragon Engine": 1,
+               "Sisay, Weatherlight Captain": 1}
+  - q: t:goblin -c:r
+    category: syntax
+    relevant: {Warren Soultrader: 2, Ignoble Hierarch: 2, Putrid Goblin: 1,
+               Sling-Gang Lieutenant: 1, Frogtosser Banneret: 1}
