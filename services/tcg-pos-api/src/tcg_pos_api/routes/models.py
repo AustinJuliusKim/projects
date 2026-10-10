@@ -216,3 +216,55 @@ class ImportResult(BaseModel):
     totals: ImportTotals
     changes: list[ImportChange]
     rows: list[ImportRow]
+
+
+# --- storefront ----------------------------------------------------------------
+
+
+def _blank_to_none(v: object) -> object:
+    if isinstance(v, str):
+        v = v.strip()
+        return v or None
+    return v
+
+
+Slug = Annotated[
+    str, BeforeValidator(_lower_strip), StringConstraints(pattern=r"^[a-z0-9-]{3,40}$")
+]
+DisplayName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+    AfterValidator(no_nul),
+]
+PolicyText = Annotated[
+    Annotated[str, StringConstraints(max_length=4000), AfterValidator(no_nul)] | None,
+    BeforeValidator(_blank_to_none),
+]
+PickupText = Annotated[
+    Annotated[str, StringConstraints(max_length=1000), AfterValidator(no_nul)] | None,
+    BeforeValidator(_blank_to_none),
+]
+CustomDomain = Annotated[
+    Annotated[str, StringConstraints(pattern=r"^[a-z0-9.-]{3,253}$")] | None,
+    BeforeValidator(lambda v: _lower_strip(_blank_to_none(v))),
+]
+
+
+class StorefrontSettings(BaseModel):
+    """The tenant's web storefront. See migrations/0006_storefront.sql for
+    the holdback rule (web_available)."""
+
+    slug: Slug
+    display_name: DisplayName
+    published: bool = False
+    location_id: uuid.UUID
+    holdback_copies: int = Field(0, strict=True, ge=0, le=INT32_MAX)
+    holdback_pct: int = Field(0, strict=True, ge=0, le=100)
+    reservation_hours: int = Field(48, strict=True, ge=1, le=336)
+    custom_domain: CustomDomain = None
+    policy_text: PolicyText = None
+    pickup_text: PickupText = None
+
+
+class StorefrontSettingsOut(StorefrontSettings):
+    updated_at: datetime.datetime

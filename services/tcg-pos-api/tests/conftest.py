@@ -205,3 +205,32 @@ def fake_catalog(client):
     client.app.dependency_overrides[get_catalog] = _override
     yield fake
     client.app.dependency_overrides.pop(get_catalog, None)
+
+
+# --- storefront --------------------------------------------------------------
+
+
+@pytest.fixture
+def make_storefront(admin_conn):
+    """Give a tenant a storefront row (published by default) selling from
+    its main location. Slugs are random so tests never collide."""
+
+    def _make(tenant, *, published=True, **overrides):
+        row = {
+            "tenant_id": tenant["id"],
+            "slug": f"store-{uuid.uuid4().hex[:12]}",
+            "display_name": "Test Store",
+            "published": published,
+            "location_id": tenant["location_id"],
+            "holdback_copies": 0,
+            "holdback_pct": 0,
+            "reservation_hours": 48,
+            "pickup_text": "Front counter",
+        }
+        row.update(overrides)
+        cols = ", ".join(row)
+        vals = ", ".join(f"%({k})s" for k in row)
+        admin_conn.execute(f"INSERT INTO storefront ({cols}) VALUES ({vals})", row)
+        return row
+
+    return _make

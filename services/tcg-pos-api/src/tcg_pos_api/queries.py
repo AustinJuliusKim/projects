@@ -203,3 +203,33 @@ def upsert_price_rule(conn: psycopg.Connection, rule: dict[str, int]) -> dict:
         f"RETURNING {PRICE_RULE_COLUMNS}",
         rule,
     ).fetchone()
+
+
+# --- storefront ------------------------------------------------------------
+
+STOREFRONT_COLUMNS = (
+    "slug, display_name, published, location_id, holdback_copies, holdback_pct, "
+    "reservation_hours, custom_domain, policy_text, pickup_text, updated_at"
+)
+STOREFRONT_FIELDS = (
+    "slug", "display_name", "published", "location_id", "holdback_copies", "holdback_pct",
+    "reservation_hours", "custom_domain", "policy_text", "pickup_text",
+)
+
+
+def get_storefront(conn: psycopg.Connection, *, lock: bool = False) -> dict | None:
+    """This tenant's storefront settings row (published or not), or None."""
+    sql = f"SELECT {STOREFRONT_COLUMNS} FROM storefront"
+    return conn.execute(sql + (" FOR UPDATE" if lock else "")).fetchone()
+
+
+def upsert_storefront(conn: psycopg.Connection, settings: dict[str, Any]) -> dict:
+    cols = ", ".join(STOREFRONT_FIELDS)
+    values = ", ".join(f"%({f})s" for f in STOREFRONT_FIELDS)
+    updates = ", ".join(f"{f} = EXCLUDED.{f}" for f in STOREFRONT_FIELDS)
+    return conn.execute(
+        f"INSERT INTO storefront ({cols}) VALUES ({values}) "
+        f"ON CONFLICT (tenant_id) DO UPDATE SET {updates}, updated_at = now() "
+        f"RETURNING {STOREFRONT_COLUMNS}",
+        settings,
+    ).fetchone()
