@@ -33,6 +33,29 @@ done yet; check items off as they are.
   superuser or `BYPASSRLS` — the app drops to `tcg_pos_app` regardless,
   but defense in depth.
 - [ ] `DATABASE_URL=<session pooler :5432> make migrate`.
+- [ ] `0006`/`0008` create `SELECT` policies scoped `TO` the migrating role
+  (`definer_published_read` on `storefront`, `definer_due_read` on
+  `web_order`) so the SECURITY DEFINER lookups work without BYPASSRLS.
+  They name whoever ran the migration: always migrate as the schema
+  owner, and if ownership ever moves, re-create those two policies for
+  the new owner.
+
+## 1b. Storefront and background jobs
+
+- [ ] Background jobs (reservation expiry now, the listings indexer in M5)
+  need a login role granted both NOLOGIN roles:
+  `GRANT tcg_pos_worker, tcg_pos_app TO <job login role>;` — not the
+  schema owner, not BYPASSRLS. `0006` creates `tcg_pos_worker` (needs
+  `CREATEROLE` the first time, like `tcg_pos_app`).
+- [ ] Schedule `python -m tcg_pos_api.jobs.expire_reservations` every ~5
+  minutes (systemd timer locally; EventBridge → Lambda if deployed). It is
+  idempotent and exits 1 if any order failed to release.
+- [ ] **Before a storefront goes public:** reservations need no payment, so
+  stock can be tied up by anyone. Per-IP limits (`STOREFRONT_ORDER_LIMIT`,
+  `STOREFRONT_QUOTE_LIMIT`), caps (40 lines × 20), expiry and staff cancel
+  mitigate it; add email verification or a captcha first. Behind
+  CloudFront the IP bucket is the edge IP (see `ratelimit.client_ip`).
+- [ ] Pin CORS for the storefront's origin as well as the POS app's.
 
 ## 2. CI / deploy
 

@@ -44,7 +44,8 @@ DOCKER_HOST ?= unix://$(HOME)/.docker/run/docker.sock
 export DOCKER_HOST
 endif
 
-.PHONY: help install up down migrate migrate-dry-run lint test test-db ci serve build
+.PHONY: help install up down migrate migrate-dry-run lint test test-db ci serve \
+	expire-reservations build
 
 # ============================================================================
 # SAFE — local dev only, no external mutations.
@@ -79,6 +80,9 @@ ci: lint migrate-dry-run test-db ## Everything CI's "api" job runs, locally
 
 serve: ## Run the API locally against DATABASE_URL + MTG_API_BASE — http://127.0.0.1:8001/docs
 	$(PY) scripts/serve-local.py
+
+expire-reservations: ## Release web reservations past their expiry (DATABASE_URL; local db by default)
+	$(PY) -m tcg_pos_api.jobs.expire_reservations
 
 # ============================================================================
 # ADMIN / DEPLOY — run manually only; never invoke automatically (root
