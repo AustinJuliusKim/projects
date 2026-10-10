@@ -7,7 +7,9 @@ from tcg_pos_api.routes import (
     imports,
     inventory,
     pricing,
+    storefront,
     storefront_settings,
+    web_orders,
 )
 
 
@@ -33,6 +35,8 @@ def create_app() -> FastAPI:
     app.include_router(pricing.router, prefix="/v1")
     app.include_router(credit.router, prefix="/v1")
     app.include_router(storefront_settings.router, prefix="/v1")
+    app.include_router(web_orders.router, prefix="/v1")
+    app.include_router(storefront.router, prefix="/v1")
     app.include_router(health.router, prefix="/v1")
 
     @app.get("/", include_in_schema=False)
@@ -52,6 +56,14 @@ def create_app() -> FastAPI:
                 "/v1/customers/{customer_id}/credit/issue",
                 "/v1/customers/{customer_id}/credit/redeem",
                 "/v1/storefront-settings",
+                "/v1/web-orders",
+                "/v1/web-orders/{order_id}/picked-up",
+                "/v1/web-orders/{order_id}/cancel",
+                "/v1/storefront/{slug}",
+                "/v1/storefront/{slug}/offers",
+                "/v1/storefront/{slug}/cart/quote",
+                "/v1/storefront/{slug}/orders",
+                "/v1/storefront/{slug}/orders/{order_id}",
                 "/v1/health",
             ],
         }

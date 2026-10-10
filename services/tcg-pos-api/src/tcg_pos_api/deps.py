@@ -1,3 +1,5 @@
+import dataclasses
+import re
 import uuid
 from collections.abc import Iterator
 from typing import Annotated
@@ -7,6 +9,7 @@ from fastapi import Depends, Header, HTTPException
 from psycopg.rows import dict_row
 
 from tcg_pos_api.config import connect_kwargs, database_url
+from tcg_pos_api.storefront import Storefront
 
 # The NOLOGIN role every request runs as (created in migrations/0001_core.sql).
 # Dropping to it per transaction means RLS applies even when DATABASE_URL's
@@ -71,3 +74,40 @@ def _tenant_conn(
 # surfaces as a 500 instead of a 2xx for a write that never landed.
 TenantConn = Annotated[psycopg.Connection, Depends(_tenant_conn, scope="function")]
 Actor = Annotated[str, Depends(actor)]
+
+
+# --- public storefront -------------------------------------------------------
+
+SLUG_RE = re.compile(r"^[a-z0-9-]{3,40}$")
+
+
+@dataclasses.dataclass(frozen=True)
+class StorefrontSession:
+    """A public request's connection (in its one transaction, as tcg_pos_app,
+    app.tenant_id set to the store's tenant) and the published store."""
+
+    conn: psycopg.Connection
+    store: Storefront
+
+
+def _storefront_conn(slug: str) -> Iterator[StorefrontSession]:
+    """Like _tenant_conn, but the tenant comes from the URL's slug, resolved
+    on the server by storefront_by_slug() (published stores only). Requests
+    from the public never choose their tenant: X-Tenant-Id is not read here
+    at all. Unknown, unpublished and malformed slugs are all the same 404."""
+    slug = slug.strip().lower()
+    if not SLUG_RE.match(slug):
+        raise HTTPException(404, "no such store")
+    with psycopg.connect(database_url(), row_factory=dict_row, **connect_kwargs()) as conn:
+        with conn.transaction():
+            conn.execute(f"SET LOCAL ROLE {APP_ROLE}")
+            row = conn.execute("SELECT * FROM storefront_by_slug(%s)", (slug,)).fetchone()
+            if row is None:
+                raise HTTPException(404, "no such store")
+            conn.execute(
+                "SELECT set_config('app.tenant_id', %s, true)", (str(row["tenant_id"]),)
+            )
+            yield StorefrontSession(conn=conn, store=Storefront(**row))
+
+
+StorefrontConn = Annotated[StorefrontSession, Depends(_storefront_conn, scope="function")]

@@ -10,6 +10,7 @@ from pydantic import (
     AfterValidator,
     BaseModel,
     BeforeValidator,
+    ConfigDict,
     Field,
     StringConstraints,
     field_validator,
@@ -268,3 +269,179 @@ class StorefrontSettings(BaseModel):
 
 class StorefrontSettingsOut(StorefrontSettings):
     updated_at: datetime.datetime
+
+
+# --- public storefront ------------------------------------------------------------
+
+ORDER_LINES_MAX = 40
+LINE_QTY_MAX = 20
+
+
+class PickupLocation(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
+class StorefrontInfo(BaseModel):
+    slug: str
+    display_name: str
+    pickup_location: PickupLocation
+    pickup_text: str | None
+    policy_text: str | None
+    reservation_hours: int
+
+
+class StorefrontOffer(BaseModel):
+    inventory_item_id: uuid.UUID
+    printing_id: uuid.UUID
+    game: str
+    condition: Condition
+    finish: Finish
+    lang: str
+    price_cents: int
+    # Web-sellable quantity after the store's holdback — never the shelf qty.
+    available: int
+
+
+class StorefrontOffers(BaseModel):
+    offers: list[StorefrontOffer]
+
+
+class CartLine(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    inventory_item_id: uuid.UUID
+    qty: int = Field(..., strict=True, ge=1, le=LINE_QTY_MAX)
+    # Optional: the price the customer saw. If live differs, the line is
+    # flagged price_changed (quote) or rejected (order) instead of silently
+    # charging a different price.
+    unit_price_cents: int | None = Field(None, strict=True, ge=0, le=INT32_MAX)
+
+
+def _unique_items(lines: list[CartLine]) -> list[CartLine]:
+    ids = [line.inventory_item_id for line in lines]
+    if len(ids) != len(set(ids)):
+        raise ValueError("each inventory_item_id may appear once; combine quantities")
+    return lines
+
+
+CartLines = Annotated[
+    list[CartLine],
+    Field(min_length=1, max_length=ORDER_LINES_MAX),
+    AfterValidator(_unique_items),
+]
+
+
+class CartQuoteIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    lines: CartLines
+
+
+LineStatus = Literal["ok", "not_found", "not_priced", "insufficient", "price_changed"]
+
+
+class CartLineResult(BaseModel):
+    inventory_item_id: uuid.UUID
+    qty: int
+    status: LineStatus
+    available: int
+    unit_price_cents: int | None
+    line_total_cents: int | None
+    printing_id: uuid.UUID | None
+    condition: Condition | None
+    finish: Finish | None
+    lang: str | None
+
+
+class CartQuote(BaseModel):
+    ok: bool
+    total_cents: int
+    lines: list[CartLineResult]
+
+
+Email = Annotated[
+    str,
+    BeforeValidator(_lower_strip),
+    StringConstraints(max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$"),
+    AfterValidator(no_nul),
+]
+CustomerName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+    AfterValidator(no_nul),
+]
+Phone = Annotated[
+    Annotated[str, StringConstraints(pattern=r"^[0-9+()\-. ]{4,40}$")] | None,
+    BeforeValidator(_blank_to_none),
+]
+IdempotencyKey = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{8,100}$")]
+
+
+class Customer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: CustomerName
+    email: Email
+    phone: Phone = None
+
+
+class WebOrderIn(BaseModel):
+    """Reserve for in-store pickup. No payment is taken."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    idempotency_key: IdempotencyKey
+    customer: Customer
+    lines: CartLines
+
+
+WebOrderStatus = Literal["reserved", "picked_up", "cancelled", "expired"]
+
+
+class WebOrderLine(BaseModel):
+    inventory_item_id: uuid.UUID
+    printing_id: uuid.UUID
+    game: str
+    condition: Condition
+    finish: Finish
+    lang: str
+    name: str | None
+    unit_price_cents: int
+    qty: int
+
+
+class WebOrderPublic(BaseModel):
+    """What the customer's confirmation page sees."""
+
+    id: uuid.UUID
+    status: WebOrderStatus
+    pickup_code: str
+    customer_name: str
+    total_cents: int
+    expires_at: datetime.datetime
+    created_at: datetime.datetime
+    store: StorefrontInfo
+    lines: list[WebOrderLine]
+
+
+class WebOrderStaff(BaseModel):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    status: WebOrderStatus
+    pickup_code: str
+    customer_name: str
+    customer_email: str
+    customer_phone: str | None
+    total_cents: int
+    expires_at: datetime.datetime
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+    lines: list[WebOrderLine]
+
+
+class WebOrderPage(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    orders: list[WebOrderStaff]

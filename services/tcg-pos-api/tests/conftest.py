@@ -234,3 +234,42 @@ def make_storefront(admin_conn):
         return row
 
     return _make
+
+
+def public_headers(ip=None):
+    """Public storefront requests: a fresh client IP per call unless given,
+    so the per-IP rate limit only bites in the test that's about it."""
+    import random
+
+    return {"X-Forwarded-For": ip or f"10.{random.randint(0, 255)}.{random.randint(0, 255)}."
+            f"{random.randint(1, 254)}"}
+
+
+@pytest.fixture
+def make_shop(client, make_tenant, make_storefront, admin_conn):
+    """A tenant with a published storefront, plus `stock(...)` to put priced
+    items on its web location (seeded as superuser)."""
+
+    def _make(name="Shop", **storefront):
+        t = make_tenant(name)
+        store = make_storefront(t, **storefront)
+
+        def stock(qty, price_cents=100, *, printing_id=None, condition="NM", finish="nonfoil",
+                  location_id=None):
+            return admin_conn.execute(
+                "INSERT INTO inventory_item (tenant_id, location_id, printing_id, condition, "
+                "finish, qty, price_cents) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (t["id"], location_id or t["location_id"], printing_id or uuid.uuid4(),
+                 condition, finish, qty, price_cents),
+            ).fetchone()["id"]
+
+        return {"tenant": t, "store": store, "slug": store["slug"], "stock": stock,
+                "base": f"/v1/storefront/{store['slug']}"}
+
+    return _make
+
+
+def item_qty(admin_conn, item_id):
+    return admin_conn.execute(
+        "SELECT qty FROM inventory_item WHERE id = %s", (item_id,)
+    ).fetchone()["qty"]
