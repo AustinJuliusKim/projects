@@ -27,13 +27,22 @@ def test_every_migration_opens_with_a_why_comment():
         assert sql.lstrip().startswith("--"), f"{name} must open with a comment block"
 
 
+# Owner-only bookkeeping tables, reached solely through SECURITY DEFINER
+# functions that run as the owner: RLS is ENABLEd (so every other role is
+# bound by policy) but not FORCEd, so the owner needs no BYPASSRLS. Each
+# migration's header explains why. Everything else must ENABLE and FORCE.
+ENABLE_ONLY = {"search_outbox"}
+
+
 def test_every_table_enables_and_forces_rls():
     sql = "\n".join(s for _, s in migrate.load_migrations())
     tables = re.findall(r"CREATE TABLE (\w+)", sql)
     assert tables
+    assert ENABLE_ONLY <= set(tables)
     for table in tables:
         assert f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY" in sql, table
-        assert f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY" in sql, table
+        forced = f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY" in sql
+        assert forced is (table not in ENABLE_ONLY), table
 
 
 def test_dry_run_cli_exits_clean():
