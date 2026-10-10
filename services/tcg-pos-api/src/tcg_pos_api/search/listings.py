@@ -465,6 +465,7 @@ def follow(
     retried next cycle; database errors propagate (systemd restarts us)."""
     listen.execute("LISTEN search_outbox")
     log.info("following search_outbox -> %s (poll %.0fs)", alias, poll)
+    last_error = None
     while not stop.is_set():
         try:
             with writer_lock(db, wait=False) as got:
@@ -473,8 +474,15 @@ def follow(
                     drain(db, src, alias=alias, batch=batch, stop=stop)
                 else:
                     log.info("another writer holds the listings lock; skipping this cycle")
+            if last_error:
+                log.info("recovered; events are flowing again")
+            last_error = None
         except (OpenSearchError, IndexingError, RebuildError) as err:
-            log.error("drain failed, will retry: %s", err)
+            # OpenSearch is often stopped on purpose (OPS.md): say so once,
+            # not every poll. Events stay queued until it is back.
+            if str(err) != last_error:
+                log.error("drain failed, retrying every %.0fs: %s", poll, err)
+            last_error = str(err)
         deadline = time.monotonic() + poll
         while not stop.is_set():
             left = deadline - time.monotonic()
@@ -538,6 +546,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("status", help="outbox backlog, alias and doc counts (JSON)")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)  # one line per request otherwise
 
     alias = listings_alias()
     with OpenSearch() as os_, _connect() as db:

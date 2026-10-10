@@ -56,6 +56,19 @@ done yet; check items off as they are.
   mitigate it; add email verification or a captcha first. Behind
   CloudFront the IP bucket is the edge IP (see `ratelimit.client_ip`).
 - [ ] Pin CORS for the storefront's origin as well as the POS app's.
+- [ ] **Storefront search needs OpenSearch and `tcg_search` in the bundle.**
+  `routes/storefront.py` and the listings indexer import `tcg_search`
+  (services/tcg-search), which `sam build` (CodeUri `src/`) does not
+  include, and there is no hosted OpenSearch (local-only by decision, plan
+  §1). Before any deploy: vendor tcg-search or build it as a wheel into the
+  bundle (plus `pyyaml`), choose hosting, and set `OPENSEARCH_URL` /
+  `OPENSEARCH_USER` / `OPENSEARCH_PASSWORD`.
+- [ ] The listings indexer (`python -m tcg_pos_api.search.listings
+  follow`) is a long-running LISTEN consumer, not a Lambda: run it where a
+  process can stay up (or switch to a scheduled `drain`), as a login granted
+  `tcg_pos_worker, tcg_pos_app`, after one `rebuild`. Locally it is the
+  systemd unit `tcg-search-listings` (services/tcg-search/OPS.md §5) with
+  login `tcg_pos_worker_login` on `tcg_pos_dev` — done 2026-10-10.
 
 ## 2. CI / deploy
 

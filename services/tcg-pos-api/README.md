@@ -88,6 +88,9 @@ and malformed slugs are all 404.
 | Route | |
 | --- | --- |
 | `GET /v1/storefront/{slug}` | store name, pickup location, policy/pickup text |
+| `GET /v1/storefront/{slug}/search` | `q`, `mode=stock\|catalog`, `sort`, `page`, `page_size`, facets → `tcg_search` search response (below) |
+| `GET /v1/storefront/{slug}/autocomplete` | `q`, `size` (≤ 20, default 8) → `[{oracle_id, name, image_small?, price_cents?, type_line?, in_stock}]` |
+| `GET /v1/storefront/{slug}/cards/{oracle_id}` | `{card, offers, source}`: catalog card + every paper printing, offers LIVE from Postgres |
 | `GET /v1/storefront/{slug}/offers` | `printing_id` (repeat, ≤ 100) → live offers: priced, `available` = web-available after holdback |
 | `POST /v1/storefront/{slug}/cart/quote` | `{lines: [{inventory_item_id, qty, unit_price_cents?}]}` → per line `ok` / `not_found` / `not_priced` / `insufficient` / `price_changed` |
 | `POST /v1/storefront/{slug}/orders` | reserve for pickup: `{idempotency_key, customer: {name, email, phone?}, lines}`; 201 new, 200 idempotent replay, 409 `{message, issues}` |
@@ -104,7 +107,57 @@ POSTs are rate limited per IP in Postgres (`ratelimit.py`;
 `STOREFRONT_ORDER_LIMIT` default 10/min, `STOREFRONT_QUOTE_LIMIT` 60/min).
 
 `storefront.storefront_offers(conn, store, printing_ids)` is the live-offer
-query the card page (M6) reuses; `/search` and `/autocomplete` are M6.
+query; the card page and the listings indexer use it too.
+
+#### Search (OpenSearch via `services/tcg-search`)
+
+The index is for finding things, Postgres is the truth: search reads the
+`listings` / `catalog` aliases, the card page's offers come from Postgres.
+
+- `/search` returns `tcg_search.query.search()`'s dict **verbatim**
+  (`tcg_search/query/shape.py`): `{mode, q, total, took_ms, page,
+  page_size, sort, results[], facets{name: [{value, count, selected,
+  label?}]}, query{clauses[]}, warnings[], did_you_mean, corrected}`.
+  - `mode=stock` (default): this store's `listings` docs, always with the
+    slug's tenant as the first filter and as routing. Results carry
+    `in_stock`, `price_cents` (cheapest offer), `tenant_id` and `offers[]`
+    (`{printing_id, set, set_name, collector_number, rarity, finish,
+    condition, condition_rank, lang, price_cents, available, image_*}`,
+    cheapest first, only copies matching copy-level filters).
+  - `mode=catalog`: the whole catalog (`printings[]`, `price_cents` = market
+    headline), each result annotated with this store's `in_stock` (0 if
+    none) and `store_price_cents` (null if none).
+  - `q`: free text + Scryfall-style syntax (tcg-search README). Sorts:
+    `relevance` `popular` `name` `price_asc` `price_desc` `newest` `mv`.
+    `page_size` ≤ 100, `page × page_size` ≤ 2400.
+  - Facets, repeat to multi-select (`?set=mh2&set=ltr`; OR within, AND
+    across): `set` `rarity` `finish` `condition` (stock only) `price` (band
+    keys `0-100` `100-500` `500-2000` `2000-5000` `5000-10000` `10000-`, in
+    cents) `colors` `identity` `types` `keywords` `format`.
+- `/cards/{oracle_id}`: `card` is shaped like a search result (oracle_text
+  as printed, faces, legal, image_*) plus `printings[]` `{id, set_code,
+  set_name, collector_number, rarity, finishes, released_at, lang,
+  image_small, image_normal}` (paper, newest first); `offers` is
+  `{printing_id: [{inventory_item_id, printing_id, game, condition, finish,
+  lang, price_cents, available}]}` for printings with web stock;
+  `source` is `index`, or `mtg-api` when OpenSearch is down (card data from
+  `MTG_API_BASE`). Unknown card → 404.
+- OpenSearch down → 503 `search is temporarily unavailable`; alias not
+  built yet → 503 `search index is not built yet`.
+- Requests under `/api/v1/...` are served as `/v1/...` (same-origin dev
+  proxies that don't strip the prefix).
+
+#### Listings indexer (`python -m tcg_pos_api.search.listings`)
+
+`rebuild` (new versioned index from every published store, atomic alias
+swap, previous kept, then drains what queued meanwhile), `drain` (until the
+outbox is empty), `follow` (LISTEN + 5 s poll, SIGTERM-safe; the local
+systemd service `tcg-search-listings`, see `services/tcg-search/OPS.md`
+§5), `status` (JSON: backlog, oldest event age, alias, per-store docs). One
+writer at a time (advisory lock); acks only after a clean bulk request.
+Card data comes from the catalog index's `_source`, never mtg_dev. Design
+notes are in the module docstring. `search_outbox_stats()` (migration
+0010) backs `status`.
 
 Expire stale reservations (same reversal as cancel, status `expired`,
 reason `web_expire:<id>`; also prunes old rate-limit windows):
@@ -182,10 +235,36 @@ make serve          # http://127.0.0.1:8001/docs (mtg-api expected on :8000)
 | `STOREFRONT_QUOTE_LIMIT` | `60` | public cart-quote POSTs per IP per minute |
 | `STOREFRONT_RATELIMIT_ENABLED` | `1` | `0` disables the check (local dev only) |
 
+| `OPENSEARCH_URL` | `http://localhost:9200` | storefront search + listings indexer (`OPENSEARCH_USER` / `_PASSWORD` / `_VERIFY` too) |
+| `TCG_SEARCH_PREFIX` | — | index/alias prefix; tests only |
+
 For suggestions and imports locally, run `services/mtg-api` on :8000 against
 its own database first (see its README), then `make serve` here.
+
+### Local storefront dev (`tcg_pos_dev` + the demo store)
+
+A persistent dev database `tcg_pos_dev` on the WSL Postgres (:54329) holds a
+seeded demo store (`/s/demo`, ~690 items over 355 real cards), and the
+`tcg-search-listings` service keeps its `listings` docs current. To serve
+the API for the storefront app (Vite on :5175 proxies `/api` → :8001):
+
+```bash
+DATABASE_URL=postgres://tcg_pos_worker_login:tcg_pos_worker_login@localhost:54329/tcg_pos_dev \
+OPENSEARCH_URL=http://localhost:9200 MTG_API_BASE=http://localhost:8000 \
+  .venv/bin/python scripts/serve-local.py        # or: make serve-dev  -> http://127.0.0.1:8001/docs
+curl -s localhost:8001/v1/storefront/demo/search?q=bolt
+```
+
+Another store: `DATABASE_URL=postgres://postgres:postgres@localhost:54329/tcg_pos_dev
+.venv/bin/python scripts/seed_demo_store.py --slug other` (needs a role
+that may insert tenants; refuses non-`tcg_pos_dev` URLs). The follower
+indexes it within seconds. `make listings-status` shows the outbox and
+index state.
 
 The DB-backed tests connect as a superuser to seed, and assert isolation
 through the API and through direct SQL as `tcg_pos_app`, so RLS is what's
 being tested. mtg-api is faked with `httpx.MockTransport` (`FakeMtgApi` in
-`tests/conftest.py`); no test touches the network.
+`tests/conftest.py`), and so is OpenSearch (`tests/fake_opensearch.py`); no
+unit test touches the network. `TEST_OPENSEARCH_URL=http://localhost:9200`
+adds `tests/test_listings_os.py`, which builds `itest_<uuid>_*` indices on
+the real cluster (deleted afterwards; the live aliases are never touched).

@@ -26,6 +26,12 @@ export DATABASE_URL
 MTG_API_BASE ?= http://localhost:8000
 export MTG_API_BASE
 
+# Storefront search (services/tcg-search) and the persistent local storefront dev
+# database (README "Local storefront dev"): the WSL Postgres, not docker.
+OPENSEARCH_URL ?= http://localhost:9200
+export OPENSEARCH_URL
+DEV_DATABASE_URL ?= postgres://tcg_pos_worker_login:tcg_pos_worker_login@localhost:54329/tcg_pos_dev
+
 STACK_NAME ?= TcgPosApi
 AWS_REGION ?= us-west-2
 
@@ -45,7 +51,7 @@ export DOCKER_HOST
 endif
 
 .PHONY: help install up down migrate migrate-dry-run lint test test-db ci serve \
-	expire-reservations build
+	expire-reservations build serve-dev listings-status listings-drain listings-rebuild
 
 # ============================================================================
 # SAFE — local dev only, no external mutations.
@@ -83,6 +89,18 @@ serve: ## Run the API locally against DATABASE_URL + MTG_API_BASE — http://127
 
 expire-reservations: ## Release web reservations past their expiry (DATABASE_URL; local db by default)
 	$(PY) -m tcg_pos_api.jobs.expire_reservations
+
+serve-dev: ## Serve on :8001 against tcg_pos_dev + local OpenSearch (the storefront app proxies /api here)
+	DATABASE_URL=$(DEV_DATABASE_URL) $(PY) scripts/serve-local.py
+
+listings-status: ## Listings indexer: outbox backlog, oldest event, alias + doc counts (tcg_pos_dev)
+	DATABASE_URL=$(DEV_DATABASE_URL) $(PY) -m tcg_pos_api.search.listings status
+
+listings-drain: ## Apply queued search_outbox events to the listings index (tcg_pos_dev)
+	DATABASE_URL=$(DEV_DATABASE_URL) $(PY) -m tcg_pos_api.search.listings drain
+
+listings-rebuild: ## Rebuild the listings index from every published store, swap the alias (tcg_pos_dev)
+	DATABASE_URL=$(DEV_DATABASE_URL) $(PY) -m tcg_pos_api.search.listings rebuild
 
 # ============================================================================
 # ADMIN / DEPLOY — run manually only; never invoke automatically (root
