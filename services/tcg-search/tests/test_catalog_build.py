@@ -35,6 +35,9 @@ class FakeOS:
     def refresh(self, index):
         pass
 
+    def forcemerge(self, index):
+        self.merged = index
+
     def put_mapping(self, index, body):
         self.indices[index]["meta"] = body["_meta"]
 

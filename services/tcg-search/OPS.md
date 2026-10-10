@@ -89,20 +89,51 @@ make catalog-status     # alias target + kept versions + doc counts
 make catalog-rollback   # alias -> previous version
 ```
 
-- Indices are versioned `catalog-YYYYMMDDTHHMMSSZ`; the alias `catalog`
-  points at exactly one. Each build keeps the previous index for rollback
-  and deletes older ones (`--keep`, default 2).
-- A build refuses to swap if any bulk item failed, or if the new doc count
+- Indices are versioned `catalog-YYYYMMDD-HHMMSSmmm` (UTC); the alias
+  `catalog` points at exactly one. Each successful build keeps the previous
+  good index for rollback and deletes the rest (`--keep`, default 2).
+- A build refuses to swap if any bulk item failed, the indexed count
+  differs from the extracted count, the extract is empty, or the new count
   is below 95% of the current alias's (a truncated extract must never
-  replace a good index). The failed index is left in place for inspection
-  and is cleaned by the next successful build.
+  replace a good index). The failed index is marked `_meta.failed`, left
+  for inspection, never used by `swap`/`rollback`, and deleted by the next
+  successful build. Exit code 2 on a guard failure.
+- Finished indices are force-merged to one segment: ~21 MB for 35k cards
+  + 104k paper printings (138,911 Lucene docs incl. nested), build ~16–20 s.
 - Each index's `_meta` records the build time, source DB (no password),
-  doc/printing counts, the latest price snapshot id, and the package
-  version — `catalog status` prints them.
+  doc/printing/priced counts, the latest price snapshot id, bulk errors,
+  nickname targets missing from the catalog, and the package version —
+  `catalog status` prints them.
 
-## 4. Nightly reindex (systemd)
+## 4. Nightly reindex (systemd) — installed 2026-10-10
 
-See section 5 (added in M3).
+```sh
+sudo deploy/local/install_reindex.sh      # from services/tcg-search
+sudo systemctl start tcg-search-reindex   # run now
+journalctl -u tcg-search-reindex -n 20
+```
+
+- `tcg-search-reindex.service` (oneshot, `User=austi`) runs
+  `.venv/bin/python -m tcg_search catalog build --swap` from this package.
+  It is chained to the existing daily price job by a drop-in,
+  `/etc/systemd/system/mtg-prices-daily.service.d/search.conf`
+  (`[Unit] OnSuccess=tcg-search-reindex.service`), so the reindex runs
+  after every *successful* price snapshot. `mtg-prices-daily.service` and
+  `~/.local/bin/mtg-prices-daily` are not modified (checksums unchanged).
+- If OpenSearch is stopped (on purpose, to save memory) the unit's
+  `ExecCondition` skips the run cleanly instead of starting it; the next
+  successful price job, or a manual start, rebuilds.
+- The unit file is a template (`@SERVICE_DIR@`, `@USER@`):
+  **WorkingDirectory currently points at the `projects-search` worktree**
+  (`/mnt/c/Users/austi/personal/projects-search/services/tcg-search`, with
+  its own `.venv`). After the `tcg-search` branch merges into the POS branch,
+  run `make install` in `projects-pos/services/tcg-search` and re-run
+  `sudo deploy/local/install_reindex.sh` from there to move it.
+- **M5 hook:** the unit has a marked comment where the listings full
+  rebuild (`tcg_pos_api.search.listings rebuild`) gets its own `ExecStart=`.
+- Remove: `sudo rm /etc/systemd/system/tcg-search-reindex.service
+  /etc/systemd/system/mtg-prices-daily.service.d/search.conf && sudo
+  systemctl daemon-reload`.
 
 ## Test databases
 
@@ -112,3 +143,7 @@ See section 5 (added in M3).
 - `TEST_CATALOG_DATABASE_URL`: a scratch database built from mtg-api's
   migrations + its test fixtures (never mtg_dev). Recreate it with
   `scripts/make_contract_db.sh` (see the script header).
+- `search_contract_test` (localhost:54329, owner postgres) was created
+  2026-10-10 from the projects-prices worktree's mtg-api (read-only use) and is
+  left in place for `make test-os`; drop it with `DROP DATABASE
+  search_contract_test` when no longer needed.

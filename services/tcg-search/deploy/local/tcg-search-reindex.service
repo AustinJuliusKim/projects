@@ -1,0 +1,30 @@
+# Template: install_reindex.sh fills @SERVICE_DIR@ and @USER@ and installs it
+# as /etc/systemd/system/tcg-search-reindex.service (services/tcg-search/OPS.md §4).
+#
+# Runs after every successful mtg-prices-daily (OnSuccess= drop-in in
+# mtg-prices-daily.service.d/search.conf), or by hand:
+#   sudo systemctl start tcg-search-reindex && journalctl -u tcg-search-reindex
+[Unit]
+Description=Rebuild the tcg-search catalog index from mtg_dev and swap the alias
+After=postgresql.service opensearch.service
+
+[Service]
+Type=oneshot
+User=@USER@
+WorkingDirectory=@SERVICE_DIR@
+Environment=OPENSEARCH_URL=http://localhost:9200
+Environment=CATALOG_DATABASE_URL=postgres://mtg_search_reader:mtg_search_reader@localhost:54329/mtg_dev
+# OpenSearch is often stopped on purpose to free memory (OPS.md §1): then
+# skip cleanly (condition failure, not a unit failure) instead of starting it.
+ExecCondition=/bin/systemctl is-active --quiet opensearch.service
+# It may still be warming up right after boot.
+ExecStartPre=/bin/sh -c 'for i in $$(seq 1 60); do curl -fs http://localhost:9200/_cluster/health >/dev/null && exit 0; sleep 2; done; exit 1'
+ExecStart=@SERVICE_DIR@/.venv/bin/python -m tcg_search catalog build --swap
+# --- M5 HOOK: listings rebuild -------------------------------------------
+# When tcg-pos-api's listings indexer lands (plan M5), add its full rebuild
+# here so card text/prices in listings docs follow the new catalog, e.g.:
+#   ExecStart=<projects-pos>/services/tcg-pos-api/.venv/bin/python -m tcg_pos_api.search.listings rebuild
+# (oneshot units run multiple ExecStart= lines in order; a failure stops the rest.)
+# --------------------------------------------------------------------------
+TimeoutStartSec=20min
+Nice=10

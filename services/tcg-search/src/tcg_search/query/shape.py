@@ -2,7 +2,9 @@
 
 from typing import Any
 
-from tcg_search.query.build import CARD_FACETS, PRICE_BANDS, SearchRequest
+from tcg_search.query.build import CARD_FACETS, PRICE_BANDS, SearchRequest, facet_names
+
+FACET_ORDER = facet_names("listings")
 
 RESULT_FIELDS = (
     "oracle_id", "name", "mana_cost", "mana_value", "type_line", "oracle_text_display",
@@ -34,7 +36,9 @@ def shape_facets(
 ) -> dict[str, list[dict[str, Any]]]:
     out: dict[str, list[dict[str, Any]]] = {}
     labels = {key: label for key, label, _, _ in PRICE_BANDS}
-    for name, agg in (aggs or {}).items():
+    # Stable order: the builder's facet order, whatever order the cluster returns.
+    order = {n: i for i, n in enumerate(FACET_ORDER)}
+    for name, agg in sorted((aggs or {}).items(), key=lambda kv: order.get(kv[0], 99)):
         if name in CARD_FACETS:
             buckets = agg.get("values", {}).get("buckets", [])
             rows = [{"value": b["key"], "count": b["doc_count"]} for b in buckets]

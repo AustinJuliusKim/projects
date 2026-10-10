@@ -119,6 +119,8 @@ def build(
     result.errors = bulk.errors
     os_.put_settings(index, {"index": {"refresh_interval": "1s"}})
     os_.refresh(index)
+    if not result.errors:
+        os_.forcemerge(index)
     indexed = os_.count(index)
     result.unresolved_nicknames = sorted(
         {n for names in data.nicknames().values() for n in names if cardtext.compact(n) not in seen}

@@ -107,6 +107,7 @@ class OpenSearch:
         params: dict[str, Any] | None = None,
         ok: tuple[int, ...] = (),
         headers: dict[str, str] | None = None,
+        timeout: httpx.Timeout | None = None,
     ) -> httpx.Response:
         try:
             resp = self._http.request(
@@ -117,6 +118,7 @@ class OpenSearch:
                 ),
                 params=params,
                 headers=headers,
+                **({"timeout": timeout} if timeout else {}),
             )
         except httpx.TimeoutException:
             raise OpenSearchUnavailable(0, f"timed out ({method} {path})") from None
@@ -175,6 +177,13 @@ class OpenSearch:
 
     def put_settings(self, index: str, settings: dict[str, Any]) -> None:
         self._call("PUT", f"/{_seg(index)}/_settings", body=settings)
+
+    def forcemerge(self, index: str, max_num_segments: int = 1) -> None:
+        """Merge a finished, read-only index down (smaller, faster). Blocks
+        until done, so use a long timeout."""
+        self._call("POST", f"/{_seg(index)}/_forcemerge",
+                   params={"max_num_segments": max_num_segments},
+                   timeout=httpx.Timeout(600.0, connect=3.0))
 
     def put_mapping(self, index: str, body: dict[str, Any]) -> None:
         self._call("PUT", f"/{_seg(index)}/_mapping", body=body)
