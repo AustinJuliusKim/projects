@@ -34,13 +34,16 @@ class Catalog:
     def close(self) -> None:
         self._http.close()
 
-    def _call(self, method: str, path: str, **kwargs: Any) -> Any:
+    def _call(self, method: str, path: str, *, missing_ok: bool = False, **kwargs: Any) -> Any:
+        """The decoded JSON body. With missing_ok, a 404 returns None."""
         try:
             resp = self._http.request(method, path, **kwargs)
         except httpx.TimeoutException:
             raise HTTPException(502, f"mtg-api timed out ({method} {path})") from None
         except httpx.HTTPError as err:
             raise HTTPException(502, f"mtg-api unreachable ({method} {path}): {err}") from None
+        if missing_ok and resp.status_code == 404:
+            return None
         if resp.status_code >= 400:
             raise HTTPException(
                 502, f"mtg-api returned {resp.status_code} for {method} {path}"
@@ -55,6 +58,22 @@ class Catalog:
         data = self._call("GET", "/v1/sets")
         if not isinstance(data, list):
             raise HTTPException(502, "mtg-api /v1/sets: expected a list")
+        return data
+
+    def card(self, oracle_id: Any) -> dict[str, Any] | None:
+        """mtg-api's card (the mtg `cards` columns), or None if unknown."""
+        data = self._call("GET", f"/v1/cards/{oracle_id}", missing_ok=True)
+        if data is not None and not isinstance(data, dict):
+            raise HTTPException(502, "mtg-api /v1/cards/{id}: expected an object")
+        return data
+
+    def printings(self, oracle_id: Any) -> list[dict[str, Any]]:
+        """The card's printings (paper and digital), [] if unknown."""
+        data = self._call("GET", f"/v1/cards/{oracle_id}/printings", missing_ok=True)
+        if data is None:
+            return []
+        if not isinstance(data, list):
+            raise HTTPException(502, "mtg-api /v1/cards/{id}/printings: expected a list")
         return data
 
     def price_batch(self, items: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:

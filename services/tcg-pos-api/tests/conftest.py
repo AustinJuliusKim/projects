@@ -153,6 +153,9 @@ class FakeMtgApi:
         self.sets = sets or []
         self.printings = printings or {}
         self.prices = prices or {}
+        # oracle_id -> card (mtg cards columns) / list of mtg-api Printing dicts
+        self.cards = {}
+        self.card_printings = {}
         self.calls = []
 
     def _lookup(self, item):
@@ -183,6 +186,15 @@ class FakeMtgApi:
                 200,
                 json={"snapshot_id": "2026-10-09.1", "results": [self._lookup(i) for i in items]},
             )
+        parts = request.url.path.split("/")
+        if request.method == "GET" and parts[1:3] == ["v1", "cards"] and len(parts) in (4, 5):
+            card = self.cards.get(parts[3])
+            if card is None:
+                return httpx.Response(404, json={"detail": "no card with that oracle_id"})
+            if len(parts) == 5 and parts[4] == "printings":
+                return httpx.Response(200, json=self.card_printings.get(parts[3], []))
+            if len(parts) == 4:
+                return httpx.Response(200, json=card)
         return httpx.Response(404, json={"detail": "not found"})
 
 
