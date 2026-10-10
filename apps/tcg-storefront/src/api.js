@@ -50,7 +50,7 @@ export class ApiError extends Error {
 const STATUS_MESSAGES = {
   404: "Not found",
   429: "Too many requests — please wait a moment and try again",
-  503: "Search is temporarily unavailable",
+  503: "Temporarily unavailable — please try again in a moment",
 };
 
 // Human message from a FastAPI error body.

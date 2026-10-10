@@ -17,4 +17,17 @@ export default defineConfig({
     },
   },
   preview: { port: 5175 },
+  build: {
+    rollupOptions: {
+      output: {
+        // Vendor code changes rarely; keep it out of the app chunk so a
+        // deploy doesn't bust its cache.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("/@mantine/") || id.includes("/@floating-ui/")) return "mantine";
+          return "vendor";
+        },
+      },
+    },
+  },
 });
