@@ -123,17 +123,54 @@ journalctl -u tcg-search-reindex -n 20
 - If OpenSearch is stopped (on purpose, to save memory) the unit's
   `ExecCondition` skips the run cleanly instead of starting it; the next
   successful price job, or a manual start, rebuilds.
-- The unit file is a template (`@SERVICE_DIR@`, `@USER@`):
-  **WorkingDirectory currently points at the `projects-search` worktree**
-  (`/mnt/c/Users/austi/personal/projects-search/services/tcg-search`, with
-  its own `.venv`). After the `tcg-search` branch merges into the POS branch,
-  run `make install` in `projects-pos/services/tcg-search` and re-run
-  `sudo deploy/local/install_reindex.sh` from there to move it.
-- **M5 hook:** the unit has a marked comment where the listings full
-  rebuild (`tcg_pos_api.search.listings rebuild`) gets its own `ExecStart=`.
+- The unit file is a template (`@SERVICE_DIR@`, `@POS_DIR@`, `@USER@`).
+  Since 2026-10-10 (M5) it is installed from the **`projects-pos`
+  worktree** (`/mnt/c/Users/austi/personal/projects-pos/services/tcg-search`
+  and `.../tcg-pos-api`, each with its own `.venv`); re-run the installer
+  from wherever the checkout moves.
+- **Listings rebuild (M5 hook):** a second `ExecStart=` runs
+  `tcg_pos_api.search.listings rebuild` after a successful catalog build,
+  so listings docs pick up the new card text/images (DATABASE_URL in the
+  unit: the local `tcg_pos_worker_login` on `tcg_pos_dev`, see §5). It waits
+  for the follower's current batch via the advisory lock.
 - Remove: `sudo rm /etc/systemd/system/tcg-search-reindex.service
   /etc/systemd/system/mtg-prices-daily.service.d/search.conf && sudo
   systemctl daemon-reload`.
+
+## 5. Listings follower (systemd) — installed 2026-10-10
+
+`tcg-search-listings.service` (`Type=simple`, `Restart=always`, enabled)
+runs `tcg_pos_api.search.listings follow` from `@POS_DIR@`: LISTEN
+`search_outbox` + a 5 s poll, drains each batch into the `listings` alias,
+exits cleanly on SIGTERM. The same installer installs it
+(`sudo deploy/local/install_reindex.sh`), enables it and restarts it.
+
+```sh
+systemctl status tcg-search-listings
+sudo journalctl -u tcg-search-listings -f
+cd ../tcg-pos-api && DATABASE_URL=postgres://tcg_pos_worker_login:tcg_pos_worker_login@localhost:54329/tcg_pos_dev \
+  .venv/bin/python -m tcg_pos_api.search.listings status   # backlog, oldest event, alias, docs
+```
+
+- Database: the persistent local POS dev DB `tcg_pos_dev` (localhost:54329,
+  migrated with tcg-pos-api's `scripts/migrate.py` as postgres), never the
+  test DB. Login role, created 2026-10-10 as postgres:
+  ```sql
+  CREATE ROLE tcg_pos_worker_login LOGIN PASSWORD 'tcg_pos_worker_login';
+  GRANT CONNECT ON DATABASE tcg_pos_dev TO tcg_pos_worker_login;
+  GRANT tcg_pos_worker, tcg_pos_app TO tcg_pos_worker_login;
+  ```
+  (not superuser, not BYPASSRLS; the password is local-only.)
+- OpenSearch stopped on purpose: the follower keeps running, logs the
+  failure once and leaves events queued; they drain when it is back.
+- WSL shuts the distro down when idle; the unit stops cleanly ("stopped" in
+  the journal) and starts again with the distro. Nothing is lost: events
+  wait in the outbox.
+- If the `listings` alias is missing (first run, or deleted), `follow` /
+  `drain` build it first (a full `rebuild`).
+- Remove: `sudo systemctl disable --now tcg-search-listings && sudo rm
+  /etc/systemd/system/tcg-search-listings.service && sudo systemctl
+  daemon-reload`.
 
 ## Test databases
 
