@@ -2,9 +2,12 @@ import { Route, Routes, useParams } from "react-router-dom";
 
 import StoreLayout from "./components/StoreLayout.jsx";
 import CardPage from "./pages/CardPage.jsx";
+import CartPage from "./pages/CartPage.jsx";
+import CheckoutPage from "./pages/CheckoutPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+import OrderPage from "./pages/OrderPage.jsx";
 import SearchPage from "./pages/SearchPage.jsx";
 
 // Keyed by slug so moving between stores starts a fresh layout (store info,
@@ -22,6 +25,9 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="card/:oracleId" element={<CardPage />} />
+        <Route path="cart" element={<CartPage />} />
+        <Route path="checkout" element={<CheckoutPage />} />
+        <Route path="order/:orderId" element={<OrderPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
