@@ -1,0 +1,5 @@
+# setuptools editable-install metadata (root .gitignore covers .venv/,
+# __pycache__/, *.py[cod])
+*.egg-info/
+# eval run outputs (scripts/eval_search.py --json); commit a baseline by hand
+eval/runs/

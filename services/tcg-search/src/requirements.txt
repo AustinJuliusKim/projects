@@ -1,0 +1,6 @@
+# Runtime deps for tcg_search (the catalog builder, query layer and CLI).
+# Shared pins match services/tcg-pos-api and services/mtg-api, so the POS
+# can import this package without a resolver conflict.
+httpx==0.28.1
+psycopg[binary]==3.2.9
+pyyaml==6.0.3

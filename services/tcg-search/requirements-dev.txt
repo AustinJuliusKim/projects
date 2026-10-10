@@ -1,0 +1,7 @@
+# Dev dependencies, pinned (this file is the lockfile). Runtime deps are in
+# src/requirements.txt and included here.
+-r src/requirements.txt
+# The package itself, editable, so `python -m tcg_search` resolves.
+-e .
+pytest==8.4.1
+ruff==0.12.5
