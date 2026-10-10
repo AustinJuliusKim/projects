@@ -85,9 +85,19 @@ Card rows (`card_row`) are mappings with the mtg `cards` columns listed in
 `catalog/extract.py` (oracle_id, name, mana_cost, mana_value, type_line,
 oracle_text, colors, color_identity, keywords, power, toughness, loyalty,
 defense, produced_mana, layout, legalities, card_faces, reserved,
-edhrec_rank). The M5 indexer can get them from mtg-api's `/v1/cards/{id}` (same
-columns). Don't feed it catalog `_source` docs: those are already shaped
-(rules text has the card's name replaced by `cardname`).
+edhrec_rank), e.g. mtg-api's `/v1/cards/{id}`. Don't feed `card_fields` /
+`listing_doc` catalog `_source` docs: those are already shaped (rules text
+has the card's name replaced by `cardname`). For that there is
+
+```python
+listing_doc_from_catalog(catalog_src, tenant_id, offers, *, updated_at=None) -> dict | None
+    # card fields copied verbatim from a catalog doc's _source; each offer gets
+    # its printing's set/rarity/image from the doc's `printings`; offers for
+    # other cards' printings are dropped. Same None => delete rule.
+```
+
+which is what tcg-pos-api's listings indexer (M5) uses, so it needs only the
+catalog index, never the mtg DB.
 
 Facets (`req.facets`, multi-select, OR within a facet, AND across):
 `set`, `rarity`, `finish`, `condition` (listings), `price` (band keys

@@ -4,6 +4,8 @@ card_fields(card)         card-level fields shared by catalog and listings
 catalog_doc(row)          one catalog doc from an extract row (catalog/extract.py)
 listing_doc(card, ...)    one listings doc for a store x card, or None when
                           nothing is sellable (caller deletes the doc)
+listing_doc_from_catalog(catalog_src, ...)
+                          the same, with the card taken from a catalog doc
 listing_id(tenant, oracle_id)
 
 `card` is a mapping with the mtg `cards` columns named in
@@ -18,6 +20,7 @@ from datetime import date, datetime
 from typing import Any
 
 from tcg_search import cardtext, data
+from tcg_search.mappings import CARD_FIELDS
 
 DFC_LAYOUTS = {"transform", "modal_dfc", "meld", "reversible_card", "double_faced_token"}
 CONDITION_RANK = {"NM": 5, "LP": 4, "MP": 3, "HP": 2, "DMG": 1}
@@ -253,7 +256,62 @@ def listing_doc(
             card["image_small"], card["image_normal"] = rep.get("image_small"), rep.get(
                 "image_normal"
             )
-    doc = card_fields(card)
+    return _with_offers(card_fields(card), tenant_id, kept, updated_at)
+
+
+# Printing metadata copied from a catalog doc onto a store's offer of it.
+PRINTING_TO_OFFER = {"set": "set", "set_name": "set_name", "set_type": "set_type",
+                     "collector_number": "collector_number", "rarity": "rarity",
+                     "released_at": "released_at", "artist": "artist",
+                     "image_small": "image_small", "image_normal": "image_normal"}
+# Card-level fields a listing doc takes verbatim from a catalog doc. Images
+# are left out: a listing shows one of the printings the store has.
+CATALOG_CARD_SKIP = {"image_small", "image_normal"}
+
+
+def catalog_card_fields(catalog_src: Mapping[str, Any]) -> dict[str, Any]:
+    """The card-level fields of a catalog doc's `_source` (already shaped by
+    card_fields when the catalog was built), without its nested printings
+    or catalog-only extras (headline price, printing count)."""
+    return {k: v for k, v in catalog_src.items()
+            if k in CARD_FIELDS and k not in CATALOG_CARD_SKIP}
+
+
+def listing_doc_from_catalog(
+    catalog_src: Mapping[str, Any],
+    tenant_id: Any,
+    offers: Iterable[Mapping[str, Any]],
+    *,
+    updated_at: datetime | None = None,
+) -> dict[str, Any] | None:
+    """Like listing_doc, but the card comes from a catalog doc's `_source`
+    (the catalog index is the indexer's card source, so the POS never reads
+    the mtg DB) instead of an mtg `cards` row. Card fields are copied as the
+    catalog shaped them, so both indices agree field for field; each offer
+    gets its printing's set/rarity/image from the catalog's `printings`.
+    Offers for printings the card doesn't have are dropped. None => delete."""
+    printings = {str(p.get("printing_id")): p for p in catalog_src.get("printings") or []}
+    enriched = []
+    for o in offers:
+        p = printings.get(str(o.get("printing_id")))
+        if p is None:
+            continue
+        enriched.append({**{dst: p.get(src) for src, dst in PRINTING_TO_OFFER.items()}, **{
+            k: v for k, v in o.items() if v is not None}})
+    kept = [o for o in (offer_doc(x) for x in enriched) if o is not None]
+    if not kept:
+        return None
+    doc = catalog_card_fields(catalog_src)
+    rep = _representative(kept)
+    image_from = rep or catalog_src
+    doc.update(_prune({"image_small": image_from.get("image_small"),
+                       "image_normal": image_from.get("image_normal")}))
+    return _with_offers(doc, tenant_id, kept, updated_at)
+
+
+def _with_offers(
+    doc: dict[str, Any], tenant_id: Any, kept: list[dict[str, Any]], updated_at: datetime | None
+) -> dict[str, Any]:
     in_stock = sum(o["available"] for o in kept)
     doc.update(
         _prune(

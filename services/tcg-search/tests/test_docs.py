@@ -129,3 +129,40 @@ def test_listing_unpriced_and_zero_qty_never_list():
 
 def test_listing_id():
     assert docs.listing_id("t1", "o1") == "t1:o1"
+
+
+def test_listing_doc_from_catalog_matches_card_fields_and_enriches_offers():
+    row = _by_name("Lightning Bolt")
+    cat = docs.catalog_doc(row)
+    printings = cat["printings"]
+    p0, p1 = printings[0]["printing_id"], printings[-1]["printing_id"]
+    doc = docs.listing_doc_from_catalog(cat, "t1", [
+        # A POS offer: no set metadata of its own; extra keys are ignored.
+        {"inventory_item_id": "i1", "printing_id": p1, "game": "mtg", "condition": "LP",
+         "finish": "foil", "lang": "en", "price_cents": 500, "available": 1},
+        {"inventory_item_id": "i2", "printing_id": p0, "game": "mtg", "condition": "NM",
+         "finish": "nonfoil", "lang": "ja", "price_cents": 300, "available": 2},
+        {"printing_id": "not-this-card", "price_cents": 1, "available": 9},
+        {"printing_id": p0, "price_cents": None, "available": 4},
+    ], updated_at=None)
+    # Card-level fields are exactly what the catalog has (minus images/extras).
+    for k, v in docs.card_fields(row).items():
+        if k not in ("image_small", "image_normal"):
+            assert doc[k] == v, k
+    assert "printings" not in doc and "printing_count" not in doc and "price_source" not in doc
+    assert doc["tenant_id"] == "t1" and doc["price_cents"] == 300 and doc["in_stock"] == 3
+    by_id = {o["printing_id"]: o for o in doc["offers"]}
+    assert set(by_id) == {p0, p1}
+    assert by_id[p0]["set"] == printings[0]["set"]
+    assert by_id[p0]["set_name"] == printings[0]["set_name"]
+    assert by_id[p0]["lang"] == "ja"  # the store's copy, not the printing's
+    assert by_id[p1]["rarity"] == printings[-1]["rarity"]
+    assert by_id[p1]["image_small"] == printings[-1]["image_small"]
+    # The listing shows a printing the store has.
+    assert doc["image_normal"] in {by_id[p0]["image_normal"], by_id[p1]["image_normal"]}
+
+    # Nothing sellable (or nothing of this card) => None (caller deletes).
+    assert docs.listing_doc_from_catalog(cat, "t1", [
+        {"printing_id": p0, "price_cents": 100, "available": 0},
+        {"printing_id": "other", "price_cents": 100, "available": 3},
+    ]) is None
