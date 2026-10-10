@@ -60,7 +60,8 @@ POS's "mtg-api over HTTP only" rule (plan §4): a nightly full scan of 35k
 cards / 112k printings / ~1M price rows is not an HTTP-API job. The
 exception is bounded by:
 
-- a role that can only `SELECT` the six tables the extract reads, and
+- a role that can only `SELECT` the tables the extract reads (plus
+  `price_snapshots`, for the snapshot id recorded in the index `_meta`), and
 - a contract test (`tests/test_extract_contract.py`) that runs the extract
   SQL against a database built from mtg-api's own migrations, so a schema
   change there fails here.
@@ -71,8 +72,8 @@ Created on the local cluster (2026-10-10) as postgres on mtg_dev:
 CREATE ROLE mtg_search_reader LOGIN PASSWORD 'mtg_search_reader';
 GRANT CONNECT ON DATABASE mtg_dev TO mtg_search_reader;
 GRANT USAGE ON SCHEMA public TO mtg_search_reader;
-GRANT SELECT ON cards, printings, sets, skus, price_current, price_sources
-  TO mtg_search_reader;
+GRANT SELECT ON cards, printings, sets, skus, price_current, price_sources,
+  price_snapshots TO mtg_search_reader;
 ALTER ROLE mtg_search_reader SET default_transaction_read_only = on;
 ```
 

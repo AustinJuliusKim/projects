@@ -176,6 +176,9 @@ class OpenSearch:
     def put_settings(self, index: str, settings: dict[str, Any]) -> None:
         self._call("PUT", f"/{_seg(index)}/_settings", body=settings)
 
+    def put_mapping(self, index: str, body: dict[str, Any]) -> None:
+        self._call("PUT", f"/{_seg(index)}/_mapping", body=body)
+
     def count(self, index: str, query: dict[str, Any] | None = None) -> int:
         body = {"query": query} if query else None
         return int(self._call("POST", f"/{_seg(index)}/_count", body=body)["count"])

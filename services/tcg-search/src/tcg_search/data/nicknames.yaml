@@ -1,0 +1,96 @@
+# Community nicknames -> exact card names (front-face name is enough for
+# multi-face cards). Indexed into the boosted `nicknames` keyword field, NOT
+# as synonyms: "bolt" ranks Lightning Bolt first without hiding Bolt Bend.
+# Matching is on the compacted form (lower-case, letters/digits only), so
+# "power 9" = "power9" and "t3feri" = "T3Feri".
+#
+# Only add nicknames the community actually uses, and only exact Oracle
+# names; `catalog build` warns about any name it can't find.
+
+# --- single cards ---------------------------------------------------------
+bolt: [Lightning Bolt]
+goyf: [Tarmogoyf]
+tarmo: [Tarmogoyf]
+jtms: ["Jace, the Mind Sculptor"]
+tms: ["Jace, the Mind Sculptor"]
+jvp: ["Jace, Vryn's Prodigy"]
+bob: [Dark Confidant]
+snappy: [Snapcaster Mage]
+snap: [Snapcaster Mage]
+sfm: [Stoneforge Mystic]
+fow: [Force of Will]
+fon: [Force of Negation]
+fov: [Force of Vigor]
+stp: [Swords to Plowshares]
+swords: [Swords to Plowshares]
+pte: [Path to Exile]
+bop: [Birds of Paradise]
+birds: [Birds of Paradise]
+drs: [Deathrite Shaman]
+tnn: [True-Name Nemesis]
+sdt: [Sensei's Divining Top]
+top: [Sensei's Divining Top]
+wog: [Wrath of God]
+mom: [Mother of Runes]
+bbe: [Bloodbraid Elf]
+led: [Lion's Eye Diamond]
+cotv: [Chalice of the Void]
+chalice: [Chalice of the Void]
+lotv: [Liliana of the Veil]
+t3f: ["Teferi, Time Raveler"]
+t3feri: ["Teferi, Time Raveler"]
+dt: [Demonic Tutor]
+vamp: [Vampiric Tutor]
+hoof: [Craterhoof Behemoth]
+sofi: [Sword of Fire and Ice]
+sofaf: [Sword of Feast and Famine]
+jitte: [Umezawa's Jitte]
+crypt: [Mana Crypt]
+cradle: [Gaea's Cradle]
+tabernacle: [The Tabernacle at Pendrell Vale]
+kiki: ["Kiki-Jiki, Mirror Breaker"]
+twin: [Splinter Twin]
+pod: [Birthing Pod]
+thoracle: [Thassa's Oracle]
+coco: [Collected Company]
+gsz: [Green Sun's Zenith]
+chord: [Chord of Calling]
+kcommand: [Kolaghan's Command]
+ancestral: [Ancestral Recall]
+lotus: [Black Lotus]
+waste: [Wasteland]
+rag: ["Ragavan, Nimble Pilferer"]
+uro: ["Uro, Titan of Nature's Wrath"]
+oko: ["Oko, Thief of Crowns"]
+eidolon: [Eidolon of the Great Revel]
+tithe: [Smothering Tithe]
+rhystic: [Rhystic Study]
+
+# --- groups ---------------------------------------------------------------
+shocks:
+  [Hallowed Fountain, Watery Grave, Blood Crypt, Stomping Ground, Temple Garden,
+   Godless Shrine, Overgrown Tomb, Breeding Pool, Steam Vents, Sacred Foundry]
+shocklands:
+  [Hallowed Fountain, Watery Grave, Blood Crypt, Stomping Ground, Temple Garden,
+   Godless Shrine, Overgrown Tomb, Breeding Pool, Steam Vents, Sacred Foundry]
+fetches:
+  [Flooded Strand, Polluted Delta, Bloodstained Mire, Wooded Foothills, Windswept Heath,
+   Marsh Flats, Scalding Tarn, Verdant Catacombs, Arid Mesa, Misty Rainforest]
+fetchlands:
+  [Flooded Strand, Polluted Delta, Bloodstained Mire, Wooded Foothills, Windswept Heath,
+   Marsh Flats, Scalding Tarn, Verdant Catacombs, Arid Mesa, Misty Rainforest]
+duals:
+  [Tundra, Underground Sea, Badlands, Taiga, Savannah, Scrubland, Volcanic Island, Bayou,
+   Plateau, Tropical Island]
+painlands:
+  [Adarkar Wastes, Underground River, Sulfurous Springs, Karplusan Forest, Brushland,
+   Caves of Koilos, Llanowar Wastes, Shivan Reef, Yavimaya Coast, Battlefield Forge]
+triomes: [Indatha Triome, Ketria Triome, Raugrin Triome, Savai Triome, Zagoth Triome]
+tron: [Urza's Tower, Urza's Mine, Urza's Power Plant]
+moxen: [Mox Pearl, Mox Sapphire, Mox Jet, Mox Ruby, Mox Emerald]
+power 9:
+  [Black Lotus, Ancestral Recall, Time Walk, Timetwister, Mox Pearl, Mox Sapphire, Mox Jet,
+   Mox Ruby, Mox Emerald]
+p9:
+  [Black Lotus, Ancestral Recall, Time Walk, Timetwister, Mox Pearl, Mox Sapphire, Mox Jet,
+   Mox Ruby, Mox Emerald]

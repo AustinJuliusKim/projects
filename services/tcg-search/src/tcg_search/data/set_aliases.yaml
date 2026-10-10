@@ -1,0 +1,31 @@
+# Informal set names -> set codes, for `s:` / `set:` / `e:`. Set codes
+# themselves and official names ("s:lea", s:"ice age") already work from the
+# sets table; this file is only for what players actually type that is
+# neither. Keys are matched compacted (lower-case, letters/digits only).
+alpha: lea
+beta: leb
+unlimited: 2ed
+revised: 3ed
+4th: 4ed
+fourth: 4ed
+5th: 5ed
+6th: 6ed
+7th: 7ed
+8th: 8ed
+9th: 9ed
+10th: 10e
+arabian: arn
+antiquities: atq
+legends: leg
+mm15: mm2
+mm17: mm3
+mh: mh1
+lotr: ltr
+lord of the rings: ltr
+baldurs gate: clb
+doctor who: who
+warhammer: 40k
+secret lair: sld
+the list: plst
+timeshifted: tsb
+mystical archive: sta
