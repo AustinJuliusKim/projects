@@ -4,6 +4,13 @@
 -r src/requirements.txt
 # The package itself, editable, so `import tcg_pos_api` resolves.
 -e .
+# OpenSearch search layer (storefront search + listings indexer), editable
+# from the sibling package. It declares no install deps of its own, so its
+# one runtime pin not already above (pyyaml, see
+# services/tcg-search/src/requirements.txt) is repeated here. Not in the
+# Lambda bundle yet (sam build only sees src/) — see OPS.md.
+-e ../tcg-search
+pyyaml==6.0.3
 pytest==8.4.1
 ruff==0.12.5
 uvicorn==0.52.1

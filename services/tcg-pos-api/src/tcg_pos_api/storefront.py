@@ -54,12 +54,27 @@ def storefront_offers(
         return {}
     if len(ids) > OFFER_PRINTINGS_MAX:
         raise ValueError(f"at most {OFFER_PRINTINGS_MAX} printings per call")
+    return _offers(conn, store, ids)
+
+
+def all_storefront_offers(
+    conn: psycopg.Connection, store: Storefront
+) -> dict[uuid.UUID, list[dict[str, Any]]]:
+    """storefront_offers for every printing the store sells online — the
+    listings indexer's whole-store read (same rule, same shape)."""
+    return _offers(conn, store, None)
+
+
+def _offers(
+    conn: psycopg.Connection, store: Storefront, ids: list[uuid.UUID] | None
+) -> dict[uuid.UUID, list[dict[str, Any]]]:
     rows = conn.execute(
         "SELECT id AS inventory_item_id, printing_id, game, condition, finish, lang, "
         "price_cents, web_available(qty, %(copies)s, %(pct)s) AS available "
         "FROM inventory_item "
-        "WHERE printing_id = ANY(%(ids)s) AND location_id = %(loc)s "
-        "AND price_cents IS NOT NULL AND web_available(qty, %(copies)s, %(pct)s) > 0 "
+        "WHERE location_id = %(loc)s "
+        + ("AND printing_id = ANY(%(ids)s) " if ids is not None else "")
+        + "AND price_cents IS NOT NULL AND web_available(qty, %(copies)s, %(pct)s) > 0 "
         f"ORDER BY printing_id, finish, array_position({CONDITION_ORDER}, condition), lang, "
         "price_cents, id",
         {
