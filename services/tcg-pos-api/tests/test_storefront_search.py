@@ -82,12 +82,16 @@ def test_stock_search_is_tenant_scoped_routed_and_verbatim(client, make_shop, fa
     for r in fake_os.searches("listings"):
         assert r["params"] == {"routing": tenant}
 
-    # The response is tcg_search's search() output, untouched.
+    # The response is tcg_search's search() output, minus the internal tenant
+    # id on each result: the public API names the store by slug only.
     direct = search(fake_os.client(), SearchRequest(
         q="bolt", mode="stock", tenant_id=tenant, sort="price_asc", page=2, page_size=10,
         facets={"set": ["mh2", "ltr"], "rarity": ["rare"]}),
         catalog_index="catalog", listings_index="listings")
+    for result in direct["results"]:
+        result.pop("tenant_id", None)
     assert resp.json() == direct
+    assert tenant not in resp.text
     assert resp.json()["results"][0]["name"] == "Lightning Bolt"
     assert set(resp.json()) == {"mode", "q", "total", "took_ms", "page", "page_size", "sort",
                                 "results", "facets", "query", "warnings", "did_you_mean",

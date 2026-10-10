@@ -169,6 +169,10 @@ def search_store(
         out = search(os_, req, catalog_index=catalog_alias(), listings_index=listings_alias())
         if mode == "catalog":
             annotate_in_stock(os_, tenant, out["results"])
+    # Listing docs carry the store's internal tenant id for routing; the
+    # public response identifies the store by slug only.
+    for result in out["results"]:
+        result.pop("tenant_id", None)
     return out
 
 
