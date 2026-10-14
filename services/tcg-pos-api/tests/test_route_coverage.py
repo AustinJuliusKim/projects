@@ -34,6 +34,7 @@ PUBLIC = {
 USER_ONLY = {
     ("GET", "/v1/me"),
     ("POST", "/v1/stores"),
+    ("POST", "/v1/me/identity"),
     ("POST", "/v1/invites/accept"),
 }
 # Any active member of the selected store, about themselves, bearer token

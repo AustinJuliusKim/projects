@@ -127,10 +127,7 @@ def jwk_client(url: str) -> PyJWKClient:
         return client
 
 
-def verify_access_token(token: str, auth: AuthSettings | None = None) -> Claims:
-    """Verify an access token and return its claims, or raise InvalidToken
-    (AuthUnavailable when the JWKS can't be fetched)."""
-    auth = auth or settings()
+def _signing_key(token: str, auth: AuthSettings) -> Any:
     if not token or len(token) > TOKEN_MAX_BYTES:
         raise InvalidToken("malformed token")
     try:
@@ -143,11 +140,32 @@ def verify_access_token(token: str, auth: AuthSettings | None = None) -> Claims:
     if not isinstance(kid, str) or not kid:
         raise InvalidToken("token has no key id")
     try:
-        key = jwk_client(auth.jwks_url).get_signing_key(kid).key
+        return jwk_client(auth.jwks_url).get_signing_key(kid).key
     except PyJWKClientConnectionError as err:
         raise AuthUnavailable(str(err)) from None
     except PyJWKClientError:
         raise InvalidToken("unknown signing key") from None
+
+
+def _valid_sub(claims: dict[str, Any]) -> str:
+    sub = claims.get("sub")
+    if not isinstance(sub, str) or not sub.strip() or len(sub) > SUB_MAX or "\x00" in sub:
+        raise InvalidToken("invalid subject")
+    return sub
+
+
+def _email(claims: dict[str, Any]) -> str | None:
+    email = claims.get("email")
+    if not isinstance(email, str) or not email.strip():
+        return None
+    return email.strip().lower()
+
+
+def verify_access_token(token: str, auth: AuthSettings | None = None) -> Claims:
+    """Verify an access token and return its claims, or raise InvalidToken
+    (AuthUnavailable when the JWKS can't be fetched)."""
+    auth = auth or settings()
+    key = _signing_key(token, auth)
     try:
         claims = jwt.decode(
             token,
@@ -168,15 +186,62 @@ def verify_access_token(token: str, auth: AuthSettings | None = None) -> Claims:
         raise InvalidToken("not an access token")
     if claims.get("client_id") not in auth.client_ids:
         raise InvalidToken("token is for another client")
-    sub = claims.get("sub")
-    if not isinstance(sub, str) or not sub.strip() or len(sub) > SUB_MAX or "\x00" in sub:
-        raise InvalidToken("invalid subject")
-    email = claims.get("email")
-    if not isinstance(email, str) or not email.strip():
-        email = None
-    return Claims(
-        sub=sub,
-        client_id=claims["client_id"],
-        email=email.strip().lower() if email else None,
-        raw=claims,
-    )
+    sub = _valid_sub(claims)
+    return Claims(sub=sub, client_id=claims["client_id"], email=_email(claims), raw=claims)
+
+
+@dataclasses.dataclass(frozen=True)
+class IdentityClaims:
+    sub: str
+    email: str
+    display_name: str | None
+
+
+NAME_MAX = 100
+
+
+def _display_name(claims: dict[str, Any]) -> str | None:
+    name = claims.get("name")
+    if not isinstance(name, str) or not name.strip():
+        parts = [claims.get(k) for k in ("given_name", "family_name")]
+        name = " ".join(p.strip() for p in parts if isinstance(p, str) and p.strip())
+    name = " ".join(name.split()).replace("\x00", "") if name else ""
+    return name[:NAME_MAX] or None
+
+
+def verify_id_token(
+    token: str, *, expected_sub: str, auth: AuthSettings | None = None
+) -> IdentityClaims:
+    """Verify an OIDC ID token (Cognito; the dev issuer locally) for the
+    signed-in user's profile: RS256 against the same JWKS, same iss,
+    token_use == "id", aud one of AUTH_CLIENT_IDS, sub equal to the access
+    token's (`expected_sub`), and a verified email. Raises InvalidToken with
+    a short reason (AuthUnavailable when the JWKS can't be fetched)."""
+    auth = auth or settings()
+    key = _signing_key(token, auth)
+    try:
+        claims = jwt.decode(
+            token,
+            key,
+            algorithms=ALGORITHMS,
+            issuer=auth.issuer,
+            audience=sorted(auth.client_ids),
+            leeway=LEEWAY_SECONDS,
+            options={"require": ["exp", "iat", "iss", "sub", "aud", "token_use"]},
+        )
+    except jwt.ExpiredSignatureError:
+        raise InvalidToken("token expired") from None
+    except jwt.InvalidAudienceError:
+        raise InvalidToken("token is for another client") from None
+    except jwt.PyJWTError:
+        raise InvalidToken("invalid token") from None
+    if claims.get("token_use") != "id":
+        raise InvalidToken("not an ID token")
+    if _valid_sub(claims) != expected_sub:
+        raise InvalidToken("ID token is for a different user")
+    email = _email(claims)
+    if email is None:
+        raise InvalidToken("ID token has no email")
+    if claims.get("email_verified") not in (True, "true"):
+        raise InvalidToken("email is not verified")
+    return IdentityClaims(sub=expected_sub, email=email, display_name=_display_name(claims))

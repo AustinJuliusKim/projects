@@ -548,13 +548,25 @@ class DevLogin(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: Email
+    # Optional display name for the ID token (like a Google profile name).
+    name: StoreName | None = None
 
 
 class DevToken(BaseModel):
     access_token: str
+    id_token: str
     token_type: Literal["Bearer"] = "Bearer"
     expires_in: int
     sub: str
+
+
+class IdentitySync(BaseModel):
+    """The user's OIDC ID token from the same sign-in as the bearer access
+    token; its verified email and name become the profile."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id_token: Annotated[str, StringConstraints(min_length=20, max_length=8192)]
 
 
 # --- registers, PINs, approvals (A3) -------------------------------------------

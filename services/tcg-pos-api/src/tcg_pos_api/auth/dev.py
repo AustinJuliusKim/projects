@@ -124,6 +124,37 @@ def access_claims(
     return claims
 
 
+def id_claims(
+    *,
+    sub: str,
+    issuer: str,
+    client_id: str,
+    email: str,
+    email_verified: bool = True,
+    name: str | None = None,
+    ttl: int = DEFAULT_TTL_SECONDS,
+    now: int | None = None,
+) -> dict[str, Any]:
+    """Claims shaped like a Cognito ID token (what POST /v1/me/identity
+    takes): aud = the app client, token_use = id, email + email_verified."""
+    now = int(time.time()) if now is None else now
+    claims = {
+        "sub": sub,
+        "iss": issuer,
+        "aud": client_id,
+        "token_use": "id",
+        "auth_time": now,
+        "iat": now,
+        "exp": now + ttl,
+        "cognito:username": sub,
+        "email": email.strip().lower(),
+        "email_verified": email_verified,
+    }
+    if name:
+        claims["name"] = name
+    return claims
+
+
 def sign(key: rsa.RSAPrivateKey, claims: dict[str, Any], *, kid: str | None = None) -> str:
     kid = kid or key_id(key.public_key())
     return jwt.encode(claims, key, algorithm="RS256", headers={"kid": kid})
@@ -144,6 +175,28 @@ def mint_dev_token(
         issuer=DEV_ISSUER,
         client_id=DEV_CLIENT_ID,
         email=email,
+        ttl=ttl,
+    )
+    return sign(key, claims)
+
+
+def mint_dev_id_token(
+    email: str,
+    *,
+    sub: str | None = None,
+    name: str | None = None,
+    ttl: int = DEFAULT_TTL_SECONDS,
+    directory: Path | None = None,
+) -> str:
+    """A dev-issuer ID token matching mint_dev_token(email) (same sub)."""
+    ensure_keypair(directory)
+    key = load_private_key(directory)
+    claims = id_claims(
+        sub=sub or dev_sub(email),
+        issuer=DEV_ISSUER,
+        client_id=DEV_CLIENT_ID,
+        email=email,
+        name=name,
         ttl=ttl,
     )
     return sign(key, claims)

@@ -3,6 +3,7 @@
 
   python scripts/dev_token.py owner@demo.test            # prints the token
   python scripts/dev_token.py owner@demo.test --sub      # prints the sub only
+  python scripts/dev_token.py owner@demo.test --id       # a matching ID token
   python scripts/dev_token.py --init                      # just create the key pair
 
 The key pair lives in .dev/auth/ (gitignored; DEV_AUTH_DIR overrides) and is
@@ -23,6 +24,7 @@ from tcg_pos_api.auth.dev import (
     dev_auth_dir,
     dev_sub,
     ensure_keypair,
+    mint_dev_id_token,
     mint_dev_token,
 )
 
@@ -31,6 +33,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("email", nargs="?")
     parser.add_argument("--sub", action="store_true", help="print the dev sub for the email")
+    parser.add_argument(
+        "--id", action="store_true", help="print an ID token (for POST /v1/me/identity)"
+    )
     parser.add_argument("--ttl", type=int, default=DEFAULT_TTL_SECONDS, help="seconds")
     parser.add_argument("--init", action="store_true", help="create the key pair and exit")
     args = parser.parse_args(argv)
@@ -43,7 +48,8 @@ def main(argv: list[str] | None = None) -> int:
         print(dev_sub(args.email))
         return 0
     ensure_keypair()
-    print(mint_dev_token(args.email, ttl=args.ttl))
+    mint = mint_dev_id_token if args.id else mint_dev_token
+    print(mint(args.email, ttl=args.ttl))
     print(f"(dev issuer keys: {dev_auth_dir()})", file=sys.stderr)
     return 0
 

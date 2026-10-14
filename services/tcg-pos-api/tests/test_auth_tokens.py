@@ -223,6 +223,8 @@ def test_dev_login_mints_verifiable_tokens(dev_env, monkeypatch):
     assert body["sub"] == dev_auth.dev_sub("dev@example.test")
     claims = verify_access_token(body["access_token"])
     assert (claims.sub, claims.email) == (body["sub"], "dev@example.test")
+    identity = tokens.verify_id_token(body["id_token"], expected_sub=body["sub"])
+    assert identity.email == "dev@example.test"
     # Keys landed in the (temp) dev dir, private key not world-readable.
     assert (dev_env / "jwks.json").exists()
     assert (dev_env / "private.pem").stat().st_mode & 0o077 == 0
