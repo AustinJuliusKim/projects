@@ -555,3 +555,117 @@ class DevToken(BaseModel):
     token_type: Literal["Bearer"] = "Bearer"
     expires_in: int
     sub: str
+
+
+# --- registers, PINs, approvals (A3) -------------------------------------------
+
+Pin = Annotated[str, StringConstraints(min_length=1, max_length=32)]
+RegisterName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=60),
+    AfterValidator(no_nul),
+]
+
+
+class PinSet(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pin: Pin
+
+
+class Register(BaseModel):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    name: str
+    created_at: datetime.datetime
+
+
+class RegisterCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    location_id: uuid.UUID
+    name: RegisterName
+
+
+DeviceStatus = Literal["active", "revoked"]
+
+
+class RegisterDevice(BaseModel):
+    id: uuid.UUID
+    register_id: uuid.UUID
+    register_name: str
+    status: DeviceStatus
+    enrolled_by: uuid.UUID
+    enrolled_at: datetime.datetime
+    last_seen_at: datetime.datetime | None
+    revoked_at: datetime.datetime | None
+
+
+class DeviceEnrolled(BaseModel):
+    """The device secret is shown once; the register stores it and sends
+    `Authorization: Device <device_secret>` from then on."""
+
+    device: RegisterDevice
+    device_secret: str
+
+
+class RegisterStaff(BaseModel):
+    user_id: uuid.UUID
+    name: str
+    role: str
+
+
+class RegisterSignIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: uuid.UUID
+    pin: Pin
+
+
+class RegisterSessionOut(BaseModel):
+    """Send `X-Register-Session: <session_token>` (with the device
+    credential) on every request until it expires, idles out or is
+    signed out."""
+
+    session_id: uuid.UUID
+    session_token: str
+    user_id: uuid.UUID
+    name: str
+    role: str
+    perms: list[str]
+    expires_at: datetime.datetime
+    idle_timeout_seconds: int
+
+
+class ApprovalCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    perm: str
+    payload_hash: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+    amount_cents: int | None = Field(None, strict=True, ge=0)
+    approver_user_id: uuid.UUID
+    pin: Pin
+
+
+class ApprovalOut(BaseModel):
+    approval_id: uuid.UUID
+    perm: str
+    amount_cents: int | None
+    approved_by: uuid.UUID
+    expires_at: datetime.datetime
+
+
+class CreditAdjust(BaseModel):
+    """A signed correction to a balance (not a sale, not an issue)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    delta_cents: int = Field(..., strict=True, ge=-INT32_MAX, le=INT32_MAX)
+    reason: Reason
+
+    @field_validator("delta_cents")
+    @classmethod
+    def _nonzero(cls, v: int) -> int:
+        if v == 0:
+            raise ValueError("delta_cents must not be 0")
+        return v

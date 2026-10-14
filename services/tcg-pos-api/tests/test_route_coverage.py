@@ -1,13 +1,20 @@
 """Every route either is deliberately public, is a signed-in-user route with
-no store (an explicit short list), or declares exactly one permission with
-require(Perm.X). A new route that does none of these fails here. No
+no store, is one of the short explicit lists of register / member routes
+below, or declares exactly one permission with require(Perm.X) (or
+require_or_approval). A new route that does none of these fails here. No
 database needed."""
 
 import pytest
 
 from conftest import api_routes, dependency_calls
 from tcg_pos_api.auth import dev as dev_auth
-from tcg_pos_api.auth.principal import _tenant_session, _user_session
+from tcg_pos_api.auth.principal import (
+    _device_session,
+    _tenant_session,
+    _user_session,
+    member_session,
+    register_session,
+)
 
 # No authentication at all.
 PUBLIC = {
@@ -29,6 +36,23 @@ USER_ONLY = {
     ("POST", "/v1/stores"),
     ("POST", "/v1/invites/accept"),
 }
+# Any active member of the selected store, about themselves, bearer token
+# only (auth.MemberSession).
+MEMBER = {
+    ("PUT", "/v1/me/pin"),
+}
+# An enrolled register device, no staff session yet (auth.DeviceConn).
+DEVICE = {
+    ("GET", "/v1/register/staff"),
+    ("POST", "/v1/register/sessions"),
+}
+# A staff member signed in on a register: device + PIN session
+# (auth.RegisterSession).
+REGISTER_SESSION = {
+    ("DELETE", "/v1/register/sessions"),
+    ("POST", "/v1/approvals"),
+}
+SESSIONS = {_tenant_session, _user_session, _device_session}
 
 
 @pytest.fixture(scope="module")
@@ -58,15 +82,23 @@ def test_every_route_is_public_user_only_or_declares_one_permission(app):
         seen.add(key)
         calls = set(dependency_calls(dependant))
         perms = required_perms(dependant)
+        sessions = calls & SESSIONS
         if key in PUBLIC:
-            assert not perms and _tenant_session not in calls and _user_session not in calls, key
+            assert not perms and not sessions, key
         elif key in USER_ONLY:
-            assert not perms and _user_session in calls and _tenant_session not in calls, key
+            assert not perms and sessions == {_user_session}, key
+        elif key in MEMBER:
+            assert not perms and member_session in calls and sessions == {_tenant_session}, key
+        elif key in DEVICE:
+            assert not perms and sessions == {_device_session}, key
+        elif key in REGISTER_SESSION:
+            assert not perms and register_session in calls, key
+            assert sessions == {_tenant_session}, key
         else:
             assert len(set(perms)) == 1, f"{key} must declare exactly one require(Perm.X)"
-            assert _tenant_session in calls, key
+            assert sessions == {_tenant_session}, key
     # The allowlists name real routes (no stale entries).
-    assert (PUBLIC | USER_ONLY) - seen == set()
+    assert (PUBLIC | USER_ONLY | MEMBER | DEVICE | REGISTER_SESSION) - seen == set()
 
 
 def test_the_dev_login_route_is_absent_for_a_real_issuer():

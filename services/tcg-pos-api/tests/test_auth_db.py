@@ -131,8 +131,7 @@ def test_request_gucs_identify_the_principal(client, make_tenant):
 
     t = make_tenant()
     h = headers(t, actor="guc-check", role="cashier")
-    claims = principal_mod.verify_access_token(h["Authorization"].split()[1])
-    gen = principal_mod._tenant_session(claims, t["id"])
+    gen = principal_mod._tenant_session(h["Authorization"], str(t["id"]), None)
     session = next(gen)
     seen = session.conn.execute(
         "SELECT current_user AS role, current_setting('app.tenant_id') AS tenant, "

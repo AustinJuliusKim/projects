@@ -1,5 +1,7 @@
-"""Per-IP fixed-window rate limits for the public storefront's writes
-(POST /cart/quote, POST /orders). A trimmed-down version of
+"""Fixed-window rate limits: per IP for the public storefront's writes
+(POST /cart/quote, POST /orders), and per bucket via enforce() for auth
+(PIN attempts per register device, store creation per user). A trimmed-down
+version of
 services/mtg-api's ratelimit.py: no API keys or tiers, and a route
 dependency instead of middleware because only two routes are metered.
 
@@ -76,21 +78,34 @@ def client_ip(request: Request) -> str:
     return "unknown"
 
 
-def check(request: Request, kind: str) -> None:
-    if not _enabled():
-        return
-    bucket = f"{kind}:ip:{client_ip(request)}"
+def hit(bucket: str, window_seconds: int = WINDOW_SECONDS) -> int:
+    """Count one hit on `bucket` in the current fixed window and return the
+    window's count, on a short connection of its own (so it sticks even if
+    the request's transaction rolls back)."""
     with psycopg.connect(database_url(), autocommit=True, **connect_kwargs()) as conn:
         with conn.transaction():
             conn.execute("SET LOCAL ROLE tcg_pos_app")
-            hits = conn.execute(
-                "SELECT storefront_rate_hit(%s, %s)", (bucket, WINDOW_SECONDS)
+            return conn.execute(
+                "SELECT storefront_rate_hit(%s, %s)", (bucket, window_seconds)
             ).fetchone()[0]
-    if hits > limit_for(kind):
-        retry = WINDOW_SECONDS - int(time.time()) % WINDOW_SECONDS
+
+
+def enforce(bucket: str, limit: int, window_seconds: int = WINDOW_SECONDS) -> None:
+    """429 with Retry-After once `bucket` has had more than `limit` hits in
+    the current window. The storefront uses it per IP; auth uses it per
+    register device (PIN attempts) and per user (store creation). Not
+    affected by STOREFRONT_RATELIMIT_ENABLED."""
+    if hit(bucket, window_seconds) > limit:
+        retry = window_seconds - int(time.time()) % window_seconds
         raise HTTPException(
             429, "too many requests; try again shortly", headers={"Retry-After": str(retry)}
         )
+
+
+def check(request: Request, kind: str) -> None:
+    if not _enabled():
+        return
+    enforce(f"{kind}:ip:{client_ip(request)}", limit_for(kind))
 
 
 def quote_limit(request: Request) -> None:

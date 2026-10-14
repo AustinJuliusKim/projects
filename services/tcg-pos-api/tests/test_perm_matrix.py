@@ -61,8 +61,18 @@ def test_matrix_allow_lists_match_the_seeded_roles(migrated_db, admin_conn):
     ):
         grants.setdefault(r["key"], set()).add(r["perm"])
     assert set(grants) == set(ROLES)
+    approvals = {}
+    for r in admin_conn.execute(
+        "SELECT r.key, ap.perm FROM approval_policy ap JOIN role r ON r.id = ap.role_id "
+        "WHERE ap.tenant_id IS NULL AND ap.mode = 'approval'"
+    ):
+        approvals.setdefault(r["key"], set()).add(r["perm"])
     for ep in ENDPOINTS:
         assert set(ep["allow"]) == {role for role in ROLES if ep["perm"] in grants[role]}, ep
+        if any(ep["perm"] in perms for perms in approvals.values()) or "approval" in ep:
+            assert set(ep.get("approval", [])) == {
+                role for role in ROLES if ep["perm"] in approvals.get(role, set())
+            }, ep
 
 
 @requires_db
@@ -99,6 +109,11 @@ def test_role_can_or_cannot_call_endpoint(client, make_tenant, fake_catalog, adm
     resp = client.request(ep["method"], _fill(ep["path"], slots), headers=h, **kwargs)
     if role in ep["allow"]:
         assert resp.status_code in ep["expect"], resp.text
+    elif role in ep.get("approval", []):
+        assert resp.status_code == 403, resp.text
+        detail = resp.json()["detail"]
+        assert detail["approval_required"] == ep["perm"], detail
+        assert len(detail["payload_hash"]) == 64
     else:
         assert resp.status_code == 403, resp.text
         assert resp.json() == {"detail": {"missing": ep["perm"]}}

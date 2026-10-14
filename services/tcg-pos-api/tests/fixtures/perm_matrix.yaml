@@ -151,3 +151,45 @@ endpoints:
     perm: staff.manage
     allow: [owner, manager]
     expect: [404]
+
+  # --- store credit corrections (approval-gated) --------------------------------
+  # `approval`: roles whose default approval_policy (0012) lets them do this
+  # only with a manager's approval — they get 403 {"approval_required": perm}.
+  - method: POST
+    path: /v1/customers/{customer_id}/credit/adjust
+    route: /v1/customers/{customer_id}/credit/adjust
+    perm: credit.adjust
+    allow: [owner, manager]
+    approval: [cashier]
+    expect: [200]
+    body: {delta_cents: 100, reason: matrix}
+
+  # --- registers ---------------------------------------------------------------
+  - method: GET
+    path: /v1/registers
+    perm: registers.manage
+    allow: [owner, manager]
+    expect: [200]
+  - method: POST
+    path: /v1/registers
+    perm: registers.manage
+    allow: [owner, manager]
+    expect: [201]
+    body: {location_id: "{location_id}", name: "Register {hex}"}
+  - method: POST
+    path: /v1/registers/{uuid}/enroll
+    route: /v1/registers/{register_id}/enroll
+    perm: registers.manage
+    allow: [owner, manager]
+    expect: [404]
+  - method: GET
+    path: /v1/registers/devices
+    perm: registers.manage
+    allow: [owner, manager]
+    expect: [200]
+  - method: DELETE
+    path: /v1/registers/devices/{uuid}
+    route: /v1/registers/devices/{device_id}
+    perm: registers.manage
+    allow: [owner, manager]
+    expect: [404]

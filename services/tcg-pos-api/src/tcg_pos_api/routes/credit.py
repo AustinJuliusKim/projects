@@ -1,11 +1,13 @@
 import uuid
+from typing import Annotated
 
 import psycopg
 from fastapi import APIRouter, HTTPException
 
 from tcg_pos_api import queries
+from tcg_pos_api.auth.approvals import ApprovalGate, require_or_approval
 from tcg_pos_api.deps import Perm, TenantConn, require
-from tcg_pos_api.routes.models import CreditBalance, CreditChange
+from tcg_pos_api.routes.models import CreditAdjust, CreditBalance, CreditChange
 
 router = APIRouter(prefix="/customers", tags=["store credit"])
 
@@ -63,7 +65,7 @@ def issue(conn: TenantConn, customer_id: uuid.UUID, body: CreditChange) -> Credi
 
 
 # Redeeming is spending credit as tender, which is part of selling: pos.sell.
-# (Correcting a balance downward without a sale is credit.adjust, later.)
+# (Correcting a balance without a sale is credit.adjust, below.)
 @router.post(
     "/{customer_id}/credit/redeem",
     response_model=CreditBalance,
@@ -71,3 +73,17 @@ def issue(conn: TenantConn, customer_id: uuid.UUID, body: CreditChange) -> Credi
 )
 def redeem(conn: TenantConn, customer_id: uuid.UUID, body: CreditChange) -> CreditBalance:
     return _apply(conn, customer_id, -body.amount_cents, body.reason, "credit.redeem")
+
+
+# A correction to a balance (either direction) that isn't a sale or an
+# issue. Cashiers get it only with a manager's approval by default (the
+# cashier approval_policy row in 0012); a store's own policy row can set a
+# limit_cents under which no approval is needed.
+@router.post("/{customer_id}/credit/adjust", response_model=CreditBalance)
+def adjust(
+    gate: Annotated[ApprovalGate, require_or_approval(Perm.CREDIT_ADJUST)],
+    customer_id: uuid.UUID,
+    body: CreditAdjust,
+) -> CreditBalance:
+    gate.authorize(amount_cents=abs(body.delta_cents), payload=body)
+    return _apply(gate.conn, customer_id, body.delta_cents, body.reason, "credit.adjust")
