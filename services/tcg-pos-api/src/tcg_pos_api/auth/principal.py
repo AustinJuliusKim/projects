@@ -19,6 +19,13 @@ Store routes (Session / require) accept one of these credentials in
                           membership. Revoked devices, ended/expired (12 h)
                           or idle (30 min) sessions -> 401.
                           Actor device:<uuid>/user:<uuid>.
+  ApiKey tcgpos_<prefix>_<secret>
+                          a store's API key (0013): looked up by prefix,
+                          secret compared as SHA-256 in constant time,
+                          revoked keys -> 401. The key decides the store
+                          (X-Tenant-Id optional, must match); its own perms
+                          list is the principal's. No user, no role.
+                          Actor apikey:<uuid>.
 
 Every scheme ends the same way: SET LOCAL ROLE tcg_pos_app, app.tenant_id,
 app.user_id, app.actor and app.perms set for this transaction only; the
@@ -34,6 +41,8 @@ PIN sign-in): the device alone, actor device:<uuid>."""
 
 import dataclasses
 import hashlib
+import hmac
+import re
 import uuid
 from collections.abc import Iterator
 from typing import Annotated, Any
@@ -57,7 +66,8 @@ NOT_A_MEMBER = "you are not a member of that store"
 SESSION_TTL_SECONDS = 12 * 3600
 SESSION_IDLE_SECONDS = 30 * 60
 
-SCHEMES = {"bearer": "Bearer", "device": "Device"}
+SCHEMES = {"bearer": "Bearer", "device": "Device", "apikey": "ApiKey"}
+API_KEY_RE = re.compile(r"^tcgpos_([0-9a-f]{12})_([A-Za-z0-9_-]{20,100})$")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -69,10 +79,11 @@ class Principal:
     # None = every location (membership.location_id NULL).
     location_ids: tuple[uuid.UUID, ...] | None
     actor: str
-    # user (bearer token) | device (register device + PIN session)
+    # user (bearer token) | device (register device + PIN session) | apikey
     kind: str = "user"
     device_id: uuid.UUID | None = None
     session_id: uuid.UUID | None = None
+    api_key_id: uuid.UUID | None = None
 
     def has(self, perm: Perm | str) -> bool:
         return str(perm) in self.perms
@@ -282,6 +293,35 @@ def _device_principal(
     )
 
 
+def _api_key_principal(conn: psycopg.Connection, key: str, selector: uuid.UUID | None) -> Principal:
+    invalid = _unauthorized("invalid or revoked API key", "ApiKey")
+    match = API_KEY_RE.match(key)
+    if match is None:
+        raise invalid
+    prefix, secret = match.groups()
+    row = conn.execute("SELECT * FROM resolve_api_key(%s)", (prefix,)).fetchone()
+    if row is None or not hmac.compare_digest(row["secret_hash"], sha256_hex(secret)):
+        raise invalid
+    if selector is not None and selector != row["tenant_id"]:
+        raise HTTPException(403, NOT_A_MEMBER)
+    _set_tenant(conn, row["tenant_id"])
+    conn.execute(
+        "UPDATE api_key SET last_used_at = now() WHERE id = %s "
+        "AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')",
+        (row["id"],),
+    )
+    return Principal(
+        user_id=None,
+        tenant_id=row["tenant_id"],
+        role_key=None,
+        perms=frozenset(row["perms"]),
+        location_ids=None,
+        actor=f"apikey:{row['id']}",
+        kind="apikey",
+        api_key_id=row["id"],
+    )
+
+
 def _connect() -> psycopg.Connection:
     return psycopg.connect(database_url(), row_factory=dict_row, **connect_kwargs())
 
@@ -298,7 +338,7 @@ def _tenant_session(
     transaction commits when the route returns and rolls back if it raises
     (including HTTPException), so ledger + audit writes land together or not
     at all."""
-    scheme, value = _credential(authorization, ("bearer", "device"))
+    scheme, value = _credential(authorization, ("bearer", "device", "apikey"))
     claims = None
     if scheme == "bearer":
         claims = _verify_bearer(value)  # before taking a connection
@@ -310,8 +350,10 @@ def _tenant_session(
             conn.execute(f"SET LOCAL ROLE {APP_ROLE}")
             if scheme == "bearer":
                 principal = _bearer_principal(conn, claims, selector)
-            else:
+            elif scheme == "device":
                 principal = _device_principal(conn, value, x_register_session, selector)
+            else:
+                principal = _api_key_principal(conn, value, selector)
             set_actor(conn, principal.actor, user_id=principal.user_id)
             conn.execute(
                 "SELECT set_config('app.perms', %s, true)", (",".join(sorted(principal.perms)),)

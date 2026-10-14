@@ -669,3 +669,37 @@ class CreditAdjust(BaseModel):
         if v == 0:
             raise ValueError("delta_cents must not be 0")
         return v
+
+
+# --- API keys (A4) ----------------------------------------------------------------
+
+ApiKeyName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+    AfterValidator(no_nul),
+]
+
+
+class ApiKeyCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: ApiKeyName
+    perms: list[str] = Field(..., min_length=1, max_length=64)
+
+
+class ApiKey(BaseModel):
+    id: uuid.UUID
+    name: str
+    prefix: str
+    perms: list[str]
+    status: Literal["active", "revoked"]
+    created_by: uuid.UUID
+    created_at: datetime.datetime
+    last_used_at: datetime.datetime | None
+    revoked_at: datetime.datetime | None
+
+
+class ApiKeyCreated(ApiKey):
+    """`key` is shown once: send it as `Authorization: ApiKey <key>`."""
+
+    key: str

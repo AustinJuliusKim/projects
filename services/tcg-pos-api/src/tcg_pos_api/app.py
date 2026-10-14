@@ -7,6 +7,7 @@ from tcg_pos_api.auth import tokens
 from tcg_pos_api.config import env_name
 from tcg_pos_api.routes import (
     account,
+    api_keys,
     credit,
     dev,
     health,
@@ -77,6 +78,7 @@ def create_app() -> FastAPI:
     app.include_router(account.router, prefix="/v1")
     app.include_router(staff.router, prefix="/v1")
     app.include_router(registers.router, prefix="/v1")
+    app.include_router(api_keys.router, prefix="/v1")
     app.include_router(inventory.router, prefix="/v1")
     app.include_router(imports.router, prefix="/v1")
     app.include_router(pricing.router, prefix="/v1")

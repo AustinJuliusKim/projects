@@ -193,3 +193,22 @@ endpoints:
     perm: registers.manage
     allow: [owner, manager]
     expect: [404]
+
+  # --- API keys ----------------------------------------------------------------
+  - method: POST
+    path: /v1/api-keys
+    perm: apikeys.manage
+    allow: [owner]
+    expect: [201]
+    body: {name: "matrix {hex}", perms: [inventory.read]}
+  - method: GET
+    path: /v1/api-keys
+    perm: apikeys.manage
+    allow: [owner]
+    expect: [200]
+  - method: DELETE
+    path: /v1/api-keys/{uuid}
+    route: /v1/api-keys/{key_id}
+    perm: apikeys.manage
+    allow: [owner]
+    expect: [404]
