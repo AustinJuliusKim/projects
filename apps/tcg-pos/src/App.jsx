@@ -15,6 +15,7 @@ import {
 } from "@mantine/core";
 
 import { configureApi, devLogin, getMe, listRoles, syncIdentity } from "./api.js";
+import { ApprovalProvider } from "./Approval.jsx";
 import {
   beginCognitoSignIn,
   completeCognitoSignIn,
@@ -27,6 +28,8 @@ import { currentAuth, currentStore, initialState, reducer, screen } from "./auth
 import CreateStore from "./CreateStore.jsx";
 import InviteAccept from "./InviteAccept.jsx";
 import { permsForRole, SYSTEM_ROLE_PERMS, visibleNav } from "./perms.js";
+import RegisterLock from "./RegisterLock.jsx";
+import RegisterMode from "./RegisterMode.jsx";
 import {
   authConfig,
   DEVICE_KEY,
@@ -233,8 +236,10 @@ export default function App() {
     );
   } else if (view === "backoffice") {
     body = <BackOffice state={state} dispatch={dispatch} onSignOut={signOut} onOpenRegister={openRegister} />;
+  } else if (view === "register_locked") {
+    body = <RegisterLock device={state.device} notice={state.notice} dispatch={dispatch} />;
   } else {
-    body = null;
+    body = <RegisterMode state={state} dispatch={dispatch} />;
   }
 
   return <MantineProvider defaultColorScheme="auto">{body}</MantineProvider>;
@@ -338,7 +343,7 @@ function BackOffice({ state, dispatch, onSignOut, onOpenRegister }) {
   );
 
   return (
-    <>
+    <ApprovalProvider requester={null}>
       <Workspace
         key={state.tenantId}
         header={header}
@@ -355,6 +360,6 @@ function BackOffice({ state, dispatch, onSignOut, onOpenRegister }) {
           onCancel={() => setCreating(false)}
         />
       </Modal>
-    </>
+    </ApprovalProvider>
   );
 }

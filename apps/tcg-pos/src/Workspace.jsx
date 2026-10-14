@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { AppShell, Burger, Group, NavLink, Stack, Text, TextInput } from "@mantine/core";
 
+import CreditPage from "./CreditPage.jsx";
 import ImportPage from "./ImportPage.jsx";
 import InventoryPage from "./InventoryPage.jsx";
 import PinPage from "./PinPage.jsx";
 import ReceivePage from "./ReceivePage.jsx";
+import RegistersPage from "./RegistersPage.jsx";
 import TeamPage from "./TeamPage.jsx";
 import { settlePage } from "./perms.js";
 
@@ -53,7 +55,9 @@ export const PAGES = {
       <ImportPage tenantId={ctx.tenantId} locationId={ctx.locationId} />
     </Stack>
   ),
+  credit: (ctx) => <CreditPage ctx={ctx} />,
   team: (ctx) => <TeamPage ctx={ctx} />,
+  registers: (ctx) => <RegistersPage ctx={ctx} />,
   pin: (ctx) => <PinPage ctx={ctx} />,
 };
 
