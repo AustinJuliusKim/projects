@@ -13,6 +13,7 @@ from tcg_pos_api.routes import (
     imports,
     inventory,
     pricing,
+    staff,
     storefront,
     storefront_settings,
     web_orders,
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(StripApiPrefix)
     app.include_router(account.router, prefix="/v1")
+    app.include_router(staff.router, prefix="/v1")
     app.include_router(inventory.router, prefix="/v1")
     app.include_router(imports.router, prefix="/v1")
     app.include_router(pricing.router, prefix="/v1")

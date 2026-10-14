@@ -109,3 +109,45 @@ endpoints:
     perm: web_orders.fulfill
     allow: [owner, manager, cashier]
     expect: [404]
+
+  # --- staff, invites, roles ---------------------------------------------------
+  - method: GET
+    path: /v1/roles
+    perm: staff.manage
+    allow: [owner, manager]
+    expect: [200]
+  - method: GET
+    path: /v1/staff
+    perm: staff.manage
+    allow: [owner, manager]
+    expect: [200]
+  - method: PATCH
+    path: /v1/staff/{uuid}
+    route: /v1/staff/{user_id}
+    perm: staff.manage
+    allow: [owner, manager]
+    expect: [404]
+    body: {status: disabled}
+  - method: DELETE
+    path: /v1/staff/{uuid}
+    route: /v1/staff/{user_id}
+    perm: staff.manage
+    allow: [owner, manager]
+    expect: [404]
+  - method: POST
+    path: /v1/invites
+    perm: staff.manage
+    allow: [owner, manager]
+    expect: [201]
+    body: {email: "{hex}@example.test", role: cashier}
+  - method: GET
+    path: /v1/invites
+    perm: staff.manage
+    allow: [owner, manager]
+    expect: [200]
+  - method: DELETE
+    path: /v1/invites/{uuid}
+    route: /v1/invites/{invite_id}
+    perm: staff.manage
+    allow: [owner, manager]
+    expect: [404]

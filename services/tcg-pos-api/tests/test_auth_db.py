@@ -311,6 +311,7 @@ def test_create_store_makes_the_caller_owner(client, admin_conn):
     # The new owner can use it straight away; nobody else can.
     sel = {**h, "X-Tenant-Id": tenant}
     assert client.get("/v1/inventory", headers=sel).json()["total"] == 0
+    assert client.get("/v1/staff", headers=sel).json()[0]["role"] == "owner"
     assert (
         client.get(
             "/v1/inventory", headers={**bearer("stranger"), "X-Tenant-Id": tenant}
