@@ -62,7 +62,9 @@ def create_app() -> FastAPI:
             "Card-shop POS: multi-tenant inventory with an append-only ledger, "
             "store credit, and an audit log. Money is integer cents. Staff "
             "routes take `Authorization: Bearer <access token>` plus "
-            "`X-Tenant-Id` to pick one of the caller's stores."
+            "`X-Tenant-Id` to pick one of the caller's stores, or a register's "
+            "`Authorization: Device <secret>` + `X-Register-Session`, or "
+            "`Authorization: ApiKey <key>`."
         ),
     )
     # TODO(auth): origins open while there is no deployed app; pin to the POS

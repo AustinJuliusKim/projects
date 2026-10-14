@@ -240,9 +240,103 @@ Built as planned except where noted; each deviation says why.
 - `GET /v1/me`/`POST /v1/stores`/`POST /v1/invites/accept` are the three
   signed-in-but-storeless routes; `tests/test_route_coverage.py` holds that list.
 
-Open for A3+: where Cognito users' email comes from (access tokens have none —
-pre-token-generation trigger adding `email`, or the SPA posting the ID token
-to an `/v1/me/profile`-style endpoint); `create_store` has no rate limit or
-cap per user; custom roles (`roles.manage`) must forbid system keys; the
-`apps/tcg-pos` frontend still sends `X-Actor` and has no login (A5), so it
-can't call staff routes until then.
+Open for A3+ (status after A4 in brackets): where Cognito users' email comes
+from [done: `POST /v1/me/identity`, below]; `create_store` has no rate limit
+or cap per user [done]; custom roles (`roles.manage`) must forbid system keys
+[still open — no custom-role API yet]; the `apps/tcg-pos` frontend still
+sends `X-Actor` and has no login [A5].
+
+## Implementation notes (A3 + A4, 2026-10-14)
+Built as planned except where noted.
+
+- **Migrations:** 0012_register_auth, 0013_api_keys, and an extra
+  **0014_user_identity** (`set_user_identity(sub, email, name)` — app_user
+  is owner-only, so the ID-token sync needs a definer function; kept out of
+  0013 so each commit is one feature).
+- **Credential dispatch** (`auth/principal.py`): `_tenant_session` reads
+  `Authorization` and handles `Bearer` (as before), `Device <secret>` +
+  `X-Register-Session`, and `ApiKey tcgpos_<prefix>_<secret>`. For Device
+  and ApiKey the credential decides the store; `X-Tenant-Id` is optional
+  and must match (403 otherwise). `Principal` gained `kind`
+  (`user|device|apikey`), `device_id`, `session_id`, `api_key_id`;
+  `user_id`/`role_key` are `None` for API keys.
+- **Device/session lookup** is one definer function,
+  `resolve_register(secret_hash, session_hash, idle_seconds)`, returning the
+  device's store plus a `session_status` (ok/none/invalid/ended/expired/
+  idle); the app role can't read `secret_hash`/`token_hash`. The session
+  user's permissions are then read as `tcg_pos_app` under RLS
+  (`member_grants`). Device 401s carry `{"reason": ...}` so the register
+  can tell "re-enroll" from "show the PIN pad". `last_seen_at` is bumped in
+  the request transaction (sessions every request; devices and API keys at
+  most once a minute), so a request that fails doesn't count as activity.
+- **Who-did-it columns** (`register_device.enrolled_by`,
+  `approval.requested_by`, `api_key.created_by`) default from
+  `app.user_id` and aren't insertable by the app role.
+- **Registers:** the plan had no way to create a register, so `GET/POST
+  /v1/registers` (`registers.manage`) were added. Enroll returns
+  `{device, device_secret}`.
+- **PINs:** per store (`staff_pin` keyed tenant+user, FK to membership).
+  `PUT /v1/me/pin` is a new route category, *member*: any active member,
+  bearer token only (not over a register session), no permission;
+  `tests/test_route_coverage.py` has MEMBER, DEVICE and REGISTER_SESSION
+  lists next to PUBLIC/USER_ONLY. Trivial = one digit repeated, a repeated
+  2/3-digit block, or a straight run. Lockout = 5th consecutive failure
+  locks 1 min, each further failure doubles (cap 1 h); a correct PIN or a
+  new PIN clears it. PIN failures are **returned** (403 `wrong_pin` with
+  `attempts_left`, 423 `pin_locked` with `retry_after` + `Retry-After`),
+  not raised, so the fail count and the `pin.fail` audit row commit. Users
+  without a PIN cost a dummy Argon2 verify. Per-device limit:
+  `REGISTER_PIN_LIMIT` (default 10/min) through a new generic
+  `ratelimit.enforce(bucket, limit, window)`.
+- **Approval policy semantics** (the plan only named the modes): no row =
+  plain permission; `deny` = never; `approval` = approval needed unless
+  `amount <= limit_cents`; `allow` = directly up to `limit_cents` (NULL =
+  unlimited), approval above it. A policy row can therefore let a role act
+  on a permission it lacks (that's how the cashier gets credit.adjust with
+  approval) — a future policy-editing API must apply grantability rules.
+  System defaults are `tenant_id IS NULL` rows; a store row for the same
+  role+perm wins. No policy API yet (SQL only).
+- **Payload hash is computed by the server, both times.** The 403
+  `approval_required` response includes `payload_hash` (SHA-256 of
+  canonical JSON of perm, method, path, amount and the validated body);
+  the client echoes it to `POST /v1/approvals` and never hashes anything
+  itself. Consumption is one UPDATE (same store, perm, hash, amount,
+  requester, device, unconsumed, unexpired) and then re-checks the
+  approver (active, holds perm + `approve.override`, ≠ requester); any
+  failure → the same 403 plus `"approval_error": "invalid"`. A failed
+  write rolls the consumption back. Approvals need a register session on
+  both sides (requester's session; approver's PIN on that device);
+  bearer-token users get the 403 but can't satisfy it.
+- **Reusable gate:** `auth/approvals.require_or_approval(Perm.X)` →
+  `ApprovalGate.authorize(amount_cents=..., payload=body)`; it declares
+  `required_perm` so coverage and the matrix treat it like `require`. Wired
+  into the new `POST /v1/customers/{id}/credit/adjust` (`{delta_cents,
+  reason}`, amount = |delta|). The perm matrix has an `approval:` column
+  (cashier on credit adjust) checked against the seeded policy rows.
+- **API keys:** prefix = 12 hex chars, secret = 32 random bytes urlsafe;
+  perms ⊆ creator's at creation **and** never staff/roles/registers/
+  apikeys/approve.override/billing (a key administers no people; this also
+  keeps `user_id=None` principals out of the staff code). Keys survive their
+  creator leaving — revoke on offboarding (OPS.md). No approval policy
+  applies to keys (no role).
+- **Email for Cognito users:** `POST /v1/me/identity {id_token}` (user-only
+  route): RS256 against the same JWKS, iss, `token_use == "id"`, `aud` ∈
+  AUTH_CLIENT_IDS, `sub` == the bearer token's, `email_verified` true
+  (bool or "true"); stores email + `name` (or given+family). Errors are 422
+  `{"reason": "invalid_id_token", "message": ...}`. `/v1/dev/login` now
+  returns `id_token` too (`{email, name?}` in), and
+  `scripts/dev_token.py --id` mints one. The pool requires verification
+  before an email change takes effect, so `email_verified` can be trusted.
+- **Store creation:** `MAX_OWNED_STORES` (default 5, active owner
+  memberships, under a per-user advisory lock → 403 `store_limit`) and
+  `STORE_CREATE_LIMIT` per hour (default 3 → 429). `create_store` now gets
+  the stored email rather than the token's.
+- **template.yaml:** `UserPoolTier: LITE` is a supported property (checked
+  with cfn-lint 1.32.0's schema; template lints clean). Email sign-in,
+  self-signup, auto-verified email, verification required before email
+  change, `DeletionProtection` + `Retain`; optional Google IdP behind
+  `GoogleClientId` (condition); SPA client (no secret, code flow, PKCE is
+  the client's job — Cognito has no "require PKCE" client property),
+  hosted-UI domain. Function env: `AUTH_ISSUER`, `AUTH_CLIENT_IDS`, `ENV`
+  (`prod|staging` only), `APP_BASE_URL`. Not deployed; still not
+  deployable (OPS.md).
