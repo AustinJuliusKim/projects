@@ -5,3 +5,7 @@ fastapi==0.141.1
 httpx==0.28.1
 mangum==0.21.0
 psycopg[binary]==3.2.9
+# Access-token verification (auth/tokens.py): RS256 + JWKS. cryptography is
+# pinned too because PyJWT[crypto] only bounds it from below.
+PyJWT[crypto]==2.14.0
+cryptography==50.0.1

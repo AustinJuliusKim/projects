@@ -1,0 +1,40 @@
+"""The permission vocabulary. migrations/0011_rbac.sql seeds the same keys
+into the `permission` table (a test asserts the two are equal); system roles
+grant subsets of them there. Routes declare one with deps.require()."""
+
+from enum import StrEnum
+
+
+class Perm(StrEnum):
+    POS_SELL = "pos.sell"
+    POS_DISCOUNT = "pos.discount"
+    POS_PRICE_OVERRIDE = "pos.price_override"
+    POS_REFUND = "pos.refund"
+    POS_VOID = "pos.void"
+    POS_DRAWER_OPEN = "pos.drawer_open"
+    CREDIT_READ = "credit.read"
+    CREDIT_ISSUE = "credit.issue"
+    CREDIT_ADJUST = "credit.adjust"
+    BUYLIST_CREATE = "buylist.create"
+    BUYLIST_PAYOUT_CREDIT = "buylist.payout_credit"
+    BUYLIST_PAYOUT_CASH = "buylist.payout_cash"
+    INVENTORY_READ = "inventory.read"
+    INVENTORY_ADJUST = "inventory.adjust"
+    INVENTORY_PRICE_EDIT = "inventory.price_edit"
+    PRICING_RULES_MANAGE = "pricing.rules_manage"
+    IMPORTS_RUN = "imports.run"
+    WEB_ORDERS_READ = "web_orders.read"
+    WEB_ORDERS_FULFILL = "web_orders.fulfill"
+    STOREFRONT_MANAGE = "storefront.manage"
+    CUSTOMERS_READ = "customers.read"
+    CUSTOMERS_MANAGE = "customers.manage"
+    REPORTS_VIEW = "reports.view"
+    AUDIT_READ = "audit.read"
+    STAFF_MANAGE = "staff.manage"
+    ROLES_MANAGE = "roles.manage"
+    REGISTERS_MANAGE = "registers.manage"
+    APIKEYS_MANAGE = "apikeys.manage"
+    CHANNELS_MANAGE = "channels.manage"
+    SETTINGS_MANAGE = "settings.manage"
+    BILLING_MANAGE = "billing.manage"
+    APPROVE_OVERRIDE = "approve.override"

@@ -1,3 +1,6 @@
 # setuptools editable-install metadata (root .gitignore covers .venv/,
 # __pycache__/, *.py[cod])
 *.egg-info/
+# Local dev token issuer key pair (scripts/dev_token.py, auth/dev.py) — a
+# private key: never commit it.
+.dev/
