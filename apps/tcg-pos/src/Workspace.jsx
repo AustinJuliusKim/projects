@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AppShell, Burger, Group, NavLink, Stack, Text, TextInput } from "@mantine/core";
 
+import ApiKeysPage from "./ApiKeysPage.jsx";
 import CreditPage from "./CreditPage.jsx";
 import ImportPage from "./ImportPage.jsx";
 import InventoryPage from "./InventoryPage.jsx";
@@ -58,6 +59,7 @@ export const PAGES = {
   credit: (ctx) => <CreditPage ctx={ctx} />,
   team: (ctx) => <TeamPage ctx={ctx} />,
   registers: (ctx) => <RegistersPage ctx={ctx} />,
+  apikeys: (ctx) => <ApiKeysPage ctx={ctx} />,
   pin: (ctx) => <PinPage ctx={ctx} />,
 };
 
