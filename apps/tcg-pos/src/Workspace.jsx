@@ -3,7 +3,9 @@ import { AppShell, Burger, Group, NavLink, Stack, Text, TextInput } from "@manti
 
 import ImportPage from "./ImportPage.jsx";
 import InventoryPage from "./InventoryPage.jsx";
+import PinPage from "./PinPage.jsx";
 import ReceivePage from "./ReceivePage.jsx";
+import TeamPage from "./TeamPage.jsx";
 import { settlePage } from "./perms.js";
 
 // The location the stock pages work at: typed in the back office (there's
@@ -51,6 +53,8 @@ export const PAGES = {
       <ImportPage tenantId={ctx.tenantId} locationId={ctx.locationId} />
     </Stack>
   ),
+  team: (ctx) => <TeamPage ctx={ctx} />,
+  pin: (ctx) => <PinPage ctx={ctx} />,
 };
 
 // The signed-in layout shared by the back office and register mode: a
