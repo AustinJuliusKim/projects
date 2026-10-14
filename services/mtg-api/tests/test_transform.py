@@ -97,3 +97,18 @@ def test_ruling_row_hashes_comment():
     row = transform.ruling_row(rulings[0])
     assert row["oracle_id"]
     assert row["comment_hash"] == transform.ruling_row(rulings[0])["comment_hash"]
+
+
+def test_printing_row_keeps_marketplace_ids():
+    card = next(
+        c
+        for c in load_jsonl("default_sample.jsonl")
+        if c.get("tcgplayer_id") and c.get("cardmarket_id")
+    )
+    row = transform.printing_row(card)
+    assert row["tcgplayer_id"] == card["tcgplayer_id"]
+    assert row["cardmarket_id"] == card["cardmarket_id"]
+    assert row["tcgplayer_etched_id"] == card.get("tcgplayer_etched_id")
+    moved = copy.deepcopy(card)
+    moved["tcgplayer_id"] = card["tcgplayer_id"] + 1
+    assert transform.printing_row(moved)["content_hash"] != row["content_hash"]

@@ -128,6 +128,9 @@ def printing_row(card: dict[str, Any]) -> dict[str, Any] | None:
         "image_small": images.get("small"),
         "image_normal": images.get("normal"),
         "image_status": card.get("image_status"),
+        "tcgplayer_id": card.get("tcgplayer_id"),
+        "tcgplayer_etched_id": card.get("tcgplayer_etched_id"),
+        "cardmarket_id": card.get("cardmarket_id"),
     }
     # Hash before merging prices: they churn every bulk refresh and update
     # via a separate guarded statement, so they must not perturb the hash.

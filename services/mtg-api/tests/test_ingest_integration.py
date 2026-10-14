@@ -149,3 +149,50 @@ def test_rulings_reload_is_stable(conn):
     n = count(conn, "SELECT count(*) FROM rulings")
     ingest_rulings(conn, rulings)
     assert count(conn, "SELECT count(*) FROM rulings") == n
+
+
+def test_marketplace_ids_land_and_price_change_stamps_price_updated_at(conn):
+    from mtg_api.ingest.run import ingest_default
+
+    objects = copy.deepcopy(load_jsonl("default_sample.jsonl"))
+    ingest_default(conn, objects)  # undo earlier tests' price mutations
+    with_ids = count(conn, "SELECT count(*) FROM printings WHERE tcgplayer_id IS NOT NULL")
+    assert with_ids > 0
+    target = next(c for c in objects if c.get("tcgplayer_id") and c["name"] != "Black Lotus")
+    row = conn.execute(
+        "SELECT tcgplayer_id, cardmarket_id, price_updated_at FROM printings WHERE id = %s",
+        (target["id"],),
+    ).fetchone()
+    assert row[0] == target["tcgplayer_id"]
+    assert row[1] == target.get("cardmarket_id")
+    before = row[2]
+
+    # Unchanged prices leave the stamp alone; a changed one bumps it.
+    assert ingest_default(conn, objects)["updated"] == 0
+    unchanged = conn.execute(
+        "SELECT price_updated_at FROM printings WHERE id = %s", (target["id"],)
+    ).fetchone()[0]
+    assert unchanged == before
+    target["prices"] = {**(target.get("prices") or {}), "usd": "4242.42"}
+    assert ingest_default(conn, objects)["updated"] == 1
+    after = conn.execute(
+        "SELECT price_updated_at FROM printings WHERE id = %s", (target["id"],)
+    ).fetchone()[0]
+    assert after is not None and (before is None or after > before)
+
+
+def test_price_schema_seeds_lanes_and_partitions(conn):
+    lanes = dict(conn.execute("SELECT code, lane FROM price_sources").fetchall())
+    assert lanes["justtcg"] == "licensed"
+    assert lanes["tcgcsv"] == "qa-only"
+    assert lanes["mtgjson_tcgplayer"] == "open"
+    current_part = conn.execute(
+        "SELECT to_regclass('price_daily_' || to_char(current_date, 'YYYY_MM'))"
+    ).fetchone()[0]
+    assert current_part is not None
+    # Idempotent: a second call over the same range creates nothing.
+    created = conn.execute(
+        "SELECT ensure_price_partitions(current_date, current_date)"
+    ).fetchone()[0]
+    assert created == 0
+    conn.rollback()

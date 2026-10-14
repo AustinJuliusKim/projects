@@ -57,6 +57,9 @@ PRINTING_COLS = [
     "image_small",
     "image_normal",
     "image_status",
+    "tcgplayer_id",
+    "tcgplayer_etched_id",
+    "cardmarket_id",
     "content_hash",
 ]
 
@@ -166,7 +169,7 @@ def update_prices(conn: psycopg.Connection, batch: list[dict[str, Any]]) -> int:
     query = sql.SQL(
         "UPDATE printings p SET price_usd = v.usd::numeric, "
         "price_usd_foil = v.usd_foil::numeric, price_eur = v.eur::numeric, "
-        "price_tix = v.tix::numeric "
+        "price_tix = v.tix::numeric, price_updated_at = now() "
         "FROM (VALUES {values}) AS v(id, usd, usd_foil, eur, tix) "
         "WHERE p.id = v.id::uuid AND "
         "(p.price_usd, p.price_usd_foil, p.price_eur, p.price_tix) IS DISTINCT FROM "
