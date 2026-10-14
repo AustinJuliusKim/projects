@@ -1,6 +1,8 @@
 // Same-origin /api in prod (CloudFront /api/* behavior → the mtg-api
 // HttpApi; Mangum strips the prefix). VITE_API_BASE overrides for direct
 // execute-api access; the vite dev server proxies /api → localhost:8000.
+import { chunk } from "./prices.js";
+
 const env = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
 export const API_BASE = env.VITE_API_BASE || "/api";
 
@@ -40,6 +42,28 @@ export const getPrintings = (oracleId, opts) =>
 export const getRulings = (oracleId, opts) =>
   getJSON(`/v1/cards/${oracleId}/rulings`, undefined, opts);
 export const randomCard = (opts) => getJSON("/v1/cards/random", undefined, opts);
+
+async function postJSON(path, body, { signal } = {}) {
+  const resp = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!resp.ok) {
+    const detail = await resp.json().catch(() => ({}));
+    throw new Error(detail.detail || `API error ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// Prices for printings by Scryfall id; one request per BATCH_MAX ids.
+export const getPrintingPrices = (scryfallIds, opts) =>
+  Promise.all(
+    chunk(scryfallIds).map((ids) =>
+      postJSON("/v1/prices/batch", { items: ids.map((id) => ({ scryfall_id: id })) }, opts),
+    ),
+  );
 
 // True for the error fetch() throws when a request is aborted via
 // AbortController — callers should swallow this, not surface it as a
