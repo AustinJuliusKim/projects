@@ -5,10 +5,22 @@ done yet; check items off as they are.
 
 ## Before any deploy
 
-- [ ] **Replace the `X-Tenant-Id` / `X-Actor` headers with a verified auth
-  claim** (Supabase Auth JWT → tenant id + user id), in `deps.py`. Until
-  then any caller can act as any tenant; `template.yaml` must not be
-  deployed.
+- [x] Replace the `X-Tenant-Id` / `X-Actor` headers with a verified access
+  token + Postgres-resolved membership (docs/AUTH_PLAN.md A1/A2, done
+  2026-10-14). X-Tenant-Id is now only a store selector.
+- [ ] **Identity provider (AUTH_PLAN A4):** Cognito user pool + SPA client in
+  `template.yaml`, and `AUTH_ISSUER` / `AUTH_CLIENT_IDS` on the function
+  (the app refuses to start without `AUTH_ISSUER`, and refuses the dev
+  issuer unless `ENV` is `local`/`test` — never set `ENV=local` on a
+  deployed function). Until then `template.yaml` must not be deployed.
+- [ ] Users' email for invites: Cognito access tokens carry no `email`;
+  feed it to `ensure_app_user` from the ID token / userinfo (A4/A5), or
+  invites can't be accepted.
+- [ ] Invite email delivery (SES; Cognito's default sender is capped
+  ~50/day). Today the accept link is only logged, and only in local/test.
+- [ ] Existing stores need an owner: `scripts/backfill_owner.py --tenant
+  <id> --email <email> --sub <cognito sub>` once per store migrated past
+  `0011_rbac`.
 - [ ] Pin CORS `allow_origins` in `app.py` to the POS app's origin.
 
 ## 1. Database
