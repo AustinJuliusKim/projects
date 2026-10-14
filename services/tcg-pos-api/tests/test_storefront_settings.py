@@ -6,7 +6,7 @@ import uuid
 import psycopg
 import pytest
 
-from conftest import app_conn, headers, requires_db
+from conftest import actor_of, app_conn, headers, requires_db
 
 pytestmark = requires_db
 
@@ -52,7 +52,7 @@ def test_put_creates_then_get_returns_and_audits(client, make_tenant, admin_conn
         (t["id"],),
     ).fetchall()
     assert [a["action"] for a in audit] == ["storefront.update"] * 2
-    assert audit[0]["actor"] == "owner" and audit[0]["before"] is None
+    assert audit[0]["actor"] == actor_of("owner") and audit[0]["before"] is None
     assert audit[1]["before"]["holdback_pct"] == 10 and audit[1]["after"]["holdback_pct"] == 50
 
 

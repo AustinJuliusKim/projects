@@ -445,3 +445,113 @@ class WebOrderPage(BaseModel):
     page: int
     page_size: int
     orders: list[WebOrderStaff]
+
+
+# --- auth: me, stores, staff, invites, roles ----------------------------------
+
+StoreName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+    AfterValidator(no_nul),
+]
+RoleKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,39}$")]
+MemberStatus = Literal["active", "disabled"]
+
+
+class MeUser(BaseModel):
+    id: uuid.UUID
+    email: str | None
+    display_name: str | None
+
+
+class MyStore(BaseModel):
+    tenant_id: uuid.UUID
+    name: str
+    role: str
+    role_name: str
+
+
+class Me(BaseModel):
+    user: MeUser
+    stores: list[MyStore]
+
+
+class StoreCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: StoreName
+    location_name: StoreName = "Main"
+
+
+class Role(BaseModel):
+    id: uuid.UUID
+    key: str
+    name: str
+    is_system: bool
+    perms: list[str]
+
+
+class StaffMember(BaseModel):
+    user_id: uuid.UUID
+    email: str | None
+    display_name: str | None
+    role: str
+    role_name: str
+    status: MemberStatus
+    location_id: uuid.UUID | None
+    invited_by: uuid.UUID | None
+    created_at: datetime.datetime
+
+
+class StaffUpdate(BaseModel):
+    """Change a member's role and/or status. Omitted fields stay as they are."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    role: RoleKey | None = None
+    status: MemberStatus | None = None
+
+
+class InviteCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: Email
+    role: RoleKey
+
+
+InviteStatus = Literal["pending", "accepted", "revoked", "expired"]
+
+
+class Invite(BaseModel):
+    id: uuid.UUID
+    email: str
+    role: str
+    status: InviteStatus
+    expires_at: datetime.datetime
+    invited_by: uuid.UUID
+    accepted_by: uuid.UUID | None
+    created_at: datetime.datetime
+
+
+class InviteAccept(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: Annotated[str, StringConstraints(min_length=16, max_length=200)]
+
+
+class InviteAccepted(BaseModel):
+    tenant_id: uuid.UUID
+    role: str
+
+
+class DevLogin(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: Email
+
+
+class DevToken(BaseModel):
+    access_token: str
+    token_type: Literal["Bearer"] = "Bearer"
+    expires_in: int
+    sub: str

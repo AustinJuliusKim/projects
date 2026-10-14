@@ -4,13 +4,17 @@ import psycopg
 from fastapi import APIRouter, HTTPException
 
 from tcg_pos_api import queries
-from tcg_pos_api.deps import Actor, TenantConn
+from tcg_pos_api.deps import Perm, TenantConn, require
 from tcg_pos_api.routes.models import CreditBalance, CreditChange
 
 router = APIRouter(prefix="/customers", tags=["store credit"])
 
 
-@router.get("/{customer_id}/credit", response_model=CreditBalance)
+@router.get(
+    "/{customer_id}/credit",
+    response_model=CreditBalance,
+    dependencies=[require(Perm.CREDIT_READ)],
+)
 def get_credit(conn: TenantConn, customer_id: uuid.UUID) -> CreditBalance:
     balance = queries.credit_balance(conn, customer_id)
     if balance is None:
@@ -20,7 +24,6 @@ def get_credit(conn: TenantConn, customer_id: uuid.UUID) -> CreditBalance:
 
 def _apply(
     conn: psycopg.Connection,
-    actor: str,
     customer_id: uuid.UUID,
     delta_cents: int,
     reason: str,
@@ -37,11 +40,10 @@ def _apply(
             409, f"insufficient store credit (balance {before}, redeem {-delta_cents})"
         )
     queries.insert_credit_ledger(
-        conn, customer_id=customer_id, delta_cents=delta_cents, reason=reason, actor=actor
+        conn, customer_id=customer_id, delta_cents=delta_cents, reason=reason
     )
     queries.write_audit(
         conn,
-        actor=actor,
         action=action,
         entity="customer_credit",
         entity_id=customer_id,
@@ -51,15 +53,21 @@ def _apply(
     return CreditBalance(customer_id=customer_id, balance_cents=after)
 
 
-@router.post("/{customer_id}/credit/issue", response_model=CreditBalance)
-def issue(
-    actor: Actor, conn: TenantConn, customer_id: uuid.UUID, body: CreditChange
-) -> CreditBalance:
-    return _apply(conn, actor, customer_id, body.amount_cents, body.reason, "credit.issue")
+@router.post(
+    "/{customer_id}/credit/issue",
+    response_model=CreditBalance,
+    dependencies=[require(Perm.CREDIT_ISSUE)],
+)
+def issue(conn: TenantConn, customer_id: uuid.UUID, body: CreditChange) -> CreditBalance:
+    return _apply(conn, customer_id, body.amount_cents, body.reason, "credit.issue")
 
 
-@router.post("/{customer_id}/credit/redeem", response_model=CreditBalance)
-def redeem(
-    actor: Actor, conn: TenantConn, customer_id: uuid.UUID, body: CreditChange
-) -> CreditBalance:
-    return _apply(conn, actor, customer_id, -body.amount_cents, body.reason, "credit.redeem")
+# Redeeming is spending credit as tender, which is part of selling: pos.sell.
+# (Correcting a balance downward without a sale is credit.adjust, later.)
+@router.post(
+    "/{customer_id}/credit/redeem",
+    response_model=CreditBalance,
+    dependencies=[require(Perm.POS_SELL)],
+)
+def redeem(conn: TenantConn, customer_id: uuid.UUID, body: CreditChange) -> CreditBalance:
+    return _apply(conn, customer_id, -body.amount_cents, body.reason, "credit.redeem")

@@ -6,14 +6,24 @@ run beside a local services/mtg-api on :8000 (the catalog it calls):
   MTG_API_BASE=http://localhost:8000 \
     python scripts/serve-local.py
 
-PORT overrides the port.
+PORT overrides the port. Auth defaults to the local dev issuer (ENV=local,
+AUTH_ISSUER=urn:tcg-pos:dev-issuer; key pair created in .dev/auth/ on first
+run): sign in with POST /v1/dev/login or scripts/dev_token.py. Set
+AUTH_ISSUER / AUTH_CLIENT_IDS to try a real Cognito pool instead.
 """
 
 import os
 
 import uvicorn
 
-from tcg_pos_api.app import create_app
+from tcg_pos_api.auth.dev import DEV_ISSUER, ensure_keypair
 
 if __name__ == "__main__":
+    os.environ.setdefault("ENV", "local")
+    os.environ.setdefault("AUTH_ISSUER", DEV_ISSUER)
+    if os.environ["AUTH_ISSUER"] == DEV_ISSUER:
+        ensure_keypair()
+
+    from tcg_pos_api.app import create_app
+
     uvicorn.run(create_app(), host="127.0.0.1", port=int(os.environ.get("PORT", "8001")))

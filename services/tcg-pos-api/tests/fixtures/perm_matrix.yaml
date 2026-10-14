@@ -1,0 +1,111 @@
+# Role x endpoint permission matrix (docs/AUTH_PLAN.md "Permissions").
+# tests/test_perm_matrix.py calls every endpoint as a member of each system
+# role and checks:
+#   * roles in `allow` get one of `expect` (the endpoint really ran);
+#   * every other role gets 403 {"detail": {"missing": <perm>}};
+#   * `perm` is exactly what the route declares with require(), and every
+#     permission-guarded route appears here once.
+# Placeholders: {location_id} {customer_id} {item_id} {uuid} {hex} are filled
+# per test (a fresh store each time). `body` is JSON; `csv: true` sends the
+# TCGplayer fixture CSV.
+
+roles: [owner, manager, buyer, cashier]
+
+endpoints:
+  # --- inventory ---------------------------------------------------------------
+  - method: GET
+    path: /v1/inventory
+    perm: inventory.read
+    allow: [owner, manager, buyer, cashier]
+    expect: [200]
+  - method: POST
+    path: /v1/inventory/adjust
+    perm: inventory.adjust
+    allow: [owner, manager, buyer]
+    expect: [200]
+    body: {location_id: "{location_id}", printing_id: "{uuid}", condition: NM,
+           finish: nonfoil, delta: 1, reason: matrix}
+  - method: PATCH
+    path: /v1/inventory/{item_id}
+    perm: inventory.price_edit
+    allow: [owner, manager, buyer]
+    expect: [200]
+    body: {price_cents: 123}
+  - method: POST
+    path: /v1/inventory/import/tcgplayer?location_id={location_id}
+    route: /v1/inventory/import/tcgplayer
+    perm: imports.run
+    allow: [owner, manager, buyer]
+    expect: [200]
+    csv: true
+
+  # --- pricing -----------------------------------------------------------------
+  - method: GET
+    path: /v1/pricing/rule
+    perm: inventory.read
+    allow: [owner, manager, buyer, cashier]
+    expect: [200]
+  - method: PUT
+    path: /v1/pricing/rule
+    perm: pricing.rules_manage
+    allow: [owner, manager]
+    expect: [200]
+    body: {nm_bp: 10000, lp_bp: 9000, mp_bp: 7500, hp_bp: 6000, dmg_bp: 4000,
+           min_price_cents: 25, round_up_to_cents: 25}
+  - method: GET
+    path: /v1/pricing/suggest?printing_id={uuid}&finish=nonfoil&condition=NM
+    route: /v1/pricing/suggest
+    perm: inventory.read
+    allow: [owner, manager, buyer, cashier]
+    expect: [200]
+
+  # --- store credit ------------------------------------------------------------
+  - method: GET
+    path: /v1/customers/{customer_id}/credit
+    perm: credit.read
+    allow: [owner, manager, buyer, cashier]
+    expect: [200]
+  - method: POST
+    path: /v1/customers/{customer_id}/credit/issue
+    perm: credit.issue
+    allow: [owner, manager, buyer]
+    expect: [200]
+    body: {amount_cents: 100, reason: matrix}
+  - method: POST
+    path: /v1/customers/{customer_id}/credit/redeem
+    perm: pos.sell
+    allow: [owner, manager, buyer, cashier]
+    expect: [409]  # balance 0: the route ran and refused to overdraw
+    body: {amount_cents: 100, reason: matrix}
+
+  # --- storefront + web orders -------------------------------------------------
+  - method: GET
+    path: /v1/storefront-settings
+    perm: storefront.manage
+    allow: [owner, manager]
+    expect: [404]  # no storefront yet
+  - method: PUT
+    path: /v1/storefront-settings
+    perm: storefront.manage
+    allow: [owner, manager]
+    expect: [200]
+    body: {slug: "m-{hex}", display_name: Matrix, published: false,
+           location_id: "{location_id}", holdback_copies: 0, holdback_pct: 0,
+           reservation_hours: 48}
+  - method: GET
+    path: /v1/web-orders
+    perm: web_orders.read
+    allow: [owner, manager, cashier]
+    expect: [200]
+  - method: POST
+    path: /v1/web-orders/{uuid}/picked-up
+    route: /v1/web-orders/{order_id}/picked-up
+    perm: web_orders.fulfill
+    allow: [owner, manager, cashier]
+    expect: [404]
+  - method: POST
+    path: /v1/web-orders/{uuid}/cancel
+    route: /v1/web-orders/{order_id}/cancel
+    perm: web_orders.fulfill
+    allow: [owner, manager, cashier]
+    expect: [404]
