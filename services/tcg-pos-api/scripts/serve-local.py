@@ -12,6 +12,7 @@ run): sign in with POST /v1/dev/login or scripts/dev_token.py. Set
 AUTH_ISSUER / AUTH_CLIENT_IDS to try a real Cognito pool instead.
 """
 
+import logging
 import os
 
 import uvicorn
@@ -25,5 +26,11 @@ if __name__ == "__main__":
         ensure_keypair()
 
     from tcg_pos_api.app import create_app
+
+    # uvicorn only configures its own loggers, so the app's INFO lines were
+    # dropped — including the local-only invite accept link
+    # (routes/staff.deliver_invite).
+    logging.basicConfig(format="%(levelname)s:     %(name)s: %(message)s")
+    logging.getLogger("tcg_pos_api").setLevel(logging.INFO)
 
     uvicorn.run(create_app(), host="127.0.0.1", port=int(os.environ.get("PORT", "8001")))
