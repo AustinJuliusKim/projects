@@ -1,17 +1,23 @@
 """Freeze staged observations into one immutable snapshot.
 
-Flow, all inside the caller's transaction:
-  open_staging()  temp table for this run
-  stage()         COPY each source's Obs rows in (sources may fail independently)
-  take()          SKUs, revisioned snapshot row, price_daily rows that changed,
-                  price_current, change windows, movers, manifest
+Flow:
+  ensure_partitions()  own short transaction; creating a partition locks
+                       price_daily, so it must not sit inside take()
+  open_staging()       temp table for this run
+  stage()              COPY each source's Obs rows in (sources may fail independently)
+  take()               SKUs, revisioned snapshot row, price_daily rows that changed,
+                       price_current with change windows, movers, manifest
 
 price_daily only gains a row where a value differs from the latest row an
 earlier revision wrote for the same (sku, day, source), so re-running a day
-yields YYYY-MM-DD.2 while everything .1 returned stays exactly as it was."""
+yields YYYY-MM-DD.2 while everything .1 returned stays exactly as it was.
+
+A back-dated run (as_of earlier than the newest snapshot) is a correction to
+history: it writes price_daily rows and a manifest but leaves price_current
+and movers, which describe the newest day, alone."""
 
 from collections.abc import Iterable
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -25,11 +31,18 @@ from mtg_api.prices.sources import VALUE_COLS, Obs
 MOVERS_SOURCE = "mtgjson_tcgplayer"
 MOVERS_MIN_CENTS = 100
 MOVERS_MIN_CHANGE = Decimal("0.02")
+# Moves beyond ±1000% are almost always a bad listing or a 1¢ bulk price;
+# they stay in price_current but never headline the movers list.
+MOVERS_MAX_CHANGE = Decimal("10")
 MOVERS_TOP_N = 50
 WINDOWS = (1, 7, 30)
 # A window looks back up to this many extra days for the comparison point,
 # so a source that skipped a day still gets a change figure.
 WINDOW_SLACK_DAYS = 3
+# A current row older than this (relative to the snapshot day) is no longer
+# being refreshed by its feed: excluded from movers, flagged stale by the API.
+# MTGJSON's rows are a day behind on a healthy day, hence 2.
+FRESH_DAYS = 2
 
 STAGING_COLS = (
     "printing_id",
@@ -42,10 +55,21 @@ STAGING_COLS = (
     "mtgjson_uuid",
 )
 
-# The single number a row is ranked and compared on.
-HEADLINE = "coalesce(market_smooth_cents, market_cents, retail_cents, trend_cents, low_cents)"
+# Fields a row is ranked and compared on, in preference order. A change
+# compares the *same* field on both days: the first one present today.
+HEADLINE_COLS = ("market_smooth_cents", "market_cents", "retail_cents", "trend_cents", "low_cents")
+HEADLINE = f"coalesce({', '.join(HEADLINE_COLS)})"
 
 _COLS = ", ".join(VALUE_COLS)
+
+
+def ensure_partitions(conn: psycopg.Connection, as_of: date) -> None:
+    """Monthly partitions around as_of, committed on their own."""
+    conn.execute(
+        "SELECT ensure_price_partitions(%s, %s)",
+        (as_of - timedelta(days=31), as_of + timedelta(days=31)),
+    )
+    conn.commit()
 
 
 def open_staging(conn: psycopg.Connection) -> None:
@@ -75,6 +99,13 @@ def next_revision(conn: psycopg.Connection, game: str, as_of: date) -> int:
     return rev
 
 
+def newest_as_of(conn: psycopg.Connection, game: str) -> date | None:
+    (newest,) = conn.execute(
+        "SELECT max(as_of) FROM price_snapshots WHERE game = %s", (game,)
+    ).fetchone()
+    return newest
+
+
 def take(
     conn: psycopg.Connection,
     *,
@@ -88,6 +119,8 @@ def take(
     """Write the snapshot. Commits nothing; the caller owns the transaction."""
     # One snapshot writer per game at a time; revisions must not race.
     conn.execute("SELECT pg_advisory_xact_lock(hashtext('price_snapshot:' || %s))", (game,))
+    newest = newest_as_of(conn, game)
+    backdated = newest is not None and as_of < newest
     revision = next_revision(conn, game, as_of)
     snapshot_id = f"{as_of.isoformat()}.{revision}"
     (seq,) = conn.execute(
@@ -140,18 +173,52 @@ def take(
         "GROUP BY k.id, s.as_of, ps.id",
         (game,),
     )
+    # Normally a no-op (ensure_partitions ran first); covers backfills.
     conn.execute(
         "SELECT ensure_price_partitions(min(as_of), max(as_of)) FROM price_resolved "
         "HAVING count(*) > 0"
     )
 
+    params = {"seq": seq}
+    written_cte = _written_cte()
+    if backdated:
+        sql = f"WITH {written_cte} "
+    else:
+        sql = f"WITH {written_cte}, {_current_cte()} "
+    written = conn.execute(
+        sql + "SELECT ps.code, count(*) FROM written w "
+        "JOIN price_sources ps ON ps.id = w.source_id GROUP BY ps.code",
+        params,
+    ).fetchall()
+    row_counts = {code: n for code, n in written}
+
+    movers = 0 if backdated else _compute_movers(conn, seq, as_of)
+
+    counts = {
+        **row_counts,
+        "_skus_created": sum(1 for (ins,) in skus_created if ins),
+        "_unmatched_staged": unmatched,
+        "_movers": movers,
+        "_backdated": int(backdated),
+    }
+    conn.execute("UPDATE price_snapshots SET row_counts = %s WHERE seq = %s", (Json(counts), seq))
+    return {
+        "snapshot_id": snapshot_id,
+        "seq": seq,
+        "revision": revision,
+        "backdated": backdated,
+        "row_counts": counts,
+    }
+
+
+def _written_cte() -> str:
+    """price_daily rows whose values differ from the newest earlier revision
+    of the same (sku, day, source)."""
     r_cols = ", ".join(f"r.{c}" for c in VALUE_COLS)
     prev_cols = ", ".join(f"d.{c}" for c in VALUE_COLS)
     cmp_prev = ", ".join(f"prev.{c}" for c in VALUE_COLS)
-    w_cols = ", ".join(f"w.{c}" for c in VALUE_COLS)
-    upd = ", ".join(f"{c} = excluded.{c}" for c in (*VALUE_COLS, "method", "observed_at"))
-    written = conn.execute(
-        "WITH written AS ("
+    return (
+        "written AS ("
         f"  INSERT INTO price_daily (sku_id, as_of, source_id, snapshot_seq, {_COLS}, "
         "    method, observed_at) "
         f"  SELECT r.sku_id, r.as_of, r.source_id, %(seq)s, {r_cols}, r.method, r.observed_at "
@@ -163,77 +230,85 @@ def take(
         "  ) prev ON true "
         f"  WHERE prev.prev_seq IS NULL OR ({cmp_prev}) IS DISTINCT FROM ({r_cols}) "
         "  RETURNING *"
-        "), current_rows AS ("
-        f"  INSERT INTO price_current (sku_id, source_id, snapshot_seq, as_of, {_COLS}, "
-        "    method, observed_at) "
-        "  SELECT DISTINCT ON (w.sku_id, w.source_id) w.sku_id, w.source_id, w.snapshot_seq, "
-        f"    w.as_of, {w_cols}, w.method, w.observed_at "
-        "  FROM written w ORDER BY w.sku_id, w.source_id, w.as_of DESC "
-        "  ON CONFLICT (sku_id, source_id) DO UPDATE SET "
-        f"    snapshot_seq = excluded.snapshot_seq, as_of = excluded.as_of, {upd} "
-        "  WHERE excluded.as_of >= price_current.as_of"
-        ") "
-        "SELECT ps.code, count(*) FROM written w JOIN price_sources ps ON ps.id = w.source_id "
-        "GROUP BY ps.code",
-        {"seq": seq},
-    ).fetchall()
-    row_counts = {code: n for code, n in written}
-
-    _update_changes(conn, seq)
-    movers = _compute_movers(conn, seq)
-
-    counts = {
-        **row_counts,
-        "_skus_created": sum(1 for (ins,) in skus_created if ins),
-        "_unmatched_staged": unmatched,
-        "_movers": movers,
-    }
-    conn.execute("UPDATE price_snapshots SET row_counts = %s WHERE seq = %s", (Json(counts), seq))
-    return {"snapshot_id": snapshot_id, "seq": seq, "revision": revision, "row_counts": counts}
-
-
-def _update_changes(conn: psycopg.Connection, seq: int) -> None:
-    """Change windows for the current rows this snapshot wrote, against the
-    newest revision of the closest earlier day within the window slack."""
-    lookbacks = []
-    sets = []
-    for n in WINDOWS:
-        lookbacks.append(
-            f"LEFT JOIN LATERAL (SELECT {HEADLINE} AS v FROM price_daily d "
-            "WHERE d.sku_id = c.sku_id AND d.source_id = c.source_id "
-            f"AND d.as_of <= c.as_of - {n} AND d.as_of >= c.as_of - {n + WINDOW_SLACK_DAYS} "
-            f"ORDER BY d.as_of DESC, d.snapshot_seq DESC LIMIT 1) p{n} ON true"
-        )
-        sets.append(
-            f"change_{n}d = CASE WHEN ch.p{n} > 0 AND ch.cur IS NOT NULL "
-            f"THEN round((ch.cur - ch.p{n})::numeric / ch.p{n}, 4) END"
-        )
-    picks = ", ".join(f"p{n}.v AS p{n}" for n in WINDOWS)
-    conn.execute(
-        f"UPDATE price_current pc SET {', '.join(sets)} FROM ("
-        f"  SELECT c.sku_id, c.source_id, {HEADLINE} AS cur, {picks} "
-        f"  FROM price_current c {' '.join(lookbacks)} "
-        "  WHERE c.snapshot_seq = %s"
-        ") ch WHERE pc.sku_id = ch.sku_id AND pc.source_id = ch.source_id",
-        (seq,),
+        ")"
     )
 
 
-def _compute_movers(conn: psycopg.Connection, seq: int) -> int:
+def _current_cte() -> str:
+    """Upsert the newest written row per (sku, source) into price_current with
+    its change windows computed in the same statement (one row version per
+    day, not two). Earlier days are visible to the lookbacks; rows written by
+    this same statement are not, which only matters for multi-day backfills
+    (their changes stay null until the next daily run)."""
+    w_cols = ", ".join(f"w.{c}" for c in VALUE_COLS)
+    cur = f"coalesce({', '.join(f'w.{c}' for c in HEADLINE_COLS)})"
+    same_field = (
+        "CASE " + " ".join(f"WHEN w.{c} IS NOT NULL THEN d.{c}" for c in HEADLINE_COLS) + " END"
+    )
+    lookbacks, changes = [], []
+    for n in WINDOWS:
+        lookbacks.append(
+            f"LEFT JOIN LATERAL (SELECT {same_field} AS v FROM price_daily d "
+            "WHERE d.sku_id = w.sku_id AND d.source_id = w.source_id "
+            f"AND d.as_of <= w.as_of - {n} AND d.as_of >= w.as_of - {n + WINDOW_SLACK_DAYS} "
+            f"ORDER BY d.as_of DESC, d.snapshot_seq DESC LIMIT 1) p{n} ON true"
+        )
+        changes.append(
+            f"CASE WHEN p{n}.v > 0 AND {cur} IS NOT NULL "
+            f"THEN round(({cur} - p{n}.v)::numeric / p{n}.v, 4) END"
+        )
+    upd = ", ".join(
+        f"{c} = excluded.{c}"
+        for c in (*VALUE_COLS, "method", "observed_at", "change_1d", "change_7d", "change_30d")
+    )
+    return (
+        "current_rows AS ("
+        f"  INSERT INTO price_current (sku_id, source_id, snapshot_seq, as_of, {_COLS}, "
+        "    method, observed_at, change_1d, change_7d, change_30d) "
+        "  SELECT * FROM ("
+        "    SELECT DISTINCT ON (w.sku_id, w.source_id) w.sku_id, w.source_id, w.snapshot_seq, "
+        f"      w.as_of, {w_cols}, w.method, w.observed_at, {', '.join(changes)} "
+        f"    FROM written w {' '.join(lookbacks)} "
+        "    ORDER BY w.sku_id, w.source_id, w.as_of DESC"
+        "  ) newest "
+        "  ON CONFLICT (sku_id, source_id) DO UPDATE SET "
+        f"    snapshot_seq = excluded.snapshot_seq, as_of = excluded.as_of, {upd} "
+        "  WHERE excluded.as_of >= price_current.as_of"
+        ")"
+    )
+
+
+def _compute_movers(conn: psycopg.Connection, seq: int, as_of: date) -> int:
+    """Rank only rows the feed is still refreshing, so a SKU that dropped out
+    of the feed (or a feed that failed) can't keep repeating as a mover."""
+    fresh_since = as_of - timedelta(days=FRESH_DAYS)
     total = 0
     for n in WINDOWS:
         for direction, order in (("up", "DESC"), ("down", "ASC")):
-            cmp = ">=" if direction == "up" else "<="
-            threshold = MOVERS_MIN_CHANGE if direction == "up" else -MOVERS_MIN_CHANGE
+            if direction == "up":
+                bounds = f"c.change_{n}d >= %(min)s AND c.change_{n}d <= %(max)s"
+            else:
+                bounds = f"c.change_{n}d <= -%(min)s AND c.change_{n}d >= -%(max)s"
             cur = conn.execute(
                 "INSERT INTO price_movers (snapshot_seq, window_days, direction, rank, sku_id, "
                 "source_id, price_cents, change) "
-                f"SELECT %s, %s, %s, row_number() OVER (ORDER BY c.change_{n}d {order}, "
-                f"c.sku_id), c.sku_id, c.source_id, {HEADLINE}, c.change_{n}d "
+                f"SELECT %(seq)s, %(n)s, %(dir)s, row_number() OVER (ORDER BY c.change_{n}d "
+                f"{order}, c.sku_id), c.sku_id, c.source_id, {HEADLINE}, c.change_{n}d "
                 "FROM price_current c JOIN price_sources ps ON ps.id = c.source_id "
-                f"WHERE ps.code = %s AND c.change_{n}d {cmp} %s AND {HEADLINE} >= %s "
-                f"ORDER BY c.change_{n}d {order}, c.sku_id LIMIT %s",
-                (seq, n, direction, MOVERS_SOURCE, threshold, MOVERS_MIN_CENTS, MOVERS_TOP_N),
+                f"WHERE ps.code = %(source)s AND {bounds} AND {HEADLINE} >= %(min_cents)s "
+                "AND c.as_of >= %(fresh)s "
+                f"ORDER BY c.change_{n}d {order}, c.sku_id LIMIT %(top)s",
+                {
+                    "seq": seq,
+                    "n": n,
+                    "dir": direction,
+                    "source": MOVERS_SOURCE,
+                    "min": MOVERS_MIN_CHANGE,
+                    "max": MOVERS_MAX_CHANGE,
+                    "min_cents": MOVERS_MIN_CENTS,
+                    "fresh": fresh_since,
+                    "top": MOVERS_TOP_N,
+                },
             )
             total += cur.rowcount
     return total

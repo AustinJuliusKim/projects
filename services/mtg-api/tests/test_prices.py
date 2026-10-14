@@ -44,6 +44,8 @@ needs_db = pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL n
         ("", None),
         ("abc", None),
         ("-1", None),
+        ("0", None),
+        (0.0, None),
         ("NaN", None),
     ],
 )
@@ -245,3 +247,99 @@ def test_failed_feed_is_recorded_and_others_still_publish(conn):
         (result["snapshot_id"],),
     ).fetchone()
     assert status == ("failed",)
+
+
+# --- Review regressions. Days continue after the ones the tests above made
+# (latest so far: FIXTURE_DAY + 2).
+
+BALLISTA_UUID = "00000000-0000-5000-8000-000000000003"
+
+
+def movers_for(conn, seq):
+    return conn.execute(
+        "SELECT k.printing_id::text, m.window_days, m.direction FROM price_movers m "
+        "JOIN skus k ON k.id = m.sku_id WHERE m.snapshot_seq = %s",
+        (seq,),
+    ).fetchall()
+
+
+@needs_db
+def test_every_feed_failing_publishes_no_snapshot(conn):
+    from mtg_api.prices.run import run_snapshot
+
+    def down(conn, client):
+        raise RuntimeError("down")
+
+    before = conn.execute("SELECT count(*) FROM price_snapshots").fetchone()[0]
+    day = FIXTURE_DAY + timedelta(days=3)
+    result, lines = run_snapshot(conn, {"mtgjson": down, "scryfall": down}, day, None)
+    assert result["snapshot_id"] is None
+    assert conn.execute("SELECT count(*) FROM price_snapshots").fetchone()[0] == before
+    assert any("skipped" in line for line in lines)
+
+
+@needs_db
+def test_snapshot_failure_marks_staged_feeds_failed(conn, monkeypatch):
+    from mtg_api.prices import snapshot
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("take exploded")
+
+    monkeypatch.setattr(snapshot, "take", boom)
+    result = snapshot_day(conn, FIXTURE_DAY + timedelta(days=3))
+    assert result["snapshot_id"] is None
+    statuses = conn.execute(
+        "SELECT status, error FROM ingest_runs WHERE id IN "
+        "(SELECT id FROM ingest_runs WHERE source LIKE 'prices:%%' ORDER BY id DESC LIMIT 3)"
+    ).fetchall()
+    assert {s for s, _ in statuses} == {"failed"}
+    assert all("take exploded" in e for _, e in statuses)
+
+
+@needs_db
+def test_huge_move_neither_aborts_the_snapshot_nor_headlines_movers(conn):
+    penny = snapshot_day(
+        conn,
+        FIXTURE_DAY + timedelta(days=3),
+        scale={BLOOD_UUID: Decimal("0.01") / Decimal("36.68")},
+    )
+    assert penny["snapshot_id"] == "2026-10-11.1"
+    spike = snapshot_day(
+        conn,
+        FIXTURE_DAY + timedelta(days=4),
+        scale={BLOOD_UUID: Decimal("10000.01") / Decimal("36.68")},
+    )
+    assert spike["snapshot_id"] == "2026-10-12.1"
+    blood = current(conn, BLOOD, "nonfoil", "mtgjson_tcgplayer")
+    assert blood.change_1d > 10000
+    assert BLOOD not in {m[0] for m in movers_for(conn, spike["seq"])}
+
+
+@needs_db
+def test_a_card_that_leaves_the_feed_stops_being_a_mover(conn):
+    d = FIXTURE_DAY + timedelta(days=5)
+    jump = snapshot_day(conn, d, scale={BALLISTA_UUID: Decimal("1.5")})
+    assert (BALLISTA, 1, "up") in movers_for(conn, jump["seq"])
+    # Still fresh the next day (MTGJSON runs a day behind on a good day)...
+    next_day = snapshot_day(conn, d + timedelta(days=1), drop={BALLISTA_UUID})
+    assert (BALLISTA, 1, "up") in movers_for(conn, next_day["seq"])
+    # ...but not once it has been missing past FRESH_DAYS.
+    later = snapshot_day(conn, d + timedelta(days=3), drop={BALLISTA_UUID})
+    assert BALLISTA not in {m[0] for m in movers_for(conn, later["seq"])}
+
+
+@needs_db
+def test_backdated_correction_is_history_only(conn):
+    import psycopg
+    from psycopg.rows import dict_row
+
+    from mtg_api.prices import read
+
+    blood_before = current(conn, BLOOD, "nonfoil", "mtgjson_tcgplayer")
+    result = snapshot_day(conn, FIXTURE_DAY, scale={BLOOD_UUID: Decimal("3")}, changelog="late fix")
+    assert result["backdated"] is True and result["snapshot_id"] == "2026-10-08.4"
+    assert current(conn, BLOOD, "nonfoil", "mtgjson_tcgplayer") == blood_before
+    assert movers_for(conn, result["seq"]) == []
+    with psycopg.connect(TEST_DATABASE_URL, row_factory=dict_row) as c:
+        latest = read.latest_snapshot(c, "mtg")
+    assert latest["as_of"] > FIXTURE_DAY

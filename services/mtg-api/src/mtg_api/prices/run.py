@@ -62,9 +62,20 @@ def cardmarket_feed(
 
 
 def scryfall_feed_for(as_of: date) -> Callable:
+    """Scryfall's prices are as fresh as the last card ingest. Rows are dated
+    by when that ingest's bulk file was published, so a stalled ingest leaves
+    them unchanged (and eventually stale) instead of re-stamping yesterday's
+    prices as today's observation."""
+
     def feed(conn: psycopg.Connection, client: httpx.Client) -> tuple[Iterable[Obs], datetime]:
-        (latest,) = conn.execute("SELECT max(price_updated_at) FROM printings").fetchone()
-        return scryfall.observations(conn, as_of), latest
+        (published,) = conn.execute(
+            "SELECT max(bulk_updated_at) FROM ingest_runs WHERE source = 'default' "
+            "AND status = 'ok'"
+        ).fetchone()
+        if published is None:
+            (published,) = conn.execute("SELECT max(price_updated_at) FROM printings").fetchone()
+        day = min(published.astimezone(UTC).date(), as_of) if published else as_of
+        return scryfall.observations(conn, day), published
 
     return feed
 
@@ -93,6 +104,7 @@ def run_snapshot(
     ok, failed = [], []
     staged_by_run: dict[int, int] = {}
     failed_runs: list[int] = []
+    snapshot.ensure_partitions(conn, as_of)
     snapshot.open_staging(conn)
     conn.commit()
     for name, feed in feeds.items():
@@ -117,15 +129,29 @@ def run_snapshot(
             failed_runs.append(run_id)
             lines.append(f"- {name}: **failed** — {err}")
 
-    result = snapshot.take(
-        conn,
-        as_of=as_of,
-        sources_ok=ok,
-        sources_failed=failed,
-        fx=fx_rate,
-        changelog=changelog,
-    )
-    conn.commit()
+    if not ok:
+        # Nothing new to publish: a snapshot made of no data would still
+        # become "latest" and change every ETag.
+        lines.insert(0, "### price snapshot skipped: every feed failed")
+        return {"snapshot_id": None, "row_counts": {}}, lines
+
+    try:
+        result = snapshot.take(
+            conn,
+            as_of=as_of,
+            sources_ok=ok,
+            sources_failed=failed,
+            fx=fx_rate,
+            changelog=changelog,
+        )
+        conn.commit()
+    except Exception as err:
+        conn.rollback()
+        traceback.print_exc()
+        for run_id in staged_by_run:
+            load.finish_run(conn, run_id, "failed", error=f"snapshot failed: {err}")
+        lines.insert(0, f"### price snapshot **failed** — {err}")
+        return {"snapshot_id": None, "row_counts": {}}, lines
     for run_id, staged in staged_by_run.items():
         load.finish_run(conn, run_id, "ok", {"inserted": staged})
     conn.execute(
