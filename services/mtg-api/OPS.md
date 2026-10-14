@@ -259,6 +259,28 @@ actually needed in a hurry.
   Vault note has existed since 2026-08-03; the draft file is deleted in
   this PR.
 
+## 7. Price snapshots (TCG Pricing API phases A–C)
+
+- [ ] Phase A migrations (`0010`, `0011`) go out with the next deploy job.
+  The first "mtg ingest" run afterwards rewrites every printing once
+  (marketplace ids joined `content_hash`); expect ~110k updates in that run's
+  summary, then back to normal.
+- [ ] Before enabling the daily snapshot: measure full-scale size locally
+  (MTGJSON alone stages ~674k rows a day; 650k synthetic `price_daily` rows
+  measured **89MB** with the PK index). That exceeds the Free tier's ~155MB
+  headroom in two days, and 90 days of history (~8GB) would fill Pro's 8GB
+  quota too. Decide storage before enabling: Pro plus a short retention
+  window, or store a row only when a price changes (needs a design change;
+  the vault design assumes a row per day).
+- [ ] Set repo **variable** `TCG_PRICES_ENABLED=true` to let
+  `.github/workflows/tcg-prices-daily.yml` run (21:00 UTC). It reuses the
+  `MTG_DATABASE_URL` secret.
+- [ ] Retention: drop old monthly partitions (`DROP TABLE price_daily_YYYY_MM`)
+  once a retention window is decided; row triggers forbid deleting history
+  row by row. `ensure_price_partitions()` creates future months on each run.
+- Not built yet (design §8 phase B): the 90-day MTGJSON `AllPrices`
+  backfill and the TCGCSV qa-only calibration pull. Both wait on Pro.
+
 ## Watch after go-live
 
 - Supabase dashboard database size: the Free tier is 500MB; at ~200MB
