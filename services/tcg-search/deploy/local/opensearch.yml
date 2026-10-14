@@ -1,0 +1,18 @@
+# /etc/opensearch/opensearch.yml — local dev only (services/tcg-search/OPS.md).
+# Single node on localhost; the security plugin is removed, like local Postgres
+# with trust auth. Never expose this port beyond 127.0.0.1.
+cluster.name: tcg-local
+node.name: wsl
+discovery.type: single-node
+network.host: 127.0.0.1
+http.port: 9200
+# Data on the WSL ext4 disk, never /mnt/c (9p is slow and breaks mmap/locks).
+path.data: /var/lib/opensearch
+path.logs: /var/log/opensearch
+bootstrap.memory_lock: false
+# A typo'd index name must fail, not create a dynamically mapped index.
+action.auto_create_index: false
+# Percentage watermarks misfire on the WSL virtual disk; use absolute free space.
+cluster.routing.allocation.disk.watermark.low: 5gb
+cluster.routing.allocation.disk.watermark.high: 3gb
+cluster.routing.allocation.disk.watermark.flood_stage: 2gb

@@ -1,0 +1,31 @@
+# Template: install_reindex.sh fills @POS_DIR@ and @USER@ and installs it as
+# /etc/systemd/system/tcg-search-listings.service (services/tcg-search/OPS.md §5).
+#
+# Follows the POS search_outbox and keeps the `listings` alias in step with
+# every published storefront's stock (tcg_pos_api.search.listings follow:
+# LISTEN + 5 s poll, single writer via an advisory lock, SIGTERM-safe).
+#   sudo systemctl status tcg-search-listings
+#   journalctl -u tcg-search-listings -f
+[Unit]
+Description=Storefront listings indexer (tcg-pos search_outbox follower)
+After=network.target postgresql.service opensearch.service
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@POS_DIR@
+Environment=PYTHONUNBUFFERED=1
+Environment=OPENSEARCH_URL=http://localhost:9200
+# Local-only login granted tcg_pos_worker + tcg_pos_app (tcg-pos-api OPS.md §1b).
+Environment=DATABASE_URL=postgres://tcg_pos_worker_login:tcg_pos_worker_login@localhost:54329/tcg_pos_dev
+ExecStart=@POS_DIR@/.venv/bin/python -m tcg_pos_api.search.listings follow
+# If OpenSearch is stopped (on purpose, to save memory) follow keeps running,
+# logs it once and leaves events queued; a DB error exits and we restart.
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

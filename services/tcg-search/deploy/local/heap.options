@@ -1,0 +1,3 @@
+# /etc/opensearch/jvm.options.d/heap.options — 1 GB heap (~1.4 GB RSS with plugins trimmed)
+-Xms1g
+-Xmx1g

@@ -1,0 +1,3 @@
+# This package runs from WSL (systemd units, shell scripts, Makefile), so the
+# working copy stays LF even under core.autocrlf=true on Windows checkouts.
+* text=auto eol=lf

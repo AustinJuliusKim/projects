@@ -1,0 +1,95 @@
+# tcg-pos-api — ops runbook
+
+Manual steps between merged code and a live service. Nothing here has been
+done yet; check items off as they are.
+
+## Before any deploy
+
+- [ ] **Replace the `X-Tenant-Id` / `X-Actor` headers with a verified auth
+  claim** (Supabase Auth JWT → tenant id + user id), in `deps.py`. Until
+  then any caller can act as any tenant; `template.yaml` must not be
+  deployed.
+- [ ] Pin CORS `allow_origins` in `app.py` to the POS app's origin.
+
+## 1. Database
+
+- [ ] Create a **separate** Supabase project for the POS (not the mtg-api
+  one): tenant data and card-catalog data have different blast radii and
+  backup needs, and the POS must not be able to break the public catalog.
+  `inventory_item.printing_id` already has no cross-DB FK.
+- [ ] **Disable the Data API** for the POS Supabase project (Project
+  Settings → Data API → off). The POS is only reached through tcg-pos-api;
+  PostgREST's `anon`/`authenticated` roles have no business in this schema.
+  `0003_supabase_lockdown.sql` also revokes everything from those roles
+  (and their default privileges) as a second wall, and enables RLS with no
+  policy on `schema_migrations` — but don't rely on that alone.
+- [ ] Create a login role to own the schema and run migrations as it
+  (as mtg-api does with `mtg_ingest`). `0001_core.sql` creates the
+  `tcg_pos_app` NOLOGIN role, so the migrating role needs `CREATEROLE` the
+  first time (Supabase's `postgres` has it), or create `tcg_pos_app` by
+  hand first.
+- [ ] Grant the Lambda's login role membership so `SET LOCAL ROLE` works:
+  `GRANT tcg_pos_app TO <login role>;`. The login role should not be a
+  superuser or `BYPASSRLS` — the app drops to `tcg_pos_app` regardless,
+  but defense in depth.
+- [ ] `DATABASE_URL=<session pooler :5432> make migrate`.
+- [ ] `0006`/`0008` create `SELECT` policies scoped `TO` the migrating role
+  (`definer_published_read` on `storefront`, `definer_due_read` on
+  `web_order`) so the SECURITY DEFINER lookups work without BYPASSRLS.
+  They name whoever ran the migration: always migrate as the schema
+  owner, and if ownership ever moves, re-create those two policies for
+  the new owner.
+
+## 1b. Storefront and background jobs
+
+- [ ] Background jobs (reservation expiry now, the listings indexer in M5)
+  need a login role granted both NOLOGIN roles:
+  `GRANT tcg_pos_worker, tcg_pos_app TO <job login role>;` — not the
+  schema owner, not BYPASSRLS. `0006` creates `tcg_pos_worker` (needs
+  `CREATEROLE` the first time, like `tcg_pos_app`).
+- [ ] Schedule `python -m tcg_pos_api.jobs.expire_reservations` every ~5
+  minutes (systemd timer locally; EventBridge → Lambda if deployed). It is
+  idempotent and exits 1 if any order failed to release.
+- [ ] **Before a storefront goes public:** reservations need no payment, so
+  stock can be tied up by anyone. Per-IP limits (`STOREFRONT_ORDER_LIMIT`,
+  `STOREFRONT_QUOTE_LIMIT`), caps (40 lines × 20), expiry and staff cancel
+  mitigate it; add email verification or a captcha first. Behind
+  CloudFront the IP bucket is the edge IP (see `ratelimit.client_ip`).
+- [ ] Pin CORS for the storefront's origin as well as the POS app's.
+- [ ] **Storefront search needs OpenSearch and `tcg_search` in the bundle.**
+  `routes/storefront.py` and the listings indexer import `tcg_search`
+  (services/tcg-search), which `sam build` (CodeUri `src/`) does not
+  include, and there is no hosted OpenSearch (local-only by decision, plan
+  §1). Before any deploy: vendor tcg-search or build it as a wheel into the
+  bundle (plus `pyyaml`), choose hosting, and set `OPENSEARCH_URL` /
+  `OPENSEARCH_USER` / `OPENSEARCH_PASSWORD`.
+- [ ] The listings indexer (`python -m tcg_pos_api.search.listings
+  follow`) is a long-running LISTEN consumer, not a Lambda: run it where a
+  process can stay up (or switch to a scheduled `drain`), as a login granted
+  `tcg_pos_worker, tcg_pos_app`, after one `rebuild`. Locally it is the
+  systemd unit `tcg-search-listings` (services/tcg-search/OPS.md §5) with
+  login `tcg_pos_worker_login` on `tcg_pos_dev` — done 2026-10-10.
+
+## 2. CI / deploy
+
+- [ ] No deploy job exists yet. When added (mirroring `mtg.yml`'s gated
+  `deploy` job): a `TCG_POS_DATABASE_URL` repo secret, an OIDC deploy
+  role, and a `TCG_POS_DEPLOY_ENABLED` repo variable gate.
+- [ ] First `sam deploy` manual with `DatabaseUrl=<transaction pooler :6543>`
+  and `MtgApiBase=<deployed mtg-api base URL>`.
+
+## 3. Catalog / prices (mtg-api)
+
+- [ ] `MTG_API_BASE` (SAM parameter `MtgApiBase`) points at the deployed
+  `services/mtg-api`. The POS calls its public `/v1/sets`, `/v1/cards/*`
+  and `POST /v1/prices/batch`; if mtg-api's rate limiter applies to the
+  POS's egress, give the POS a key or an allowlist before stores import.
+- [ ] The app needs `VITE_MTG_API_BASE` at build time (card search runs
+  in the browser against mtg-api directly).
+- [ ] TCGplayer import does one `/v1/sets` call and ⌈rows/200⌉ batch calls
+  inside the request. At the 2000-row cap that is 11 mtg-api calls; check
+  real latency against the 10 s Lambda timeout (and API Gateway's 30 s)
+  before raising either the row cap or the timeout.
+- [ ] `DB_CONNECT_TIMEOUT` (default 5 s) must stay below the Lambda
+  timeout. Connections already use `prepare_threshold=None` for the
+  transaction pooler.
