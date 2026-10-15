@@ -1,6 +1,6 @@
 // Manager approvals (services/tcg-pos-api/src/tcg_pos_api/auth/approvals.py):
 // a gated request answers 403 {approval_required, amount_cents,
-// payload_hash}; a manager enters their PIN on this register
+// payload_hash, summary}; a manager enters their PIN on this register
 // (POST /v1/approvals) and the IDENTICAL request is retried once with
 // X-Approval. withApproval runs that loop around any request; the modal is
 // the `requestApproval` callback.
@@ -23,7 +23,35 @@ export function approvalNeeded(err) {
     amountCents: d.amount_cents ?? null,
     payloadHash: d.payload_hash,
     invalid: d.approval_error === "invalid",
+    summary: summaryFrom(d.summary),
   };
+}
+
+// The server-built description of what is being approved ({title, lines[],
+// ...route extras like delta_cents}), or null if the response had none.
+function summaryFrom(s) {
+  if (!s || typeof s !== "object" || typeof s.title !== "string") return null;
+  return {
+    title: s.title,
+    lines: Array.isArray(s.lines) ? s.lines.filter((l) => typeof l === "string") : [],
+    deltaCents: typeof s.delta_cents === "number" ? s.delta_cents : null,
+  };
+}
+
+// What the approval modal shows above the PIN pad: the summary's title and
+// lines, and a tone (add | remove | neutral) from the signed amount, so the
+// manager sees the direction before entering a PIN. Without a summary, the
+// permission and the unsigned amount (all an older API sends).
+export function approvalView(need, formatCents) {
+  const s = need && need.summary;
+  if (s) {
+    const tone = s.deltaCents === null ? "neutral" : s.deltaCents > 0 ? "add" : "remove";
+    return { title: s.title, lines: s.lines, tone };
+  }
+  const amount = need && need.amountCents !== null && need.amountCents !== undefined
+    ? ` (${formatCents(need.amountCents)})`
+    : "";
+  return { title: `${need ? need.perm : "approval"}${amount}`, lines: [], tone: "neutral" };
 }
 
 export function approvalBody(need, approverUserId, pin) {

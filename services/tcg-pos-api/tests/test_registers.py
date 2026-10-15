@@ -776,3 +776,39 @@ def test_bad_approval_requests_are_refused_before_the_pin(client, store, admin_c
     resp = client.post("/v1/approvals", json=body, headers=ch)
     assert resp.status_code == 422, resp.text
     assert _fails(admin_conn, store, store["uid"]["mgr"]) == 0
+
+
+def test_approval_request_says_what_is_being_approved(client, store, counter):
+    up = _ask(client, counter, 2500).json()["detail"]
+    down = _ask(client, counter, -2500).json()["detail"]
+    # Same perm and unsigned amount: only the summary tells them apart.
+    assert (up["approval_required"], up["amount_cents"]) == ("credit.adjust", 2500)
+    assert (down["approval_required"], down["amount_cents"]) == ("credit.adjust", 2500)
+    assert up["summary"] == {
+        "title": "Add $25.00 store credit",
+        "lines": [
+            "Customer: Pat",
+            "Change: +$25.00 (add to their balance)",
+            "Reason: fix",
+            "Balance: $50.00 -> $75.00",
+        ],
+        "customer_name": "Pat",
+        "delta_cents": 2500,
+        "reason": "fix",
+        "balance_cents": 5000,
+    }
+    assert down["summary"]["title"] == "Remove $25.00 store credit"
+    assert down["summary"]["delta_cents"] == -2500
+    assert down["summary"]["lines"][1] == "Change: -$25.00 (take from their balance)"
+    # An approval_error 403 carries it too, and the flow still works.
+    approval = _approve(client, store, counter, down).json()["approval_id"]
+    bad = _ask(client, counter, -2499, approval=approval).json()["detail"]
+    assert bad["approval_error"] == "invalid" and bad["summary"]["delta_cents"] == -2499
+    assert _ask(client, counter, -2500, approval=approval).status_code == 200
+    # No approval for a customer that doesn't exist.
+    resp = client.post(
+        f"/v1/customers/{uuid.uuid4()}/credit/adjust",
+        json={"delta_cents": 100, "reason": "fix"},
+        headers=counter["cashier"],
+    )
+    assert resp.status_code == 404

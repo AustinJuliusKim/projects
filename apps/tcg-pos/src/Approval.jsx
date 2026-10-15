@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { Alert, Button, Group, Modal, Select, Stack, Text } from "@mantine/core";
+import { Alert, Button, Group, Modal, Paper, Select, Stack, Text, Title } from "@mantine/core";
 
 import { createApproval, registerStaff } from "./api.js";
-import { approverChoices, submitApproval, withApproval } from "./approval.js";
+import { approvalView, approverChoices, submitApproval, withApproval } from "./approval.js";
 import { displayCents } from "./money.js";
 import PinPad from "./PinPad.jsx";
 import useCountdown from "./useCountdown.js";
@@ -57,6 +57,33 @@ export function ApprovalProvider({ requester, children }) {
   );
 }
 
+const TONE_COLOR = { add: "green", remove: "red", neutral: "gray" };
+
+// What is being approved, from the server's summary, shown before the PIN
+// pad: direction (colour + title), customer, amount, reason.
+function ApprovalSummary({ need, requester }) {
+  const view = approvalView(need, displayCents);
+  const color = TONE_COLOR[view.tone];
+  return (
+    <Paper withBorder p="sm" style={{ borderColor: `var(--mantine-color-${color}-6)`, borderWidth: 2 }}>
+      <Text size="xs" c="dimmed">
+        {requester.name} asks you to approve
+      </Text>
+      <Title order={3} c={view.tone === "neutral" ? undefined : `${color}.7`}>
+        {view.title}
+      </Title>
+      {view.lines.map((line) => (
+        <Text key={line} size="sm">
+          {line}
+        </Text>
+      ))}
+      <Text size="xs" c="dimmed" mt={4}>
+        Permission: {need.perm}
+      </Text>
+    </Paper>
+  );
+}
+
 function ApprovalModal({ need, requester, onDone }) {
   const [staff, setStaff] = useState(null);
   const [approver, setApprover] = useState(null);
@@ -87,11 +114,8 @@ function ApprovalModal({ need, requester, onDone }) {
   return (
     <Modal opened onClose={() => onDone(null)} title="Manager approval" centered>
       <Stack>
-        <Text size="sm">
-          {requester.name} needs approval for <b>{need.perm}</b>
-          {need.amountCents !== null ? ` (${displayCents(need.amountCents)})` : ""}. A manager
-          picks their name and enters their PIN.
-        </Text>
+        <ApprovalSummary need={need} requester={requester} />
+        <Text size="sm">A manager picks their name and enters their PIN to approve exactly this.</Text>
         <Select
           label="Approver"
           placeholder={staff ? "Pick a manager" : "Loading…"}

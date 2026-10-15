@@ -5,7 +5,7 @@ import psycopg
 from fastapi import APIRouter, HTTPException
 
 from tcg_pos_api import queries
-from tcg_pos_api.auth.approvals import ApprovalGate, require_or_approval
+from tcg_pos_api.auth.approvals import ApprovalGate, format_cents, require_or_approval
 from tcg_pos_api.deps import Perm, TenantConn, require
 from tcg_pos_api.routes.models import CreditAdjust, CreditBalance, CreditChange
 
@@ -85,5 +85,40 @@ def adjust(
     customer_id: uuid.UUID,
     body: CreditAdjust,
 ) -> CreditBalance:
-    gate.authorize(amount_cents=abs(body.delta_cents), payload=body)
+    gate.authorize(
+        amount_cents=abs(body.delta_cents),
+        payload=body,
+        summary=lambda: _adjust_summary(gate.conn, customer_id, body),
+    )
     return _apply(gate.conn, customer_id, body.delta_cents, body.reason, "credit.adjust")
+
+
+def _adjust_summary(conn: psycopg.Connection, customer_id: uuid.UUID, body: CreditAdjust) -> dict:
+    """What the approving manager is shown: direction, amount, customer,
+    reason and the balance before/after."""
+    row = conn.execute("SELECT name FROM customer WHERE id = %s", (customer_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "no customer with that id")
+    balance = queries.credit_balance(conn, customer_id)
+    amount = format_cents(body.delta_cents)
+    adding = body.delta_cents > 0
+    sign = "+" if adding else "-"
+    lines = [
+        f"Customer: {row['name']}",
+        f"Change: {sign}{amount} ({'add to' if adding else 'take from'} their balance)",
+        f"Reason: {body.reason}",
+    ]
+    if balance is not None:
+        lines.append(
+            f"Balance: {format_cents(balance)} -> {format_cents(balance + body.delta_cents)}"
+            if balance + body.delta_cents >= 0
+            else f"Balance: {format_cents(balance)} (not enough to remove {amount})"
+        )
+    return {
+        "title": f"{'Add' if adding else 'Remove'} {amount} store credit",
+        "lines": lines,
+        "customer_name": row["name"],
+        "delta_cents": body.delta_cents,
+        "reason": body.reason,
+        "balance_cents": balance,
+    }

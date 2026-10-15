@@ -13,7 +13,13 @@ the system default; no row = the plain permission decides):
 
 "Approval needed" answers 403
   {"detail": {"approval_required": "<perm>", "amount_cents": n,
-              "payload_hash": "<sha256 hex>"}}
+              "payload_hash": "<sha256 hex>",
+              "summary": {"title": "...", "lines": ["...", ...], ...}}}
+`summary` is built by the server from the request (the route passes it to
+authorize) so the approving manager sees what they are approving — e.g.
+"Remove $50.00 store credit", the customer and the reason — not just a
+permission and an unsigned amount. Routes may add structured fields to it
+(credit adjust: customer_name, delta_cents signed, reason).
 The register then has a manager enter their PIN (POST /v1/approvals with
 that perm, payload_hash and amount_cents) and retries the identical request
 with `X-Approval: <approval id>`. The server recomputes the payload hash
@@ -34,6 +40,7 @@ import dataclasses
 import hashlib
 import json
 import uuid
+from collections.abc import Callable
 from typing import Annotated, Any
 
 import psycopg
@@ -100,6 +107,11 @@ def payload_hash(perm: Perm, method: str, path: str, amount: int | None, payload
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
+def format_cents(cents: int) -> str:
+    """$1,234.56 (no sign)."""
+    return f"${abs(cents) / 100:,.2f}"
+
+
 def eligible_approver(
     conn: psycopg.Connection, approver: uuid.UUID, requester: uuid.UUID | None, perm: Perm
 ) -> bool:
@@ -123,9 +135,17 @@ class ApprovalGate:
     def conn(self) -> psycopg.Connection:
         return self.session.conn
 
-    def authorize(self, *, amount_cents: int | None, payload: Any) -> uuid.UUID | None:
+    def authorize(
+        self,
+        *,
+        amount_cents: int | None,
+        payload: Any,
+        summary: Callable[[], dict[str, Any]] | None = None,
+    ) -> uuid.UUID | None:
         """Return (None) if the caller may go ahead without approval; the
-        approver's id if a valid X-Approval was consumed; else raise 403."""
+        approver's id if a valid X-Approval was consumed; else raise 403.
+        `summary` (called only when approval is needed) returns the
+        {"title", "lines", ...} the approver is shown."""
         principal = self.session.principal
         decision = decide(principal, self.perm, self.policy, amount_cents)
         if decision == "deny":
@@ -138,6 +158,8 @@ class ApprovalGate:
             "amount_cents": amount_cents,
             "payload_hash": digest,
         }
+        if summary is not None:
+            required["summary"] = summary()
         if not self.approval_header:
             raise HTTPException(403, required)
         approver = self._consume(digest, amount_cents)

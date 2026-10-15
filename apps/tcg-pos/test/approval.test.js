@@ -6,6 +6,7 @@ import {
   ApprovalCancelled,
   approvalBody,
   approvalNeeded,
+  approvalView,
   approverChoices,
   submitApproval,
   withApproval,
@@ -23,6 +24,7 @@ test("approvalNeeded reads the 403 and ignores other errors", () => {
     amountCents: 500,
     payloadHash: HASH,
     invalid: false,
+    summary: null,
   });
   assert.equal(approvalNeeded(required({ approval_error: "invalid" })).invalid, true);
   assert.equal(approvalNeeded(new ApiError(403, { detail: { missing: "x" } })), null);
@@ -34,6 +36,35 @@ test("approvalNeeded reads the 403 and ignores other errors", () => {
     approver_user_id: "m1",
     pin: "284716",
   });
+});
+
+test("approvalView shows the server's summary with its direction before the PIN pad", () => {
+  const cents = (c) => `$${(c / 100).toFixed(2)}`;
+  const summary = (delta) => ({
+    title: delta > 0 ? "Add $50.00 store credit" : "Remove $50.00 store credit",
+    lines: ["Customer: Pat", `Change: ${delta > 0 ? "+" : "-"}$50.00`, "Reason: fix", 7],
+    customer_name: "Pat",
+    delta_cents: delta,
+    reason: "fix",
+  });
+  const up = approvalView(approvalNeeded(required({ summary: summary(5000) })), cents);
+  const down = approvalView(approvalNeeded(required({ summary: summary(-5000) })), cents);
+  assert.deepEqual(up, {
+    title: "Add $50.00 store credit",
+    lines: ["Customer: Pat", "Change: +$50.00", "Reason: fix"],
+    tone: "add",
+  });
+  assert.equal(down.title, "Remove $50.00 store credit");
+  assert.equal(down.tone, "remove");
+  assert.ok(down.lines.includes("Customer: Pat") && down.lines.includes("Reason: fix"));
+  // An older API without a summary: perm + unsigned amount.
+  assert.deepEqual(approvalView(approvalNeeded(required()), cents), {
+    title: "credit.adjust ($5.00)",
+    lines: [],
+    tone: "neutral",
+  });
+  // A malformed summary is ignored rather than rendered.
+  assert.equal(approvalNeeded(required({ summary: { lines: ["x"] } })).summary, null);
 });
 
 test("withApproval retries the identical request once with the approval id", async () => {
