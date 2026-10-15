@@ -43,6 +43,18 @@ test("errorMessage reads the auth routes' object details", () => {
     errorMessage(423, { detail: { reason: "pin_locked", retry_after: 60 } }),
     "Too many wrong PINs: locked for 60 seconds.",
   );
+  assert.equal(
+    errorMessage(423, { detail: { reason: "pin_locked", retry_after: 60, scope: "device" } }),
+    "Too many wrong PINs: locked on this register for 60 seconds.",
+  );
+  assert.equal(
+    errorMessage(423, { detail: { reason: "pin_locked", retry_after: 3600, scope: "store" } }),
+    "Too many wrong PINs: locked on every register for 3600 seconds.",
+  );
+  assert.equal(
+    errorMessage(423, { detail: { reason: "pin_locked", retry_after: 60 } }),
+    "Too many wrong PINs: locked for 60 seconds.",
+  );
   assert.match(errorMessage(403, { detail: { reason: "self_approval" } }), /can't approve your own/);
   assert.match(
     errorMessage(403, { detail: { reason: "approver_not_allowed", perm: "credit.adjust" } }),

@@ -76,3 +76,47 @@ CREATE TRIGGER membership_end_sessions
     EXECUTE FUNCTION membership_end_register_sessions();
 
 REVOKE EXECUTE ON FUNCTION membership_end_register_sessions() FROM PUBLIC;
+
+-- ---------------------------------------------------------------------------
+-- PIN lockout per register device, with a store-wide ceiling
+--
+-- The 0012 lockout counted failures per (store, person): anyone standing at
+-- one enrolled register could lock a manager's PIN on every register in the
+-- store with five wrong guesses. Now (auth/pins.py):
+--   * staff_pin_device counts consecutive failures per (person, device) and
+--     carries the old schedule: the 5th locks that PIN *on that device* for
+--     1 minute, doubling to 1 hour. Other registers are unaffected.
+--   * staff_pin.fail_count / locked_until become the store-wide ceiling:
+--     consecutive failures on any device since the last success, plus
+--     fail_devices, the devices they came from. Once there are 11 of them
+--     from at least two devices, each further failure locks the PIN
+--     everywhere for an hour. One register alone can't trip it (it is
+--     already held to the per-device schedule); spreading guesses over
+--     several registers can't beat the old per-person rate either. The
+--     arithmetic is in docs/AUTH_PLAN.md.
+--   * A correct PIN resets the store-wide count and that device's count;
+--     setting a new PIN resets everything.
+
+ALTER TABLE staff_pin ADD COLUMN fail_devices uuid[] NOT NULL DEFAULT '{}';
+
+CREATE TABLE staff_pin_device (
+    tenant_id    uuid NOT NULL DEFAULT current_tenant_id() REFERENCES tenant (id),
+    user_id      uuid NOT NULL,
+    device_id    uuid NOT NULL,
+    fail_count   integer NOT NULL DEFAULT 0 CHECK (fail_count >= 0),
+    locked_until timestamptz,
+    updated_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, user_id, device_id),
+    FOREIGN KEY (tenant_id, user_id) REFERENCES staff_pin (tenant_id, user_id),
+    FOREIGN KEY (tenant_id, device_id) REFERENCES register_device (tenant_id, id)
+);
+
+ALTER TABLE staff_pin_device ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_pin_device FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON staff_pin_device
+    USING (tenant_id = (SELECT current_tenant_id()))
+    WITH CHECK (tenant_id = (SELECT current_tenant_id()));
+
+GRANT UPDATE (fail_devices) ON staff_pin TO tcg_pos_app;
+GRANT SELECT, INSERT (user_id, device_id, fail_count, locked_until),
+    UPDATE (fail_count, locked_until, updated_at) ON staff_pin_device TO tcg_pos_app;

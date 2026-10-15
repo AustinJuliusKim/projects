@@ -18,9 +18,10 @@ and with `X-Register-Session: <token>` as well:
                                            approver_user_id, pin}
 
 PIN attempts (sign-in and approvals) are rate-limited per device
-(REGISTER_PIN_LIMIT per minute), locked out per PIN (auth/pins.py) and
-audit-logged when they fail. Failed attempts are RETURNED as responses, not
-raised, so that bookkeeping commits."""
+(REGISTER_PIN_LIMIT per minute), locked out per (person, device) with a
+store-wide ceiling (auth/pins.py) and audit-logged when they fail or lock.
+Failed attempts are RETURNED as responses, not raised, so that bookkeeping
+commits."""
 
 import datetime
 import secrets
@@ -94,8 +95,13 @@ def set_my_pin(session: MemberSession, body: PinSet) -> Response:
     conn.execute(
         "INSERT INTO staff_pin (user_id, pin_hash) VALUES (%s, %s) "
         "ON CONFLICT (tenant_id, user_id) DO UPDATE SET pin_hash = EXCLUDED.pin_hash, "
-        "fail_count = 0, locked_until = NULL, updated_at = now()",
+        "fail_count = 0, locked_until = NULL, fail_devices = '{}', updated_at = now()",
         (principal.user_id, hash_pin(body.pin)),
+    )
+    conn.execute(
+        "UPDATE staff_pin_device SET fail_count = 0, locked_until = NULL, updated_at = now() "
+        "WHERE user_id = %s AND (fail_count > 0 OR locked_until IS NOT NULL)",
+        (principal.user_id,),
     )
     # A new PIN signs this person out of every register in the store: a
     # session opened with the old PIN (perhaps by whoever learned it) ends.

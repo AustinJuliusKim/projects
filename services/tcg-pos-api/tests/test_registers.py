@@ -250,12 +250,13 @@ def _fails(admin_conn, store, user):
 
 
 def _unlock_now(admin_conn, store, user):
-    """Simulate the lock running out."""
-    admin_conn.execute(
-        "UPDATE staff_pin SET locked_until = now() - interval '1 second' "
-        "WHERE tenant_id = %s AND user_id = %s",
-        (store["id"], user),
-    )
+    """Simulate the locks (store-wide and per device) running out."""
+    for table in ("staff_pin", "staff_pin_device"):
+        admin_conn.execute(
+            f"UPDATE {table} SET locked_until = now() - interval '1 second' "
+            "WHERE tenant_id = %s AND user_id = %s AND locked_until IS NOT NULL",
+            (store["id"], user),
+        )
 
 
 def test_pin_lockout_doubles_and_unlocks(client, store, admin_conn):
@@ -267,7 +268,7 @@ def test_pin_lockout_doubles_and_unlocks(client, store, admin_conn):
         assert resp.json()["detail"] == {"reason": "wrong_pin", "attempts_left": left}
     resp = sign_in(client, store, device, "cash", pin="999990")
     assert resp.status_code == 423
-    assert resp.json()["detail"] == {"reason": "pin_locked", "retry_after": 60}
+    assert resp.json()["detail"] == {"reason": "pin_locked", "retry_after": 60, "scope": "device"}
     assert resp.headers["retry-after"] == "60"
     # While locked even the right PIN is refused (and not checked).
     resp = sign_in(client, store, device, "cash")
@@ -275,8 +276,8 @@ def test_pin_lockout_doubles_and_unlocks(client, store, admin_conn):
     assert _fails(admin_conn, store, cash) == 6
     locked = admin_conn.execute(
         "SELECT fail_count, round(extract(epoch FROM locked_until - now())) AS secs "
-        "FROM staff_pin WHERE tenant_id = %s AND user_id = %s",
-        (store["id"], cash),
+        "FROM staff_pin_device WHERE tenant_id = %s AND user_id = %s AND device_id = %s",
+        (store["id"], cash, device["device"]["id"]),
     ).fetchone()
     assert locked["fail_count"] == 5 and 55 <= locked["secs"] <= 60
 
@@ -306,7 +307,12 @@ def test_pin_lockout_doubles_and_unlocks(client, store, admin_conn):
 
 
 def test_lock_caps_at_an_hour():
-    from tcg_pos_api.auth.pins import lock_seconds
+    from tcg_pos_api.auth.pins import lock_seconds, store_lock_seconds
+
+    # The store-wide ceiling: never from one device, an hour per failure
+    # from the 11th across two or more.
+    assert [store_lock_seconds(n, 1) for n in (5, 11, 100)] == [0, 0, 0]
+    assert [store_lock_seconds(n, 2) for n in (5, 10, 11, 12)] == [0, 0, 3600, 3600]
 
     assert [lock_seconds(n) for n in (1, 4, 5, 6, 7, 10, 11, 50)] == [
         0,
@@ -866,3 +872,95 @@ def test_a_new_pin_ends_the_persons_register_sessions(client, store, admin_conn)
         (store["id"], store["uid"]["mgr"]),
     ).fetchone()["after"]
     assert audit == {"pin": "set", "sessions_ended": 2}
+
+
+# --- lockout per device, store-wide ceiling (security review P2) ----------------------
+
+
+def _locks(admin_conn, store, user):
+    return [
+        r["after"]["scope"]
+        for r in admin_conn.execute(
+            "SELECT after FROM audit_log WHERE tenant_id = %s AND action = 'pin.lock' "
+            "AND entity_id = %s ORDER BY at, id",
+            (store["id"], user),
+        )
+    ]
+
+
+def test_one_register_cannot_lock_a_pin_on_the_others(client, store, admin_conn):
+    """Anyone at a register can type wrong PINs for the manager; that locks
+    the manager out of that register only."""
+    counter, office = enroll(client, store), enroll(client, store)
+    for _ in range(6):
+        resp = sign_in(client, store, counter, "mgr", pin="999990")
+    assert resp.status_code == 423 and resp.json()["detail"]["scope"] == "device"
+    assert sign_in(client, store, counter, "mgr").status_code == 423  # still locked there
+    assert sign_in(client, store, office, "mgr").status_code == 201  # not here
+    assert _locks(admin_conn, store, store["uid"]["mgr"]) == ["device"]  # 6th: not checked
+    lock = admin_conn.execute(
+        "SELECT actor, after FROM audit_log WHERE tenant_id = %s AND action = 'pin.lock' "
+        "ORDER BY at, id LIMIT 1",
+        (store["id"],),
+    ).fetchone()
+    assert lock["actor"] == f"device:{counter['device']['id']}"
+    assert lock["after"]["seconds"] == 60 and lock["after"]["purpose"] == "sign_in"
+    # The success on the other register reset the store-wide count, but the
+    # register that was being guessed on stays locked.
+    row = admin_conn.execute(
+        "SELECT fail_count, fail_devices FROM staff_pin WHERE tenant_id = %s AND user_id = %s",
+        (store["id"], store["uid"]["mgr"]),
+    ).fetchone()
+    assert row == {"fail_count": 0, "fail_devices": []}
+
+
+def test_one_register_alone_never_trips_the_store_wide_lock(client, store, admin_conn):
+    counter, office = enroll(client, store), enroll(client, store)
+    mgr = store["uid"]["mgr"]
+    for _ in range(15):  # far past the store-wide threshold, one lock period at a time
+        _unlock_now(admin_conn, store, mgr)
+        assert sign_in(client, store, counter, "mgr", pin="999990").status_code in (403, 423)
+    row = admin_conn.execute(
+        "SELECT fail_count, locked_until FROM staff_pin WHERE tenant_id = %s AND user_id = %s",
+        (store["id"], mgr),
+    ).fetchone()
+    assert row == {"fail_count": 15, "locked_until": None}
+    assert sign_in(client, store, office, "mgr").status_code == 201
+
+
+def test_guessing_across_registers_hits_the_store_wide_ceiling(client, store, admin_conn):
+    """Spreading guesses over registers can't beat the per-person budget:
+    11 straight failures from two or more devices lock the PIN everywhere
+    for an hour, and every further failure does again."""
+    devices = [enroll(client, store) for _ in range(4)]
+    mgr = store["uid"]["mgr"]
+    codes = []
+    for device, tries in zip(devices[:3], (5, 5, 1), strict=True):
+        codes += [sign_in(client, store, device, "mgr", pin="999990") for _ in range(tries)]
+    last = codes[-1]
+    assert [r.status_code for r in codes[:4]] == [403] * 4
+    assert last.status_code == 423
+    assert last.json()["detail"] == {"reason": "pin_locked", "retry_after": 3600, "scope": "store"}
+    # Locked on every register, including one never guessed on.
+    resp = sign_in(client, store, devices[3], "mgr")
+    assert resp.status_code == 423 and resp.json()["detail"]["scope"] == "store"
+    assert _locks(admin_conn, store, mgr) == ["device", "device", "store"]
+    # Past the ceiling, each further failure (on any device) locks for an hour again.
+    _unlock_now(admin_conn, store, mgr)
+    resp = sign_in(client, store, devices[3], "mgr", pin="999990")
+    assert resp.status_code == 423 and resp.json()["detail"]["retry_after"] == 3600
+    # A new PIN clears every lock.
+    assert client.put("/v1/me/pin", json={"pin": "640273"}, headers=store["manager"]).status_code
+    for device in devices:
+        assert sign_in(client, store, device, "mgr", pin="640273").status_code == 201
+
+
+def test_wrong_pin_attempts_left_counts_down_to_the_nearer_lock(client, store, admin_conn):
+    a, b, c = enroll(client, store), enroll(client, store), enroll(client, store)
+    for _ in range(4):
+        sign_in(client, store, a, "mgr", pin="999990")
+    for _ in range(4):
+        sign_in(client, store, b, "mgr", pin="999990")
+    resp = sign_in(client, store, c, "mgr", pin="999990")  # 9th store-wide, 1st here
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == {"reason": "wrong_pin", "attempts_left": 2}

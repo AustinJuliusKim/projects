@@ -84,7 +84,9 @@ function detailText(status, detail, retryAfter) {
   }
   if (reason === "pin_locked") {
     const s = detail.retry_after ?? retryAfter;
-    return `Too many wrong PINs: locked${s ? ` for ${plural(s, "second")}` : ""}.`;
+    // scope: device = locked on this register only; store = on every register.
+    const where = detail.scope === "device" ? " on this register" : detail.scope === "store" ? " on every register" : "";
+    return `Too many wrong PINs: locked${where}${s ? ` for ${plural(s, "second")}` : ""}.`;
   }
   if (reason === "store_limit" && detail.limit) {
     return `You already own the maximum of ${detail.limit} stores.`;
