@@ -340,3 +340,120 @@ Built as planned except where noted.
   hosted-UI domain. Function env: `AUTH_ISSUER`, `AUTH_CLIENT_IDS`, `ENV`
   (`prod|staging` only), `APP_BASE_URL`. Not deployed; still not
   deployable (OPS.md).
+
+## Security review fixes (2026-10-14)
+A review of this branch found seven issues; all are fixed, each with a
+regression test that fails on the code before it. Migration
+**0015_auth_hardening** carries the schema side (0011–0014 were already
+applied to local databases, so nothing earlier was edited).
+
+1. **Enrolling a register ends the back-office session that enrolled it**
+   (apps/tcg-pos). The lock screen's "Back office" button used to open the
+   back office as whoever enrolled the device, with their Cognito refresh
+   token still in localStorage. Now enrolling persists the device, clears
+   the session from memory and storage, revokes the refresh token
+   (`/oauth2/revoke`, best effort; `EnableTokenRevocation` is on in
+   template.yaml) and sends the browser through the hosted UI's logout. An
+   enrolled browser never stores a back-office session (memory only, no
+   refresh token; one an older build stored is not resumed); switching
+   between register mode and the back office, either way, ends any
+   back-office session, and the hosted UI is asked for `prompt=login`.
+   Tests: `test/authState.test.js`, `test/auth.test.js`.
+2. **Register sessions and API keys never hold admin perms.**
+   `auth/perms.ADMIN_PERMS` is subtracted when a device session or a key is
+   resolved, so every `require()` route inherits it, and `require()` answers
+   403 `{"missing": perm, "reason": "back_office_only"}`. An approval-policy
+   row can't hand one back (`require_or_approval` checks first), and the
+   sign-in response's `perms` omit them. The set: `staff.manage`,
+   `roles.manage`, `registers.manage`, `apikeys.manage`, `billing.manage`
+   (people, credentials, the account), `settings.manage`,
+   `channels.manage`, plus `storefront.manage` and `pricing.rules_manage`:
+   both are store-wide configuration (the public web store's settings; one
+   rule reprices every suggestion) that nobody needs at a counter. Kept on
+   a register: `imports.run` (stock intake is counter work, and the same
+   rows can be written one by one with `inventory.adjust`/`price_edit`
+   anyway) and `approve.override` (approvals check the approver's own
+   membership, not the session's). API keys forbid the same set plus
+   `approve.override` (`API_KEY_FORBIDDEN`) — wider than the old key list
+   by settings, channels, storefront and pricing rule — at creation and
+   again at resolution. The perm matrix has a `device` column (every
+   endpoint × role over a register session), and the app filters register
+   perms and nav the same way.
+3. **PIN lockout is per (person, device), with a store-wide ceiling.** Any
+   register could lock a manager's PIN store-wide with five guesses. Now the
+   old schedule (5 free, then 1 min doubling to 1 h) runs per device
+   (`staff_pin_device`); `staff_pin.fail_count`/`fail_devices` count
+   consecutive failures across devices, and from the 11th failure *coming
+   from at least two devices* every failure locks the PIN on all devices
+   for an hour. A success resets the store-wide count and that device's; a
+   new PIN resets all. Locks are audited (`pin.lock` with `scope`,
+   `seconds`, `device_id`) as well as failures, and 423s carry
+   `"scope": "device" | "store"`. Brute-force budget, per person:
+   * before: failures 1–5 at once, then locks of 1, 2, 4, 8, 16, 32 min, so
+     the 11th failure lands about 63 min in, then one guess an hour: about
+     34 guesses in the first day, 24 a day after;
+   * one device now: exactly the same schedule (about 34 the first day, 24
+     a day after), and it can never trip the store-wide lock;
+   * several devices: at most 11 failures before the store-wide lock (they
+     can arrive within minutes, e.g. 5+5+1 on three registers, instead of
+     over an hour), then one per hour across all devices: again about 34
+     the first day and 24 a day after. A uniformly chosen non-trivial PIN
+     (~10^6 values) keeps ~0.003 % odds per day.
+   The remaining denial of service needs two or more registers guessing
+   together (store-wide lock past 11); one register alone only locks itself.
+4. **Approval requests say what is being approved.** The `approval_required`
+   403 carries a server-built `summary: {title, lines[], ...}`; credit
+   adjust adds `customer_name`, signed `delta_cents`, `reason` and
+   `balance_cents` (title e.g. "Remove $25.00 store credit"). The approval
+   modal shows it, coloured by direction, above the approver picker and PIN
+   pad. Adjusting a customer that doesn't exist 404s before any approval.
+5. **The last-owner trigger serializes.** `membership_last_owner_guard`
+   takes the staff advisory lock (`hashtextextended('membership:<tenant>',
+   0)`, the key `staff._lock_staff` uses) before looking for another active
+   owner, so concurrent demotions of a store's two owners can't both commit
+   (tested with two connections). Under REPEATABLE READ, where it would read
+   a stale snapshot, it refuses owner changes outright.
+6. **Register sessions end when access changes.** A trigger ends a member's
+   open register sessions in the store whenever their status or role
+   changes (from any path, so re-enabling no longer revives an old
+   session), and `PUT /v1/me/pin` ends the caller's sessions in that store
+   (the `pin.set` audit records `sessions_ended`). Not a `staff_pin`
+   trigger, so the Argon2 rehash-on-sign-in can't sign people out.
+7. **`POST /v1/approvals` validates before the PIN.** `amount_cents` is
+   capped at int32 (the bound of every amount that can need approval) and
+   `perm` at 64 chars, so pydantic answers 422 before any PIN is checked or
+   counted (it used to verify the PIN, then 500 on a bigint overflow). No
+   other auth model has an unbounded cents field.
+
+Lower-confidence items, also fixed:
+- **Access-token email** is trusted only from the local dev issuer
+  (`verify_access_token` drops the claim otherwise); everyone else's email
+  comes only from a verified ID token via `POST /v1/me/identity`. Tests set
+  a user's email the way that sync does.
+- **Invites die with their inviter's standing:** `accept_invite` (0015)
+  requires the inviter to still be an active member who could grant the
+  invite's role now (staff.manage, every perm of the role, owner for an
+  owner invite); otherwise 410 "no longer valid". Chosen over revoking
+  pending invites on disable/demote because it also covers changes made
+  outside the staff routes, and a restored inviter's invites work again.
+- **Non-superuser owner:** `tests/test_nonsuperuser.py` creates a database
+  owned by a LOGIN role with CREATEROLE only (no superuser, no BYPASSRLS,
+  like Supabase's `postgres`), migrates it as that role and drives the
+  auth flow through the API against it. It passes: the definer functions
+  and FORCE RLS work without a superuser. (The superuser grants that role
+  `tcg_pos_app` because it already exists cluster-wide; on a fresh
+  Supabase project the migrating role creates it itself.)
+
+Open product/design questions (deliberately unchanged):
+- **`credit/redeem` is `pos.sell`.** Anyone who can sell can spend any
+  customer's store credit down, with no sale attached and no approval.
+  Should redemption need a sale id, an approval above a limit, or its own
+  permission?
+- **`app_user` is keyed on `sub`.** Someone who signs in with Google and
+  with email/password is two users with two memberships; linking is a
+  deliberate future step (never auto-merge on email). Decide before
+  enabling the Google IdP.
+- The two-register lockout DoS and the faster 11-failure first burst
+  (item 3) are accepted trade-offs.
+- `prompt=login` depends on Cognito's managed login honouring it; the
+  hosted-UI logout after enrolling clears Cognito's cookie either way.
