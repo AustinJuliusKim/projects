@@ -748,3 +748,31 @@ def test_an_api_key_row_holding_an_admin_perm_does_not_grant_it(client, store, a
     resp = client.get("/v1/staff", headers=h)
     assert resp.status_code == 403
     assert resp.json()["detail"] == {"missing": "staff.manage", "reason": "back_office_only"}
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"amount_cents": 2**70},  # used to 500 after the PIN was verified
+        {"amount_cents": 2**31},
+        {"amount_cents": -1},
+        {"amount_cents": "100"},
+        {"perm": "x" * 65},
+        {"payload_hash": "A" * 64},
+    ],
+    ids=["huge", "over-int32", "negative", "string", "long-perm", "bad-hash"],
+)
+def test_bad_approval_requests_are_refused_before_the_pin(client, store, admin_conn, overrides):
+    device = enroll(client, store)
+    ch = session_h(client, store, device, "cash")
+    body = {
+        "perm": "credit.adjust",
+        "payload_hash": "a" * 64,
+        "amount_cents": 100,
+        "approver_user_id": str(store["uid"]["mgr"]),
+        "pin": "999990",  # wrong: if it were checked it would count
+        **overrides,
+    }
+    resp = client.post("/v1/approvals", json=body, headers=ch)
+    assert resp.status_code == 422, resp.text
+    assert _fails(admin_conn, store, store["uid"]["mgr"]) == 0

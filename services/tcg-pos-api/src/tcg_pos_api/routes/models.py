@@ -650,11 +650,15 @@ class RegisterSessionOut(BaseModel):
 
 
 class ApprovalCreate(BaseModel):
+    """Validated in full before the approver's PIN is checked: a malformed
+    request never costs (or reveals) a PIN attempt. amount_cents has the
+    same bound as the amounts that can need approval (CreditAdjust)."""
+
     model_config = ConfigDict(extra="forbid")
 
-    perm: str
+    perm: Annotated[str, StringConstraints(max_length=64)]
     payload_hash: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
-    amount_cents: int | None = Field(None, strict=True, ge=0)
+    amount_cents: int | None = Field(None, strict=True, ge=0, le=INT32_MAX)
     approver_user_id: uuid.UUID
     pin: Pin
 
