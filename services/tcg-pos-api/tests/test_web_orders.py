@@ -14,6 +14,7 @@ from psycopg.rows import dict_row
 from conftest import (
     SERVICE_DIR,
     TEST_DATABASE_URL,
+    actor_of,
     app_conn,
     headers,
     item_qty,
@@ -97,7 +98,8 @@ def test_picked_up_keeps_the_sale(client, make_shop, admin_conn):
         "ORDER BY at", (order["id"],)
     ).fetchall()
     assert [(a["actor"], a["action"]) for a in audit] == [
-        ("web:pat@example.com", "web_order.create"), ("clerk", "web_order.picked_up"),
+        (f"storefront:{shop['slug']}", "web_order.create"),
+        (actor_of("clerk"), "web_order.picked_up"),
     ]
     assert client.post(f"/v1/web-orders/{uuid.uuid4()}/picked-up",
                        headers=headers(t)).status_code == 404
@@ -118,7 +120,8 @@ def test_cancel_restores_stock_exactly_once(client, make_shop, admin_conn):
     cancel = f"web_cancel:{order['id']}"
     reserve_reason = f"web_reserve:{order['id']}"
     assert ledger(admin_conn, a) == [
-        (-2, reserve_reason, "web", "web:pat@example.com"), (2, cancel, "web", "mgr"),
+        (-2, reserve_reason, "web", f"storefront:{shop['slug']}"),
+        (2, cancel, "web", actor_of("mgr")),
     ]
     assert outbox_count(admin_conn, t) - events == 2  # stock change re-lists both items
 
@@ -185,7 +188,7 @@ def test_expiry_job_releases_due_reservations_once(client, make_shop, admin_conn
         uuid.UUID(collected["id"]): "picked_up",
     }
     assert ledger(admin_conn, item)[-1] == (
-        3, f"web_expire:{due['id']}", "web", "system:expire_reservations",
+        3, f"web_expire:{due['id']}", "web", "job:expire_reservations",
     )
     # Cancelling an expired order is refused: no second restore.
     resp = client.post(f"/v1/web-orders/{due['id']}/cancel", headers=headers(t))

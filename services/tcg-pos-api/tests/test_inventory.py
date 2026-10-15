@@ -5,7 +5,7 @@ import uuid
 import psycopg
 import pytest
 
-from conftest import adjust_body, app_conn, headers, requires_db
+from conftest import actor_of, adjust_body, app_conn, headers, requires_db
 
 pytestmark = requires_db
 
@@ -105,8 +105,8 @@ def test_adjust_writes_ledger_and_audit(client, make_tenant, admin_conn):
         (item_id,),
     ).fetchall()
     assert [(r["delta"], r["reason"], r["channel"], r["actor"]) for r in ledger] == [
-        (5, "intake", "adjustment", "alice"),
-        (-2, "sale", "pos", "bob"),
+        (5, "intake", "adjustment", actor_of("alice")),
+        (-2, "sale", "pos", actor_of("bob")),
     ]
     assert str(ledger[1]["id"]) == second["ledger_id"]
 
@@ -116,8 +116,8 @@ def test_adjust_writes_ledger_and_audit(client, make_tenant, admin_conn):
         (item_id,),
     ).fetchall()
     assert [(a["actor"], a["action"], a["entity"]) for a in audit] == [
-        ("alice", "inventory.adjust", "inventory_item"),
-        ("bob", "inventory.adjust", "inventory_item"),
+        (actor_of("alice"), "inventory.adjust", "inventory_item"),
+        (actor_of("bob"), "inventory.adjust", "inventory_item"),
     ]
     assert audit[0]["before"] is None and audit[0]["after"]["qty"] == 5
     assert audit[1]["before"]["qty"] == 5 and audit[1]["after"]["qty"] == 3
@@ -231,10 +231,13 @@ def test_adjust_text_fields_are_bounded_and_nul_free(client, make_tenant):
     ):
         resp = client.post("/v1/inventory/adjust", json=adjust_body(t, **bad), headers=headers(t))
         assert resp.status_code == 422, bad
-    resp = client.post(
-        "/v1/inventory/adjust", json=adjust_body(t), headers=headers(t, actor="a" * 201)
-    )
-    assert resp.status_code == 400
+    # An oversized or garbage bearer token is a 401, before any DB work.
+    for token in ("a" * 9000, "not.a.jwt"):
+        resp = client.post(
+            "/v1/inventory/adjust", json=adjust_body(t),
+            headers={**headers(t, actor=None), "Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 401, token
 
 
 def test_lang_is_case_normalised_into_one_grain(client, make_tenant):

@@ -445,3 +445,277 @@ class WebOrderPage(BaseModel):
     page: int
     page_size: int
     orders: list[WebOrderStaff]
+
+
+# --- auth: me, stores, staff, invites, roles ----------------------------------
+
+StoreName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+    AfterValidator(no_nul),
+]
+RoleKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,39}$")]
+MemberStatus = Literal["active", "disabled"]
+
+
+class MeUser(BaseModel):
+    id: uuid.UUID
+    email: str | None
+    display_name: str | None
+
+
+class MyStore(BaseModel):
+    tenant_id: uuid.UUID
+    name: str
+    role: str
+    role_name: str
+
+
+class Me(BaseModel):
+    user: MeUser
+    stores: list[MyStore]
+
+
+class StoreCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: StoreName
+    location_name: StoreName = "Main"
+
+
+class Role(BaseModel):
+    id: uuid.UUID
+    key: str
+    name: str
+    is_system: bool
+    perms: list[str]
+
+
+class StaffMember(BaseModel):
+    user_id: uuid.UUID
+    email: str | None
+    display_name: str | None
+    role: str
+    role_name: str
+    status: MemberStatus
+    location_id: uuid.UUID | None
+    invited_by: uuid.UUID | None
+    created_at: datetime.datetime
+
+
+class StaffUpdate(BaseModel):
+    """Change a member's role and/or status. Omitted fields stay as they are."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    role: RoleKey | None = None
+    status: MemberStatus | None = None
+
+
+class InviteCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: Email
+    role: RoleKey
+
+
+InviteStatus = Literal["pending", "accepted", "revoked", "expired"]
+
+
+class Invite(BaseModel):
+    id: uuid.UUID
+    email: str
+    role: str
+    status: InviteStatus
+    expires_at: datetime.datetime
+    invited_by: uuid.UUID
+    accepted_by: uuid.UUID | None
+    created_at: datetime.datetime
+
+
+class InviteAccept(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: Annotated[str, StringConstraints(min_length=16, max_length=200)]
+
+
+class InviteAccepted(BaseModel):
+    tenant_id: uuid.UUID
+    role: str
+
+
+class DevLogin(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: Email
+    # Optional display name for the ID token (like a Google profile name).
+    name: StoreName | None = None
+
+
+class DevToken(BaseModel):
+    access_token: str
+    id_token: str
+    token_type: Literal["Bearer"] = "Bearer"
+    expires_in: int
+    sub: str
+
+
+class IdentitySync(BaseModel):
+    """The user's OIDC ID token from the same sign-in as the bearer access
+    token; its verified email and name become the profile."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id_token: Annotated[str, StringConstraints(min_length=20, max_length=8192)]
+
+
+# --- registers, PINs, approvals (A3) -------------------------------------------
+
+Pin = Annotated[str, StringConstraints(min_length=1, max_length=32)]
+RegisterName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=60),
+    AfterValidator(no_nul),
+]
+
+
+class PinSet(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pin: Pin
+
+
+class Register(BaseModel):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    name: str
+    created_at: datetime.datetime
+
+
+class RegisterCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    location_id: uuid.UUID
+    name: RegisterName
+
+
+DeviceStatus = Literal["active", "revoked"]
+
+
+class RegisterDevice(BaseModel):
+    id: uuid.UUID
+    register_id: uuid.UUID
+    register_name: str
+    status: DeviceStatus
+    enrolled_by: uuid.UUID
+    enrolled_at: datetime.datetime
+    last_seen_at: datetime.datetime | None
+    revoked_at: datetime.datetime | None
+
+
+class DeviceEnrolled(BaseModel):
+    """The device secret is shown once; the register stores it and sends
+    `Authorization: Device <device_secret>` from then on."""
+
+    device: RegisterDevice
+    device_secret: str
+
+
+class RegisterStaff(BaseModel):
+    user_id: uuid.UUID
+    name: str
+    role: str
+
+
+class RegisterSignIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: uuid.UUID
+    pin: Pin
+
+
+class RegisterSessionOut(BaseModel):
+    """Send `X-Register-Session: <session_token>` (with the device
+    credential) on every request until it expires, idles out or is
+    signed out."""
+
+    session_id: uuid.UUID
+    session_token: str
+    user_id: uuid.UUID
+    name: str
+    role: str
+    perms: list[str]
+    expires_at: datetime.datetime
+    idle_timeout_seconds: int
+
+
+class ApprovalCreate(BaseModel):
+    """Validated in full before the approver's PIN is checked: a malformed
+    request never costs (or reveals) a PIN attempt. amount_cents has the
+    same bound as the amounts that can need approval (CreditAdjust)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    perm: Annotated[str, StringConstraints(max_length=64)]
+    payload_hash: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+    amount_cents: int | None = Field(None, strict=True, ge=0, le=INT32_MAX)
+    approver_user_id: uuid.UUID
+    pin: Pin
+
+
+class ApprovalOut(BaseModel):
+    approval_id: uuid.UUID
+    perm: str
+    amount_cents: int | None
+    approved_by: uuid.UUID
+    expires_at: datetime.datetime
+
+
+class CreditAdjust(BaseModel):
+    """A signed correction to a balance (not a sale, not an issue)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    delta_cents: int = Field(..., strict=True, ge=-INT32_MAX, le=INT32_MAX)
+    reason: Reason
+
+    @field_validator("delta_cents")
+    @classmethod
+    def _nonzero(cls, v: int) -> int:
+        if v == 0:
+            raise ValueError("delta_cents must not be 0")
+        return v
+
+
+# --- API keys (A4) ----------------------------------------------------------------
+
+ApiKeyName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+    AfterValidator(no_nul),
+]
+
+
+class ApiKeyCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: ApiKeyName
+    perms: list[str] = Field(..., min_length=1, max_length=64)
+
+
+class ApiKey(BaseModel):
+    id: uuid.UUID
+    name: str
+    prefix: str
+    perms: list[str]
+    status: Literal["active", "revoked"]
+    created_by: uuid.UUID
+    created_at: datetime.datetime
+    last_used_at: datetime.datetime | None
+    revoked_at: datetime.datetime | None
+
+
+class ApiKeyCreated(ApiKey):
+    """`key` is shown once: send it as `Authorization: ApiKey <key>`."""
+
+    key: str

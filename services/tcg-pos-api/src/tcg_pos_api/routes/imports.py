@@ -22,7 +22,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 
 from tcg_pos_api import queries, tcgplayer
 from tcg_pos_api.catalog import Catalog, get_catalog
-from tcg_pos_api.deps import Actor, TenantConn
+from tcg_pos_api.deps import Perm, TenantConn, require
 from tcg_pos_api.routes.models import INT32_MAX, ImportChange, ImportResult, ImportRow, ImportTotals
 
 router = APIRouter(prefix="/inventory/import", tags=["inventory"])
@@ -77,9 +77,8 @@ def _resolve(rows: list[dict[str, Any]], catalog: Catalog) -> str | None:
     return snapshot_id
 
 
-@router.post("/tcgplayer", response_model=ImportResult)
+@router.post("/tcgplayer", response_model=ImportResult, dependencies=[require(Perm.IMPORTS_RUN)])
 def import_tcgplayer(
-    actor: Actor,
     conn: TenantConn,
     catalog: Annotated[Catalog, Depends(get_catalog)],
     location_id: uuid.UUID,
@@ -133,7 +132,7 @@ def import_tcgplayer(
         }
         change["delta"] = change["target_qty"] - change["current_qty"]
         if not dry_run:
-            change.update(_apply(conn, actor, grain, current, g))
+            change.update(_apply(conn, grain, current, g))
         changes.append(change)
 
     def changed(c: dict) -> bool:
@@ -159,7 +158,7 @@ def import_tcgplayer(
     )
 
 
-def _apply(conn, actor: str, grain: dict, current: dict | None, g: dict) -> dict:
+def _apply(conn, grain: dict, current: dict | None, g: dict) -> dict:
     """Set one grain to the CSV's qty/price under a row lock. Returns the
     fields of the change that the locked re-read may have updated."""
     if current is None and g["target_qty"] == 0:
@@ -170,14 +169,13 @@ def _apply(conn, actor: str, grain: dict, current: dict | None, g: dict) -> dict
     if delta != 0:
         after = queries.set_item_qty(conn, before["id"], g["target_qty"])
         queries.insert_inventory_ledger(
-            conn, item_id=after["id"], delta=delta, reason=REASON, channel=CHANNEL, actor=actor
+            conn, item_id=after["id"], delta=delta, reason=REASON, channel=CHANNEL
         )
     if g["price_cents"] is not None and g["price_cents"] != after["price_cents"]:
         after = queries.set_item_price(conn, after["id"], g["price_cents"])
     if after is not before:
         queries.write_audit(
             conn,
-            actor=actor,
             action="inventory.import",
             entity="inventory_item",
             entity_id=after["id"],

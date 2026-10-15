@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import psycopg
 import pytest
 
-from conftest import app_conn, headers, requires_db
+from conftest import actor_of, app_conn, headers, requires_db
 
 pytestmark = requires_db
 
@@ -53,8 +53,8 @@ def test_issue_then_redeem(client, make_tenant, admin_conn):
         (t["customer_id"],),
     ).fetchall()
     assert [(r["delta_cents"], r["reason"], r["actor"]) for r in ledger] == [
-        (2500, "buylist", "clerk@test"),
-        (-999, "sale", "clerk@test"),
+        (2500, "buylist", actor_of("clerk@test")),
+        (-999, "sale", actor_of("clerk@test")),
     ]
     audit = admin_conn.execute(
         "SELECT action, before, after FROM audit_log WHERE entity_id = %s ORDER BY at",

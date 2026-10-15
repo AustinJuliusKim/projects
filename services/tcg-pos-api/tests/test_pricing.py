@@ -5,7 +5,7 @@ import uuid
 
 import httpx
 
-from conftest import adjust_body, headers, requires_db
+from conftest import actor_of, adjust_body, headers, requires_db
 
 pytestmark = requires_db
 
@@ -139,7 +139,7 @@ def test_patch_price_is_audited_and_leaves_ledger_alone(client, make_tenant, adm
         (item_id,),
     ).fetchall()
     assert [a["action"] for a in audit] == ["inventory.adjust"] + ["inventory.price"] * 2
-    assert audit[1]["actor"] == "pat"
+    assert audit[1]["actor"] == actor_of("pat")
     assert audit[1]["before"]["price_cents"] is None and audit[1]["after"]["price_cents"] == 1275
     n_ledger = admin_conn.execute(
         "SELECT count(*) AS n FROM inventory_ledger WHERE inventory_item_id = %s", (item_id,)

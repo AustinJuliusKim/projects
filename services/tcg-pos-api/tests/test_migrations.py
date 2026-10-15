@@ -31,7 +31,7 @@ def test_every_migration_opens_with_a_why_comment():
 # functions that run as the owner: RLS is ENABLEd (so every other role is
 # bound by policy) but not FORCEd, so the owner needs no BYPASSRLS. Each
 # migration's header explains why. Everything else must ENABLE and FORCE.
-ENABLE_ONLY = {"search_outbox", "storefront_rate_counter"}
+ENABLE_ONLY = {"search_outbox", "storefront_rate_counter", "app_user"}
 
 
 def test_every_table_enables_and_forces_rls():

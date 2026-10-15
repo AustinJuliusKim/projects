@@ -1,16 +1,22 @@
 import uuid
+from typing import Annotated
 
 import psycopg
 from fastapi import APIRouter, HTTPException
 
 from tcg_pos_api import queries
-from tcg_pos_api.deps import Actor, TenantConn
-from tcg_pos_api.routes.models import CreditBalance, CreditChange
+from tcg_pos_api.auth.approvals import ApprovalGate, format_cents, require_or_approval
+from tcg_pos_api.deps import Perm, TenantConn, require
+from tcg_pos_api.routes.models import CreditAdjust, CreditBalance, CreditChange
 
 router = APIRouter(prefix="/customers", tags=["store credit"])
 
 
-@router.get("/{customer_id}/credit", response_model=CreditBalance)
+@router.get(
+    "/{customer_id}/credit",
+    response_model=CreditBalance,
+    dependencies=[require(Perm.CREDIT_READ)],
+)
 def get_credit(conn: TenantConn, customer_id: uuid.UUID) -> CreditBalance:
     balance = queries.credit_balance(conn, customer_id)
     if balance is None:
@@ -20,7 +26,6 @@ def get_credit(conn: TenantConn, customer_id: uuid.UUID) -> CreditBalance:
 
 def _apply(
     conn: psycopg.Connection,
-    actor: str,
     customer_id: uuid.UUID,
     delta_cents: int,
     reason: str,
@@ -37,11 +42,10 @@ def _apply(
             409, f"insufficient store credit (balance {before}, redeem {-delta_cents})"
         )
     queries.insert_credit_ledger(
-        conn, customer_id=customer_id, delta_cents=delta_cents, reason=reason, actor=actor
+        conn, customer_id=customer_id, delta_cents=delta_cents, reason=reason
     )
     queries.write_audit(
         conn,
-        actor=actor,
         action=action,
         entity="customer_credit",
         entity_id=customer_id,
@@ -51,15 +55,70 @@ def _apply(
     return CreditBalance(customer_id=customer_id, balance_cents=after)
 
 
-@router.post("/{customer_id}/credit/issue", response_model=CreditBalance)
-def issue(
-    actor: Actor, conn: TenantConn, customer_id: uuid.UUID, body: CreditChange
-) -> CreditBalance:
-    return _apply(conn, actor, customer_id, body.amount_cents, body.reason, "credit.issue")
+@router.post(
+    "/{customer_id}/credit/issue",
+    response_model=CreditBalance,
+    dependencies=[require(Perm.CREDIT_ISSUE)],
+)
+def issue(conn: TenantConn, customer_id: uuid.UUID, body: CreditChange) -> CreditBalance:
+    return _apply(conn, customer_id, body.amount_cents, body.reason, "credit.issue")
 
 
-@router.post("/{customer_id}/credit/redeem", response_model=CreditBalance)
-def redeem(
-    actor: Actor, conn: TenantConn, customer_id: uuid.UUID, body: CreditChange
+# Redeeming is spending credit as tender, which is part of selling: pos.sell.
+# (Correcting a balance without a sale is credit.adjust, below.)
+@router.post(
+    "/{customer_id}/credit/redeem",
+    response_model=CreditBalance,
+    dependencies=[require(Perm.POS_SELL)],
+)
+def redeem(conn: TenantConn, customer_id: uuid.UUID, body: CreditChange) -> CreditBalance:
+    return _apply(conn, customer_id, -body.amount_cents, body.reason, "credit.redeem")
+
+
+# A correction to a balance (either direction) that isn't a sale or an
+# issue. Cashiers get it only with a manager's approval by default (the
+# cashier approval_policy row in 0012); a store's own policy row can set a
+# limit_cents under which no approval is needed.
+@router.post("/{customer_id}/credit/adjust", response_model=CreditBalance)
+def adjust(
+    gate: Annotated[ApprovalGate, require_or_approval(Perm.CREDIT_ADJUST)],
+    customer_id: uuid.UUID,
+    body: CreditAdjust,
 ) -> CreditBalance:
-    return _apply(conn, actor, customer_id, -body.amount_cents, body.reason, "credit.redeem")
+    gate.authorize(
+        amount_cents=abs(body.delta_cents),
+        payload=body,
+        summary=lambda: _adjust_summary(gate.conn, customer_id, body),
+    )
+    return _apply(gate.conn, customer_id, body.delta_cents, body.reason, "credit.adjust")
+
+
+def _adjust_summary(conn: psycopg.Connection, customer_id: uuid.UUID, body: CreditAdjust) -> dict:
+    """What the approving manager is shown: direction, amount, customer,
+    reason and the balance before/after."""
+    row = conn.execute("SELECT name FROM customer WHERE id = %s", (customer_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "no customer with that id")
+    balance = queries.credit_balance(conn, customer_id)
+    amount = format_cents(body.delta_cents)
+    adding = body.delta_cents > 0
+    sign = "+" if adding else "-"
+    lines = [
+        f"Customer: {row['name']}",
+        f"Change: {sign}{amount} ({'add to' if adding else 'take from'} their balance)",
+        f"Reason: {body.reason}",
+    ]
+    if balance is not None:
+        lines.append(
+            f"Balance: {format_cents(balance)} -> {format_cents(balance + body.delta_cents)}"
+            if balance + body.delta_cents >= 0
+            else f"Balance: {format_cents(balance)} (not enough to remove {amount})"
+        )
+    return {
+        "title": f"{'Add' if adding else 'Remove'} {amount} store credit",
+        "lines": lines,
+        "customer_name": row["name"],
+        "delta_cents": body.delta_cents,
+        "reason": body.reason,
+        "balance_cents": balance,
+    }
