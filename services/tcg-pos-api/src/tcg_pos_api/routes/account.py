@@ -9,8 +9,9 @@
                         default 3).
 
 All run as the verified bearer user (auth.UserConn), who is created on
-first sight from the token's `sub` (and `email`, when the token carries one,
-as dev tokens do)."""
+first sight from the token's `sub` (plus the token's `email` only for the
+local dev issuer's tokens; everyone else's email comes from their verified
+ID token through /v1/me/identity)."""
 
 import os
 

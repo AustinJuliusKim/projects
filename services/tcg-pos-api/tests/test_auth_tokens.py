@@ -43,10 +43,27 @@ def _rejects(token, match=None):
 
 
 def test_valid_access_token():
-    claims = verify_access_token(mint(SUB, email=" Pat@Example.COM "))
+    claims = verify_access_token(mint(SUB))
     assert claims.sub == SUB and claims.client_id == TEST_CLIENT_ID
-    assert claims.email == "pat@example.com"
-    assert verify_access_token(mint(SUB)).email is None
+    assert claims.email is None
+
+
+def test_access_token_email_is_ignored_outside_the_dev_issuer():
+    """An `email` claim in a (non-dev) access token is unverified: it never
+    reaches app_user (security review). Email comes from the ID token."""
+    assert verify_access_token(mint(SUB, email="ceo@victim.test")).email is None
+
+
+def test_dev_issuer_access_token_email_is_used(tmp_path, monkeypatch):
+    monkeypatch.setenv("DEV_AUTH_DIR", str(tmp_path))
+    dev_auth.ensure_keypair(tmp_path)
+    auth = AuthSettings(
+        issuer=dev_auth.DEV_ISSUER,
+        client_ids=frozenset({dev_auth.DEV_CLIENT_ID}),
+        jwks_url=dev_auth.jwks_path(tmp_path).resolve().as_uri(),
+    )
+    token = dev_auth.mint_dev_token(" Pat@Example.COM ", directory=tmp_path)
+    assert verify_access_token(token, auth).email == "pat@example.com"
 
 
 def test_alg_none_is_rejected():

@@ -187,7 +187,12 @@ def verify_access_token(token: str, auth: AuthSettings | None = None) -> Claims:
     if claims.get("client_id") not in auth.client_ids:
         raise InvalidToken("token is for another client")
     sub = _valid_sub(claims)
-    return Claims(sub=sub, client_id=claims["client_id"], email=_email(claims), raw=claims)
+    # An access token's `email` is never trusted outside the local dev
+    # issuer: Cognito access tokens don't carry one, and nothing says it
+    # was verified. A real user's email comes only from their verified ID
+    # token (POST /v1/me/identity). Dev tokens are minted by us, locally.
+    email = _email(claims) if auth.is_dev else None
+    return Claims(sub=sub, client_id=claims["client_id"], email=email, raw=claims)
 
 
 @dataclasses.dataclass(frozen=True)

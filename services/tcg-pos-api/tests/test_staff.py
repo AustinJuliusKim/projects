@@ -49,6 +49,10 @@ def _invite(client, h, email, role="cashier"):
 
 
 def _accept(client, name, token):
+    """Accept as `name`, whose verified email is on file (user_id_for stores
+    it the way POST /v1/me/identity does from an ID token; access-token
+    emails aren't trusted — tests/test_identity.py covers the sync)."""
+    user_id_for(name)
     return client.post("/v1/invites/accept", json={"token": token}, headers=bearer(name))
 
 
@@ -109,6 +113,19 @@ def test_invite_email_must_match_the_verified_email(client, store, invite_links)
     assert resp.status_code == 403
     # The right person still can.
     assert _accept(client, "right@example.test", token).status_code == 200
+
+
+def test_an_unverified_access_token_email_cannot_accept_an_invite(client, store, invite_links):
+    """Security review: ensure_app_user used to store whatever `email` an
+    access token carried. Only the dev issuer's tokens are trusted for it now;
+    anyone else must prove their email with a verified ID token."""
+    _invite(client, store["owner"], "victim@example.test")
+    (token,) = invite_links()
+    forged = bearer("attacker-sub", email="victim@example.test")
+    resp = client.post("/v1/invites/accept", json={"token": token}, headers=forged)
+    assert resp.status_code == 403 and "different email" in resp.json()["detail"]
+    me = client.get("/v1/me", headers=forged).json()
+    assert me["user"]["email"] is None and me["stores"] == []
 
 
 def test_expired_revoked_and_unknown_invites(client, store, invite_links, admin_conn):

@@ -279,7 +279,8 @@ def test_me_creates_the_user_and_lists_stores(client, make_tenant):
     resp = client.get("/v1/me", headers=bearer("Newcomer"))
     assert resp.status_code == 200, resp.text
     me = resp.json()
-    assert me["user"]["email"] == "newcomer@example.test" and me["stores"] == []
+    # The access token's email claim isn't trusted (only the ID token's is).
+    assert me["user"]["email"] is None and me["stores"] == []
     assert me["user"]["id"] == str(user_id_for("Newcomer"))
 
     t = make_tenant("Corner Store")
