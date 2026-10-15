@@ -5,6 +5,7 @@ import {
   currentAuth,
   currentStore,
   initialState,
+  persistableSession,
   pickStore,
   reducer,
   registerSessionFrom,
@@ -67,7 +68,7 @@ test("register mode: lock screen, PIN session, lock, idle and revoked device", (
   let s = initialState({ config: DEV, session: SESSION });
   s = reducer(s, { type: "surface", surface: "register" }); // no device: ignored
   assert.equal(s.surface, "backoffice");
-  s = run(s, { type: "device_enrolled", device: DEVICE }, { type: "surface", surface: "register" });
+  s = reducer(s, { type: "device_enrolled", device: DEVICE });
   assert.equal(screen(s), "register_locked");
   assert.deepEqual(currentAuth(s), { kind: "device", secret: "tcgdev_x", sessionToken: null });
 
@@ -97,12 +98,61 @@ test("register mode: lock screen, PIN session, lock, idle and revoked device", (
   s = reducer(s, { type: "register_signed_in", registerSession: rs });
   s = reducer(s, { type: "surface", surface: "backoffice" }); // leaving locks it
   assert.equal(s.registerSession, null);
-  assert.equal(screen(s), "loading");
+  assert.equal(screen(s), "signed_out");
 
   s = run(s, { type: "surface", surface: "register" }, { type: "auth_failure", kind: "enroll" });
   assert.equal(s.device, null);
   assert.equal(s.surface, "backoffice");
   assert.match(s.notice, /enroll it again/);
+});
+
+// Security review P1: enrolling used to leave the manager's session (and
+// Cognito refresh token) in place, so "Back office" on the lock screen
+// opened the back office as them.
+test("enrolling a browser ends the back-office session that enrolled it", () => {
+  const cognito = { mode: "cognito", accessToken: "a", refreshToken: "r", expiresAt: Date.now() + 3600_000 };
+  let s = run(
+    initialState({ config: DEV }),
+    { type: "signed_in", session: cognito },
+    { type: "me_loaded", me: { user: { id: "mgr" }, stores: STORES } },
+  );
+  assert.equal(screen(s), "backoffice");
+  s = reducer(s, { type: "device_enrolled", device: DEVICE, notice: "signed out" });
+  assert.equal(s.session, null);
+  assert.equal(s.me, null);
+  assert.equal(screen(s), "register_locked");
+  assert.equal(s.notice, "signed out");
+  assert.equal(currentAuth(s).kind, "device");
+  assert.equal(persistableSession(s.session, s.device), null);
+
+  // The lock screen's "Back office" is a sign-in screen, never the
+  // enroller's back office.
+  s = reducer(s, { type: "surface", surface: "backoffice" });
+  assert.equal(screen(s), "signed_out");
+  assert.equal(currentAuth(s), null);
+});
+
+test("on an enrolled browser the back office always needs a fresh sign-in", () => {
+  const cognito = { mode: "cognito", accessToken: "a", refreshToken: "r", expiresAt: Date.now() + 3600_000 };
+  // A session stored by an older build is not resumed.
+  let s = initialState({ config: DEV, session: cognito, device: DEVICE, surface: "backoffice" });
+  assert.equal(s.session, null);
+  assert.equal(screen(s), "signed_out");
+  // A fresh sign-in works, but keeps no refresh token and isn't persisted.
+  s = run(s, { type: "signed_in", session: cognito }, { type: "me_loaded", me: { user: {}, stores: STORES } });
+  assert.equal(screen(s), "backoffice");
+  assert.equal(s.session.accessToken, "a");
+  assert.equal(s.session.refreshToken, null);
+  assert.equal(reducer(s, { type: "session_refreshed", session: cognito }).session.refreshToken, null);
+  assert.equal(persistableSession(s.session, s.device), null);
+  // Opening the register signs them out; coming back means signing in again.
+  s = reducer(s, { type: "surface", surface: "register" });
+  assert.equal(s.session, null);
+  assert.equal(screen(s), "register_locked");
+  s = reducer(s, { type: "surface", surface: "backoffice" });
+  assert.equal(screen(s), "signed_out");
+  // A browser that isn't a register persists its session as before.
+  assert.equal(persistableSession(cognito, null), cognito);
 });
 
 test("initialState only restores register mode with a device", () => {

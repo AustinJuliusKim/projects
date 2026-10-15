@@ -9,6 +9,15 @@
 //
 // screen(state) says what to render; currentAuth(state) is the credential
 // the API client sends.
+//
+// An enrolled browser is a shared machine, so the two surfaces never share a
+// person's back-office sign-in:
+//   * enrolling this browser ends the back-office session that enrolled it
+//     (App also revokes its refresh token and clears storage);
+//   * moving between the register and the back office, either way, ends any
+//     back-office session: the back office always needs a fresh sign-in;
+//   * on an enrolled browser a back-office session lives in memory only and
+//     carries no refresh token (persistableSession, signed_in below).
 
 export function initialState({
   config,
@@ -18,9 +27,12 @@ export function initialState({
   registerSession = null,
   surface = "backoffice",
 } = {}) {
+  // An enrolled browser never resumes a stored back-office session (an
+  // older build may have left one in storage): its back office starts at
+  // the sign-in screen.
   return {
     config,
-    session,
+    session: device ? null : session,
     me: null,
     tenantId,
     device,
@@ -28,6 +40,18 @@ export function initialState({
     surface: device && surface === "register" ? "register" : "backoffice",
     notice: null,
   };
+}
+
+// The back-office session as it may be written to localStorage: never on an
+// enrolled browser.
+export function persistableSession(session, device) {
+  return device ? null : session || null;
+}
+
+// A back-office session as kept on an enrolled browser: no refresh token, so
+// it can't outlive its access token there.
+function deviceSafeSession(session, device) {
+  return device && session ? { ...session, refreshToken: null } : session;
 }
 
 // The remembered store if the user still belongs to it, else their first.
@@ -60,9 +84,9 @@ const AUTH_FAILURE_NOTICE = {
 export function reducer(state, action) {
   switch (action.type) {
     case "signed_in":
-      return { ...state, session: action.session, me: null, notice: null };
+      return { ...state, session: deviceSafeSession(action.session, state.device), me: null, notice: null };
     case "session_refreshed":
-      return { ...state, session: action.session };
+      return { ...state, session: deviceSafeSession(action.session, state.device) };
     case "signed_out":
       return { ...state, session: null, me: null, notice: action.notice || null };
     case "me_loaded":
@@ -74,7 +98,17 @@ export function reducer(state, action) {
       return { ...state, me: { ...state.me, stores }, tenantId: action.store.tenant_id };
     }
     case "device_enrolled":
-      return { ...state, device: action.device, registerSession: null };
+      // The person who enrolled it is signed out here: this browser is now a
+      // register, and the next person at it gets the PIN pad.
+      return {
+        ...state,
+        device: action.device,
+        registerSession: null,
+        session: null,
+        me: null,
+        surface: "register",
+        notice: action.notice || null,
+      };
     case "device_forgotten":
       return {
         ...state,
@@ -85,12 +119,19 @@ export function reducer(state, action) {
       };
     case "surface":
       if (action.surface === "register" && !state.device) return state;
+      if (action.surface === state.surface) return state;
       return {
         ...state,
         surface: action.surface,
         // Leaving the register locks it: the next person starts at the PIN pad.
         registerSession: action.surface === "register" ? state.registerSession : null,
-        notice: null,
+        // Either way, no back-office session crosses over: handing the
+        // browser to the register signs the person out, and the back office
+        // needs a fresh sign-in (whoever enrolled the device or last used
+        // the back office here is not who is standing at it now).
+        session: null,
+        me: null,
+        notice: action.notice || null,
       };
     case "register_signed_in":
       return { ...state, registerSession: action.registerSession, notice: null };

@@ -73,8 +73,9 @@ export default function RegisterLock({ device, notice, dispatch }) {
                 </Text>
               )}
             </div>
+            {/* Always a fresh sign-in: no back-office session survives on a register. */}
             <Button variant="subtle" size="xs" onClick={() => dispatch({ type: "surface", surface: "backoffice" })}>
-              Back office
+              Back office sign-in
             </Button>
           </Group>
           {notice && <Alert color="yellow">{notice}</Alert>}

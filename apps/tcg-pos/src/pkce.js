@@ -42,7 +42,10 @@ export function cognitoBase(domain) {
   return /^https?:\/\//.test(d) ? d : `https://${d}`;
 }
 
-export function authorizeUrl({ domain, clientId, redirectUri, challenge, state }) {
+// prompt=login makes the hosted UI ask for credentials even if its own
+// session cookie would sign the browser straight in (used on an enrolled
+// register, where that cookie may be someone else's).
+export function authorizeUrl({ domain, clientId, redirectUri, challenge, state, prompt }) {
   const params = new URLSearchParams({
     response_type: "code",
     client_id: clientId,
@@ -52,6 +55,7 @@ export function authorizeUrl({ domain, clientId, redirectUri, challenge, state }
     code_challenge_method: "S256",
     code_challenge: challenge,
   });
+  if (prompt) params.set("prompt", prompt);
   return `${cognitoBase(domain)}/oauth2/authorize?${params}`;
 }
 
@@ -87,6 +91,17 @@ export function checkCallback(search, stored) {
     return { error: "the sign-in response didn't match this browser's request; try again" };
   }
   return { code };
+}
+
+// Revoke a refresh token (RFC 7009 via Cognito's /oauth2/revoke): the
+// tokens it issued stop refreshing. A public client sends only client_id.
+export async function revokeToken(domain, { clientId, token }, fetchImpl = globalThis.fetch) {
+  const res = await fetchImpl(`${cognitoBase(domain)}/oauth2/revoke`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ token, client_id: clientId }).toString(),
+  });
+  if (!res.ok) throw new Error(`revoke failed: ${res.status}`);
 }
 
 export async function tokenRequest(domain, params, fetchImpl = globalThis.fetch) {

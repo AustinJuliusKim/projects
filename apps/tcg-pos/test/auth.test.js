@@ -5,13 +5,14 @@ import {
   beginCognitoSignIn,
   completeCognitoSignIn,
   devSignIn,
+  endBackOfficeSession,
   ensureFresh,
   inviteTokenFrom,
   redirectUri,
   signOutUrl,
 } from "../src/auth.js";
 import { challengeFor } from "../src/pkce.js";
-import { PKCE_KEY, readJson } from "../src/session.js";
+import { PKCE_KEY, readJson, SESSION_KEY, writeJson } from "../src/session.js";
 
 const CONFIG = { mode: "cognito", domain: "auth.example.com", clientId: "cid", redirectPath: "/auth/callback" };
 const ORIGIN = "http://localhost:5173";
@@ -104,6 +105,51 @@ test("ensureFresh refreshes Cognito tokens and signs out dev ones", async () => 
   });
   assert.equal(revoked, null);
   assert.equal(await ensureFresh({ mode: "dev", accessToken: "a", expiresAt: 30_000 }, CONFIG, { now: 0 }), null);
+});
+
+test("endBackOfficeSession clears storage, revokes the refresh token and logs out", async () => {
+  const storage = memoryStorage();
+  const session = { mode: "cognito", accessToken: "a", refreshToken: "r-123", expiresAt: 1 };
+  writeJson(storage, SESSION_KEY, session);
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init });
+    return { ok: true };
+  };
+  const url = await endBackOfficeSession(CONFIG, session, { storage, origin: ORIGIN, fetchImpl });
+  assert.equal(readJson(storage, SESSION_KEY), null);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://auth.example.com/oauth2/revoke");
+  const body = new URLSearchParams(calls[0].init.body);
+  assert.equal(body.get("token"), "r-123");
+  assert.equal(body.get("client_id"), "cid");
+  assert.match(url, /\/logout\?client_id=cid&logout_uri=/);
+
+  // Revocation is best effort: a failure still signs the browser out.
+  writeJson(storage, SESSION_KEY, session);
+  const failing = async () => {
+    throw new Error("offline");
+  };
+  assert.ok(await endBackOfficeSession(CONFIG, session, { storage, origin: ORIGIN, fetchImpl: failing }));
+  assert.equal(readJson(storage, SESSION_KEY), null);
+
+  // Dev login: nothing to revoke, no logout page.
+  writeJson(storage, SESSION_KEY, { mode: "dev", accessToken: "d" });
+  const none = async () => assert.fail("no fetch for dev sessions");
+  assert.equal(
+    await endBackOfficeSession({ mode: "dev" }, { mode: "dev", accessToken: "d" }, { storage, origin: ORIGIN, fetchImpl: none }),
+    null,
+  );
+  assert.equal(readJson(storage, SESSION_KEY), null);
+  assert.equal(await endBackOfficeSession(CONFIG, null, { storage, origin: ORIGIN, fetchImpl: none }), null);
+});
+
+test("an enrolled register forces the hosted UI to ask for credentials", async () => {
+  const sessionStore = memoryStorage();
+  const plain = new URL(await beginCognitoSignIn(CONFIG, { origin: ORIGIN, sessionStore }));
+  assert.equal(plain.searchParams.get("prompt"), null);
+  const forced = new URL(await beginCognitoSignIn(CONFIG, { origin: ORIGIN, sessionStore, forceLogin: true }));
+  assert.equal(forced.searchParams.get("prompt"), "login");
 });
 
 test("signOutUrl only for Cognito sessions", () => {

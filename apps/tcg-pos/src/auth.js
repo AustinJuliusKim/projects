@@ -17,16 +17,19 @@ import {
   createPkce,
   logoutUrl,
   refreshParams,
+  revokeToken,
   tokenRequest,
 } from "./pkce.js";
-import { PKCE_KEY, readJson, sessionFromTokens, sessionStatus, writeJson } from "./session.js";
+import { PKCE_KEY, readJson, SESSION_KEY, sessionFromTokens, sessionStatus, writeJson } from "./session.js";
 
 export function redirectUri(config, origin) {
   return `${origin}${config.redirectPath}`;
 }
 
 // Stores the verifier + state for this tab and returns the hosted-UI URL.
-export async function beginCognitoSignIn(config, { origin, sessionStore, cryptoImpl }) {
+// forceLogin (an enrolled register): the hosted UI must ask for a password
+// even if it still has a session cookie from whoever signed in before.
+export async function beginCognitoSignIn(config, { origin, sessionStore, cryptoImpl, forceLogin = false }) {
   const pkce = await createPkce(cryptoImpl);
   writeJson(sessionStore, PKCE_KEY, { verifier: pkce.verifier, state: pkce.state });
   return authorizeUrl({
@@ -35,6 +38,7 @@ export async function beginCognitoSignIn(config, { origin, sessionStore, cryptoI
     redirectUri: redirectUri(config, origin),
     challenge: pkce.challenge,
     state: pkce.state,
+    prompt: forceLogin ? "login" : undefined,
   });
 }
 
@@ -95,6 +99,24 @@ export async function ensureFresh(session, config, { fetchImpl, now = Date.now()
 export function signOutUrl(config, session, origin) {
   if (config.mode !== "cognito" || !session || session.mode !== "cognito") return null;
   return logoutUrl({ domain: config.domain, clientId: config.clientId, logoutUri: `${origin}/` });
+}
+
+// End the back-office session on this browser, e.g. because it was just
+// enrolled as a register: drop it from storage, and (Cognito) revoke its
+// refresh token, best effort — a failed revoke still leaves the browser
+// signed out, and the access token dies within the hour. Returns the
+// hosted-UI logout URL to visit (clears Cognito's own session cookie), or
+// null for dev login.
+export async function endBackOfficeSession(config, session, { storage, origin, fetchImpl } = {}) {
+  writeJson(storage, SESSION_KEY, null);
+  if (config.mode === "cognito" && session && session.mode === "cognito" && session.refreshToken) {
+    try {
+      await revokeToken(config.domain, { clientId: config.clientId, token: session.refreshToken }, fetchImpl);
+    } catch {
+      // best effort
+    }
+  }
+  return origin ? signOutUrl(config, session, origin) : null;
 }
 
 // An invite link (/invite?token=...) as a token to keep until signed in.

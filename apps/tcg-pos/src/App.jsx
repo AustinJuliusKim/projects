@@ -20,11 +20,12 @@ import {
   beginCognitoSignIn,
   completeCognitoSignIn,
   devSignIn,
+  endBackOfficeSession,
   ensureFresh,
   inviteTokenFrom,
   signOutUrl,
 } from "./auth.js";
-import { currentAuth, currentStore, initialState, reducer, screen } from "./authState.js";
+import { currentAuth, currentStore, initialState, persistableSession, reducer, screen } from "./authState.js";
 import CreateStore from "./CreateStore.jsx";
 import InviteAccept from "./InviteAccept.jsx";
 import { permsForRole, SYSTEM_ROLE_PERMS, visibleNav } from "./perms.js";
@@ -114,8 +115,12 @@ export default function App() {
     });
   }
 
-  // Persist what survives a reload. The register session is per tab.
-  useEffect(() => writeJson(local, SESSION_KEY, state.session), [state.session]);
+  // Persist what survives a reload. The register session is per tab; an
+  // enrolled browser never stores a back-office session (authState.js).
+  useEffect(
+    () => writeJson(local, SESSION_KEY, persistableSession(state.session, state.device)),
+    [state.session, state.device],
+  );
   useEffect(() => writeJson(local, STORE_KEY, state.tenantId), [state.tenantId]);
   useEffect(() => writeJson(local, DEVICE_KEY, state.device), [state.device]);
   useEffect(() => writeJson(local, SURFACE_KEY, state.surface), [state.surface]);
@@ -163,7 +168,40 @@ export default function App() {
   }
 
   async function signInCognito() {
-    window.location.assign(await beginCognitoSignIn(CONFIG, { origin, sessionStore: tabStore }));
+    window.location.assign(
+      await beginCognitoSignIn(CONFIG, {
+        origin,
+        sessionStore: tabStore,
+        forceLogin: Boolean(stateRef.current.device),
+      }),
+    );
+  }
+
+  // This browser was just enrolled as a register: it stops being the
+  // enroller's back office. Persist the device first (we may navigate away),
+  // end + revoke the back-office session, then (Cognito) clear the hosted
+  // UI's cookie via its logout, which lands back here on the lock screen.
+  async function deviceEnrolled(device) {
+    const session = stateRef.current.session;
+    writeJson(local, DEVICE_KEY, device);
+    writeJson(local, SURFACE_KEY, "register");
+    dispatch({
+      type: "device_enrolled",
+      device,
+      notice: "This browser is now a register. You were signed out of the back office here.",
+    });
+    const url = await endBackOfficeSession(CONFIG, session, { storage: local, origin });
+    if (url) window.location.assign(url);
+  }
+
+  // Handing the browser to the register signs the back-office user out.
+  function openRegisterMode() {
+    const session = stateRef.current.session;
+    writeJson(local, SURFACE_KEY, "register");
+    dispatch({ type: "surface", surface: "register" });
+    endBackOfficeSession(CONFIG, session, { storage: local, origin }).then((url) => {
+      if (url) window.location.assign(url);
+    });
   }
 
   async function inviteAccepted(joined) {
@@ -173,7 +211,7 @@ export default function App() {
     setInvite(null);
   }
 
-  const openRegister = state.device ? () => dispatch({ type: "surface", surface: "register" }) : null;
+  const openRegister = state.device ? openRegisterMode : null;
 
   let body;
   if (view === "config_error") {
@@ -235,7 +273,15 @@ export default function App() {
       </Center>
     );
   } else if (view === "backoffice") {
-    body = <BackOffice state={state} dispatch={dispatch} onSignOut={signOut} onOpenRegister={openRegister} />;
+    body = (
+      <BackOffice
+        state={state}
+        dispatch={dispatch}
+        onSignOut={signOut}
+        onOpenRegister={openRegister}
+        onDeviceEnrolled={deviceEnrolled}
+      />
+    );
   } else if (view === "register_locked") {
     body = <RegisterLock device={state.device} notice={state.notice} dispatch={dispatch} />;
   } else {
@@ -278,7 +324,7 @@ function useStorePerms(store) {
   return useMemo(() => (role ? permsForRole(role, roles) : null), [role, roles]);
 }
 
-function BackOffice({ state, dispatch, onSignOut, onOpenRegister }) {
+function BackOffice({ state, dispatch, onSignOut, onOpenRegister, onDeviceEnrolled }) {
   const store = currentStore(state);
   const perms = useStorePerms(store);
   const [locationId, setLocationId] = useStoreLocation(state.tenantId);
@@ -297,6 +343,7 @@ function BackOffice({ state, dispatch, onSignOut, onOpenRegister }) {
     me: state.me,
     device: state.device,
     dispatch,
+    onDeviceEnrolled,
   };
 
   const header = (

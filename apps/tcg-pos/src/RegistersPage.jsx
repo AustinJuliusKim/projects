@@ -10,7 +10,8 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString() : "—");
 
 // Registers and their enrolled devices (registers.manage). "Enroll this
 // device" turns this browser into that register: the device secret is
-// returned once and kept in localStorage.
+// returned once and kept in localStorage, and the back-office session that
+// enrolled it ends (the browser is a shared machine from then on).
 export default function RegistersPage({ ctx }) {
   const [registers, setRegisters] = useState(null);
   const [devices, setDevices] = useState([]);
@@ -61,23 +62,28 @@ export default function RegistersPage({ ctx }) {
   }
 
   function enroll(register) {
+    const replacing = ctx.device
+      ? `This browser is already enrolled as "${ctx.device.registerName}"; that enrollment will be replaced. `
+      : "";
     if (
-      ctx.device &&
-      !window.confirm(`This browser is already enrolled as "${ctx.device.registerName}". Replace that enrollment?`)
+      !window.confirm(
+        `${replacing}Enroll this browser as the register "${register.name}"? ` +
+          "It becomes a shared register and you will be signed out of the back office here.",
+      )
     ) {
       return;
     }
     act(`enroll:${register.id}`, async () => {
       const enrolled = await enrollDevice(register.id);
-      ctx.dispatch({
-        type: "device_enrolled",
-        device: deviceFromEnrollment(enrolled, {
+      // Hands the browser over to the register: ends this back-office
+      // session (App.deviceEnrolled), so we leave this page.
+      await ctx.onDeviceEnrolled(
+        deviceFromEnrollment(enrolled, {
           register,
           tenantId: ctx.tenantId,
           storeName: ctx.store && ctx.store.name,
         }),
-      });
-      setNotice(`This browser is now the register "${register.name}". Use Register mode in the header to open it.`);
+      );
     });
   }
 
