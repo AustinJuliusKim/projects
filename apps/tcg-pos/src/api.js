@@ -71,6 +71,9 @@ function detailText(status, detail, retryAfter) {
       : `A manager's approval is needed (${detail.approval_required}).`;
   }
   if (typeof detail.missing === "string") {
+    if (detail.reason === "back_office_only") {
+      return `That's a back-office task (${detail.missing}): sign in to the back office with your own account.`;
+    }
     return `You don't have permission to do that (${detail.missing}).`;
   }
   const { reason } = detail;

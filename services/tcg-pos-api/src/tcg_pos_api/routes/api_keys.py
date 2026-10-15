@@ -5,9 +5,10 @@
   DELETE /v1/api-keys/{id}     revoke (instant)
 
 A key's perms must be a subset of the creator's permissions at creation and
-may not include the identity/admin permissions in FORBIDDEN (managing staff,
-roles, registers or keys, approving, billing): a key is for integrations,
-not for administering people. Requests use `Authorization: ApiKey
+may not include the admin permissions in FORBIDDEN (managing staff, roles,
+registers or keys, billing, store-wide settings, channels, the storefront
+and the pricing rule, approving): a key is for integrations, not for
+administering the store. Requests use `Authorization: ApiKey
 tcgpos_<prefix>_<secret>` and act as apikey:<id> (auth/principal.py)."""
 
 import secrets
@@ -18,6 +19,7 @@ from fastapi import APIRouter, HTTPException
 
 from tcg_pos_api import queries
 from tcg_pos_api.auth import Perm, TenantSession, require
+from tcg_pos_api.auth.perms import API_KEY_FORBIDDEN
 from tcg_pos_api.auth.principal import sha256_hex
 from tcg_pos_api.routes.models import ApiKey, ApiKeyCreate, ApiKeyCreated
 
@@ -25,16 +27,10 @@ router = APIRouter(prefix="/api-keys", tags=["api keys"])
 
 KeysSession = Annotated[TenantSession, require(Perm.APIKEYS_MANAGE)]
 
-FORBIDDEN = frozenset(
-    {
-        Perm.STAFF_MANAGE,
-        Perm.ROLES_MANAGE,
-        Perm.REGISTERS_MANAGE,
-        Perm.APIKEYS_MANAGE,
-        Perm.APPROVE_OVERRIDE,
-        Perm.BILLING_MANAGE,
-    }
-)
+# Admin perms no key may hold (people, credentials, billing, store-wide
+# configuration, approvals): auth/perms.API_KEY_FORBIDDEN, which is also
+# stripped whenever a key is resolved (auth/principal.py).
+FORBIDDEN = API_KEY_FORBIDDEN
 
 KEY_SQL = (
     "SELECT id, name, prefix, perms, created_by, created_at, last_used_at, revoked_at, "

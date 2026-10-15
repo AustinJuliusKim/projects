@@ -16,15 +16,18 @@ Store routes (Session / require) accept one of these credentials in
                           member signed in on it with their PIN. The device
                           decides the store (X-Tenant-Id is optional and
                           must match). The principal is the session user's
-                          membership. Revoked devices, ended/expired (12 h)
-                          or idle (30 min) sessions -> 401.
+                          membership, minus the admin permissions no
+                          register ever holds (perms.DEVICE_FORBIDDEN).
+                          Revoked devices, ended/expired (12 h) or idle
+                          (30 min) sessions -> 401.
                           Actor device:<uuid>/user:<uuid>.
   ApiKey tcgpos_<prefix>_<secret>
                           a store's API key (0013): looked up by prefix,
                           secret compared as SHA-256 in constant time,
                           revoked keys -> 401. The key decides the store
                           (X-Tenant-Id optional, must match); its own perms
-                          list is the principal's. No user, no role.
+                          list (minus perms.API_KEY_FORBIDDEN) is the
+                          principal's. No user, no role.
                           Actor apikey:<uuid>.
 
 Every scheme ends the same way: SET LOCAL ROLE tcg_pos_app, app.tenant_id,
@@ -51,7 +54,7 @@ import psycopg
 from fastapi import Depends, Header, HTTPException
 from psycopg.rows import dict_row
 
-from tcg_pos_api.auth.perms import Perm
+from tcg_pos_api.auth.perms import Perm, forbidden_for
 from tcg_pos_api.auth.tokens import AuthUnavailable, Claims, InvalidToken, verify_access_token
 from tcg_pos_api.config import connect_kwargs, database_url
 
@@ -284,7 +287,7 @@ def _device_principal(
         user_id=row["user_id"],
         tenant_id=row["tenant_id"],
         role_key=grants["role_key"],
-        perms=frozenset(grants["perms"]),
+        perms=frozenset(grants["perms"]) - forbidden_for("device"),
         location_ids=(grants["location_id"],) if grants["location_id"] else None,
         actor=f"device:{row['device_id']}/user:{row['user_id']}",
         kind="device",
@@ -314,7 +317,7 @@ def _api_key_principal(conn: psycopg.Connection, key: str, selector: uuid.UUID |
         user_id=None,
         tenant_id=row["tenant_id"],
         role_key=None,
-        perms=frozenset(row["perms"]),
+        perms=frozenset(row["perms"]) - forbidden_for("apikey"),
         location_ids=None,
         actor=f"apikey:{row['id']}",
         kind="apikey",
@@ -409,6 +412,17 @@ UserConn = Annotated[UserSession, Depends(_user_session, scope="function")]
 DeviceConn = Annotated[DeviceSession, Depends(_device_session, scope="function")]
 
 
+def missing_detail(principal: Principal, perm: Perm) -> dict[str, str]:
+    """The 403 body for a permission the caller doesn't hold. Admin perms
+    are never held over a register session or an API key (perms.ADMIN_PERMS)
+    — "back_office_only" tells the client a person must sign in with their
+    own account for this."""
+    detail = {"missing": perm.value}
+    if perm.value in forbidden_for(principal.kind):
+        detail["reason"] = "back_office_only"
+    return detail
+
+
 def require(perm: Perm):
     """Dependency: the request's TenantSession, or 403 {"missing": perm}.
     Use as a route parameter (`session: Annotated[TenantSession,
@@ -417,7 +431,7 @@ def require(perm: Perm):
 
     def check(session: Session) -> TenantSession:
         if not session.principal.has(perm):
-            raise HTTPException(403, {"missing": perm.value})
+            raise HTTPException(403, missing_detail(session.principal, perm))
         return session
 
     check.required_perm = perm  # read by tests/test_route_coverage.py

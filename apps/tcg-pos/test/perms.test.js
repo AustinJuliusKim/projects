@@ -5,10 +5,12 @@ import {
   ALL_PERMS,
   can,
   canGrant,
+  DEVICE_FORBIDDEN_PERMS,
   keyGrantablePerms,
   KEY_FORBIDDEN_PERMS,
   permsForRole,
   settlePage,
+  registerPerms,
   visibleNav,
 } from "../src/perms.js";
 
@@ -40,6 +42,19 @@ test("nav is gated by perms and surface", () => {
   assert.deepEqual(pages(permsForRole("owner"), "register"), ["inventory", "receive", "import", "credit"]);
   // Unknown perms: show everything, the API decides.
   assert.equal(pages(null, "backoffice").length, 8);
+});
+
+test("a register session never shows or holds back-office-only perms", () => {
+  // Even if a stale or hand-edited session claims every perm.
+  const perms = registerPerms(ALL_PERMS);
+  for (const p of DEVICE_FORBIDDEN_PERMS) assert.ok(!perms.has(p), p);
+  assert.ok(perms.has("pos.sell") && perms.has("imports.run") && perms.has("approve.override"));
+  assert.deepEqual(pages(perms, "register"), ["inventory", "receive", "import", "credit"]);
+  // Unknown perms on a register still hide admin pages.
+  const admin = pages(null, "register");
+  for (const page of ["team", "registers", "apikeys", "pin"]) assert.ok(!admin.includes(page), page);
+  assert.ok(KEY_FORBIDDEN_PERMS.includes("approve.override"));
+  for (const p of DEVICE_FORBIDDEN_PERMS) assert.ok(KEY_FORBIDDEN_PERMS.includes(p), p);
 });
 
 test("settlePage keeps a visible page or falls back", () => {

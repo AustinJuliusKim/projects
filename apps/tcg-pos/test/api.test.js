@@ -31,6 +31,10 @@ test("errorMessage reads the auth routes' object details", () => {
     errorMessage(403, { detail: { missing: "staff.manage" } }),
     "You don't have permission to do that (staff.manage).",
   );
+  assert.match(
+    errorMessage(403, { detail: { missing: "apikeys.manage", reason: "back_office_only" } }),
+    /back-office task \(apikeys\.manage\)/,
+  );
   assert.equal(
     errorMessage(403, { detail: { reason: "wrong_pin", attempts_left: 1 } }),
     "Wrong PIN. 1 attempt left before it locks.",

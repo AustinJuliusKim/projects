@@ -104,8 +104,37 @@ export const NAV = [
   { value: "pin", label: "My PIN", surfaces: ["backoffice"] },
 ];
 
+// Admin perms a register session or an API key never holds, whatever the
+// role (mirrors services/tcg-pos-api/src/tcg_pos_api/auth/perms.py
+// ADMIN_PERMS): the API strips them from register sessions and answers 403
+// {missing, reason: "back_office_only"}. A person signs in to the back
+// office with their own account for these.
+export const ADMIN_PERMS = [
+  "staff.manage",
+  "roles.manage",
+  "registers.manage",
+  "apikeys.manage",
+  "billing.manage",
+  "settings.manage",
+  "channels.manage",
+  "storefront.manage",
+  "pricing.rules_manage",
+];
+export const DEVICE_FORBIDDEN_PERMS = ADMIN_PERMS;
+
+// A register session's perms as the UI should use them: whatever the
+// sign-in response said, minus the back-office-only perms.
+export function registerPerms(perms) {
+  return new Set((perms || []).filter((p) => !DEVICE_FORBIDDEN_PERMS.includes(p)));
+}
+
 export function visibleNav(perms, surface) {
-  return NAV.filter((n) => (!n.surfaces || n.surfaces.includes(surface)) && can(perms, n.perm));
+  return NAV.filter(
+    (n) =>
+      (!n.surfaces || n.surfaces.includes(surface)) &&
+      !(surface === "register" && DEVICE_FORBIDDEN_PERMS.includes(n.perm)) &&
+      can(perms, n.perm),
+  );
 }
 
 // The current page if it's still visible, else the first visible one.
@@ -124,15 +153,9 @@ export function canGrant(role, myPerms, myRole) {
   return role.perms.every((p) => myPerms.has(p));
 }
 
-// Mirrors routes/api_keys.FORBIDDEN: admin perms an API key can never hold.
-export const KEY_FORBIDDEN_PERMS = [
-  "staff.manage",
-  "roles.manage",
-  "registers.manage",
-  "apikeys.manage",
-  "approve.override",
-  "billing.manage",
-];
+// Mirrors auth/perms.API_KEY_FORBIDDEN: admin perms an API key can never
+// hold (the register's set, plus approving).
+export const KEY_FORBIDDEN_PERMS = [...ADMIN_PERMS, "approve.override"];
 
 // Perms the caller may put on a new API key: theirs, minus the forbidden.
 export function keyGrantablePerms(myPerms) {

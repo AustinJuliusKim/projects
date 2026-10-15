@@ -3,7 +3,7 @@ import { Alert, Button, Group, Text, Title } from "@mantine/core";
 
 import { registerSignOut } from "./api.js";
 import { ApprovalProvider } from "./Approval.jsx";
-import { visibleNav } from "./perms.js";
+import { registerPerms, visibleNav } from "./perms.js";
 import { createIdleTimer } from "./register.js";
 import Workspace from "./Workspace.jsx";
 
@@ -14,7 +14,7 @@ const ACTIVITY = ["pointerdown", "keydown", "touchstart", "wheel"];
 // server's idle timeout (the server enforces it too: session_idle).
 export default function RegisterMode({ state, dispatch }) {
   const { device, registerSession: rs } = state;
-  const perms = useMemo(() => new Set(rs.perms), [rs.perms]);
+  const perms = useMemo(() => registerPerms(rs.perms), [rs.perms]);
   const locking = useRef(false);
 
   function lock(notice) {

@@ -41,6 +41,7 @@ from tcg_pos_api.auth import (
     require,
 )
 from tcg_pos_api.auth.approvals import APPROVAL_TTL_SECONDS, eligible_approver
+from tcg_pos_api.auth.perms import forbidden_for
 from tcg_pos_api.auth.pins import (
     attempts_per_minute,
     check_pin,
@@ -279,7 +280,7 @@ def sign_in(device: DeviceConn, body: RegisterSignIn):
         user_id=body.user_id,
         name=_display_name(person),
         role=grants["role_key"],
-        perms=list(grants["perms"]),
+        perms=sorted(set(grants["perms"]) - forbidden_for("device")),
         expires_at=row["expires_at"],
         idle_timeout_seconds=SESSION_IDLE_SECONDS,
     )

@@ -117,3 +117,91 @@ def test_role_can_or_cannot_call_endpoint(client, make_tenant, fake_catalog, adm
     else:
         assert resp.status_code == 403, resp.text
         assert resp.json() == {"detail": {"missing": ep["perm"]}}
+
+
+def test_device_column_is_allow_minus_the_back_office_only_perms():
+    from tcg_pos_api.auth.perms import DEVICE_FORBIDDEN
+
+    for ep in ENDPOINTS:
+        expected = [] if ep["perm"] in DEVICE_FORBIDDEN else ep["allow"]
+        assert ep["device"] == expected, ep
+
+
+def _register_session(client, t, role):
+    """Headers for a `role` member signed in on a freshly enrolled register of
+    store `t` (enrolled by a separate owner)."""
+    admin = headers(t, actor="matrix-admin", role="owner")
+    reg = client.post(
+        "/v1/registers", json={"location_id": str(t["location_id"]), "name": "M"}, headers=admin
+    )
+    device = client.post(f"/v1/registers/{reg.json()['id']}/enroll", headers=admin).json()
+    who = f"matrix-dev-{role}"
+    assert (
+        client.put(
+            "/v1/me/pin", json={"pin": "284716"}, headers=headers(t, actor=who, role=role)
+        ).status_code
+        == 204
+    )
+    from conftest import user_id_for
+
+    dh = {"Authorization": f"Device {device['device_secret']}"}
+    resp = client.post(
+        "/v1/register/sessions",
+        json={"user_id": str(user_id_for(who)), "pin": "284716"},
+        headers=dh,
+    )
+    assert resp.status_code == 201, resp.text
+    from tcg_pos_api.auth.perms import DEVICE_FORBIDDEN
+
+    assert not set(resp.json()["perms"]) & DEVICE_FORBIDDEN
+    return {**dh, "X-Register-Session": resp.json()["session_token"]}
+
+
+@requires_db
+@pytest.mark.parametrize(
+    "ep,role",
+    [(ep, role) for ep in ENDPOINTS for role in ROLES],
+    ids=[
+        f"{ep['method']} {ep.get('route', ep['path'])} on a register as {role}"
+        for ep in ENDPOINTS
+        for role in ROLES
+    ],
+)
+def test_role_on_a_register_can_or_cannot_call_endpoint(
+    client, make_tenant, fake_catalog, admin_conn, monkeypatch, ep, role
+):
+    from tcg_pos_api.auth.perms import DEVICE_FORBIDDEN
+
+    monkeypatch.setenv("REGISTER_PIN_LIMIT", "1000")
+    t = make_tenant()
+    item = admin_conn.execute(
+        "INSERT INTO inventory_item (tenant_id, location_id, printing_id, condition, finish, qty) "
+        "VALUES (%s, %s, gen_random_uuid(), 'NM', 'foil', 1) RETURNING id",
+        (t["id"], t["location_id"]),
+    ).fetchone()["id"]
+    slots = {
+        "location_id": t["location_id"],
+        "customer_id": t["customer_id"],
+        "item_id": item,
+        "uuid": uuid.uuid4(),
+        "hex": uuid.uuid4().hex[:10],
+    }
+    h = _register_session(client, t, role)
+    kwargs = {}
+    if ep.get("csv"):
+        kwargs["content"] = CSV
+        h["Content-Type"] = "text/csv"
+    elif "body" in ep:
+        kwargs["json"] = _fill(ep["body"], slots)
+    resp = client.request(ep["method"], _fill(ep["path"], slots), headers=h, **kwargs)
+    if role in ep["device"]:
+        assert resp.status_code in ep["expect"], resp.text
+    elif role in ep.get("approval", []):
+        assert resp.status_code == 403, resp.text
+        assert resp.json()["detail"]["approval_required"] == ep["perm"]
+    else:
+        assert resp.status_code == 403, resp.text
+        expected = {"missing": ep["perm"]}
+        if ep["perm"] in DEVICE_FORBIDDEN:
+            expected["reason"] = "back_office_only"
+        assert resp.json() == {"detail": expected}

@@ -665,3 +665,86 @@ def test_app_role_cannot_read_secrets_or_other_stores(client, store, make_tenant
         # Only the system defaults are visible from another store.
         n = conn.execute("SELECT count(*) AS n FROM approval_policy").fetchone()["n"]
         assert n == 4
+
+
+# --- what a register session can never do (security review P1) ----------------------
+
+
+def test_an_owner_pin_on_a_register_is_not_an_admin(client, store, admin_conn):
+    device = enroll(client, store)
+    h = session_h(client, store, device, "boss")
+    back_office_only = {"reason": "back_office_only"}
+    resp = client.post("/v1/api-keys", json={"name": "x", "perms": ["inventory.read"]}, headers=h)
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == {"missing": "apikeys.manage", **back_office_only}
+    reg = client.get("/v1/registers", headers=store["owner"]).json()[0]
+    resp = client.post(f"/v1/registers/{reg['id']}/enroll", headers=h)
+    assert resp.status_code == 403 and resp.json()["detail"]["missing"] == "registers.manage"
+    resp = client.post(
+        "/v1/invites", json={"email": "evil@attacker.test", "role": "owner"}, headers=h
+    )
+    assert resp.status_code == 403 and resp.json()["detail"]["missing"] == "staff.manage"
+    resp = client.delete(f"/v1/staff/{store['uid']['mgr']}", headers=h)
+    assert resp.status_code == 403
+    rule = {"nm_bp": 10000, "lp_bp": 9000, "mp_bp": 7500, "hp_bp": 6000, "dmg_bp": 4000}
+    rule.update(min_price_cents=25, round_up_to_cents=25)
+    resp = client.put("/v1/pricing/rule", json=rule, headers=h)
+    assert resp.status_code == 403 and resp.json()["detail"]["missing"] == "pricing.rules_manage"
+    # Counter work still works, and the session reports what it can do.
+    assert client.get("/v1/inventory", headers=h).status_code == 200
+    perms = set(sign_in(client, store, device, "boss").json()["perms"])
+    assert "pos.sell" in perms and "approve.override" in perms
+    assert not perms & {"staff.manage", "apikeys.manage", "registers.manage", "billing.manage"}
+    nothing = admin_conn.execute(
+        "SELECT (SELECT count(*) FROM api_key WHERE tenant_id = %s) + "
+        "(SELECT count(*) FROM invite WHERE tenant_id = %s) AS n",
+        (store["id"], store["id"]),
+    ).fetchone()["n"]
+    assert nothing == 0
+
+
+def test_an_approval_policy_cannot_give_a_register_an_admin_perm(client, store, admin_conn):
+    admin_conn.execute(
+        "INSERT INTO approval_policy (tenant_id, role_id, perm, mode) "
+        "SELECT %s, id, 'staff.manage', 'allow' FROM role "
+        "WHERE tenant_id IS NULL AND key = 'owner'",
+        (store["id"],),
+    )
+    from fastapi import HTTPException
+
+    from conftest import app_conn
+    from tcg_pos_api.auth.approvals import require_or_approval
+    from tcg_pos_api.auth.perms import Perm
+    from tcg_pos_api.auth.principal import Principal, TenantSession
+
+    check = require_or_approval(Perm.STAFF_MANAGE).dependency
+    principal = Principal(
+        user_id=store["uid"]["boss"],
+        tenant_id=store["id"],
+        role_key="owner",
+        perms=frozenset(),
+        location_ids=None,
+        actor="device:x/user:y",
+        kind="device",
+    )
+    with app_conn(store["id"]) as conn:
+        with pytest.raises(HTTPException) as err:
+            check(TenantSession(conn=conn, principal=principal), None, None)
+    assert err.value.detail == {"missing": "staff.manage", "reason": "back_office_only"}
+
+
+def test_an_api_key_row_holding_an_admin_perm_does_not_grant_it(client, store, admin_conn):
+    resp = client.post(
+        "/v1/api-keys", json={"name": "k", "perms": ["inventory.read"]}, headers=store["owner"]
+    )
+    key = resp.json()
+    # Planted directly (the API refuses to create it).
+    admin_conn.execute(
+        "UPDATE api_key SET perms = perms || '{staff.manage,apikeys.manage}' WHERE id = %s",
+        (key["id"],),
+    )
+    h = {"Authorization": f"ApiKey {key['key']}"}
+    assert client.get("/v1/inventory", headers=h).status_code == 200
+    resp = client.get("/v1/staff", headers=h)
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == {"missing": "staff.manage", "reason": "back_office_only"}

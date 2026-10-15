@@ -40,8 +40,14 @@ import psycopg
 from fastapi import Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 
-from tcg_pos_api.auth.perms import Perm
-from tcg_pos_api.auth.principal import Principal, Session, TenantSession, member_grants
+from tcg_pos_api.auth.perms import Perm, forbidden_for
+from tcg_pos_api.auth.principal import (
+    Principal,
+    Session,
+    TenantSession,
+    member_grants,
+    missing_detail,
+)
 
 APPROVAL_TTL_SECONDS = 60
 
@@ -175,6 +181,10 @@ def require_or_approval(perm: Perm):
         request: Request,
         x_approval: Annotated[str | None, Header()] = None,
     ) -> ApprovalGate:
+        # A policy row can let a role act on a perm it lacks; it can't hand a
+        # register or a key an admin perm.
+        if perm.value in forbidden_for(session.principal.kind):
+            raise HTTPException(403, missing_detail(session.principal, perm))
         policy = policy_for(session.conn, session.principal, perm)
         if (policy is None and not session.principal.has(perm)) or (
             policy is not None and policy["mode"] == "deny"
