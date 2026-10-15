@@ -407,7 +407,9 @@ def test_disabled_member_loses_their_register_session(client, store):
     device = enroll(client, store)
     h = session_h(client, store, device, "cash")
     make_member(store, name_of(store, "cash"), "cashier", status="disabled")
-    assert client.get("/v1/inventory", headers=h).status_code == 403
+    # Even a change made straight in SQL ends the session (0015 trigger).
+    resp = client.get("/v1/inventory", headers=h)
+    assert resp.status_code == 401 and resp.json()["detail"]["reason"] == "session_ended"
     assert sign_in(client, store, device, "cash").status_code == 403
 
 
@@ -812,3 +814,55 @@ def test_approval_request_says_what_is_being_approved(client, store, counter):
         headers=counter["cashier"],
     )
     assert resp.status_code == 404
+
+
+# --- sessions end when access changes (security review P4/P5) ------------------------
+
+
+def _session_reason(client, h):
+    resp = client.get("/v1/inventory", headers=h)
+    return resp.status_code, resp.json().get("detail", {}).get("reason")
+
+
+def test_disabling_ends_register_sessions_and_reenabling_does_not_revive_them(client, store):
+    device = enroll(client, store)
+    h = session_h(client, store, device, "cash")
+    assert client.delete(f"/v1/staff/{store['uid']['cash']}", headers=store["owner"]).status_code
+    assert _session_reason(client, h) == (401, "session_ended")
+    resp = client.patch(
+        f"/v1/staff/{store['uid']['cash']}", json={"status": "active"}, headers=store["owner"]
+    )
+    assert resp.status_code == 200
+    assert _session_reason(client, h) == (401, "session_ended")
+    # They can sign in again, with a new session.
+    assert _session_reason(client, session_h(client, store, device, "cash"))[0] == 200
+
+
+def test_a_role_change_ends_register_sessions(client, store, admin_conn):
+    device = enroll(client, store)
+    h = session_h(client, store, device, "mgr")
+    other = session_h(client, store, device, "cash")
+    resp = client.patch(
+        f"/v1/staff/{store['uid']['mgr']}", json={"role": "cashier"}, headers=store["owner"]
+    )
+    assert resp.status_code == 200
+    assert _session_reason(client, h) == (401, "session_ended")
+    assert _session_reason(client, other)[0] == 200  # only that person's
+
+
+def test_a_new_pin_ends_the_persons_register_sessions(client, store, admin_conn):
+    first, second = enroll(client, store), enroll(client, store)
+    h1 = session_h(client, store, first, "mgr")
+    h2 = session_h(client, store, second, "mgr")
+    other = session_h(client, store, first, "cash")
+    resp = client.put("/v1/me/pin", json={"pin": "582039"}, headers=store["manager"])
+    assert resp.status_code == 204
+    assert _session_reason(client, h1) == (401, "session_ended")
+    assert _session_reason(client, h2) == (401, "session_ended")
+    assert _session_reason(client, other)[0] == 200
+    audit = admin_conn.execute(
+        "SELECT after FROM audit_log WHERE tenant_id = %s AND action = 'pin.set' "
+        "AND entity_id = %s ORDER BY at DESC LIMIT 1",
+        (store["id"], store["uid"]["mgr"]),
+    ).fetchone()["after"]
+    assert audit == {"pin": "set", "sessions_ended": 2}

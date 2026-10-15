@@ -335,3 +335,79 @@ def test_roles_list(client, store, make_tenant, admin_conn):
     assert [r["key"] for r in roles] == ["owner", "manager", "buyer", "cashier"]
     assert len(roles[0]["perms"]) == 32 and all(r["is_system"] for r in roles)
     assert "billing.manage" not in roles[1]["perms"]
+
+
+def _owner_conn(tenant_id, isolation=None):
+    """A separate, uncommitted transaction as the API's app role."""
+    import psycopg
+
+    from conftest import TEST_DATABASE_URL
+
+    conn = psycopg.connect(TEST_DATABASE_URL)
+    if isolation:
+        conn.isolation_level = isolation
+    conn.execute("SET LOCAL ROLE tcg_pos_app")
+    conn.execute("SELECT set_config('app.tenant_id', %s, true)", (str(tenant_id),))
+    return conn
+
+
+def _active_owners(admin_conn, tenant_id):
+    return admin_conn.execute(
+        "SELECT count(*) AS n FROM membership m JOIN role r ON r.id = m.role_id "
+        "WHERE m.tenant_id = %s AND r.key = 'owner' AND m.status = 'active'",
+        (tenant_id,),
+    ).fetchone()["n"]
+
+
+def test_last_owner_trigger_serializes_concurrent_changes(make_tenant, admin_conn):
+    """Two transactions each disable one of a store's two owners at the same
+    time (security review P3). Each alone is fine; together they'd leave no
+    owner. The trigger makes the second wait for the first and then refuse."""
+    import threading
+
+    import psycopg
+
+    t = make_tenant()
+    one = make_member(t, f"race-a-{t['id']}", "owner")
+    two = make_member(t, f"race-b-{t['id']}", "owner")
+    a, b = _owner_conn(t["id"]), _owner_conn(t["id"])
+    outcome = {}
+
+    def second():
+        try:
+            b.execute("UPDATE membership SET status = 'disabled' WHERE user_id = %s", (two,))
+            b.commit()
+            outcome["b"] = "committed"
+        except psycopg.errors.CheckViolation:
+            b.rollback()
+            outcome["b"] = "refused"
+
+    try:
+        a.execute("UPDATE membership SET status = 'disabled' WHERE user_id = %s", (one,))
+        racer = threading.Thread(target=second)
+        racer.start()
+        racer.join(1.0)
+        waited = racer.is_alive()  # blocked on the store's lock until `a` ends
+        a.commit()
+        racer.join(10)
+    finally:
+        a.close()
+        b.close()
+    assert outcome == {"b": "refused"}
+    assert waited
+    assert _active_owners(admin_conn, t["id"]) == 1
+
+
+def test_last_owner_trigger_refuses_repeatable_read(make_tenant, admin_conn):
+    import psycopg
+
+    t = make_tenant()
+    one = make_member(t, f"rr-a-{t['id']}", "owner")
+    make_member(t, f"rr-b-{t['id']}", "owner")
+    conn = _owner_conn(t["id"], psycopg.IsolationLevel.REPEATABLE_READ)
+    try:
+        with pytest.raises(psycopg.errors.SerializationFailure):
+            conn.execute("UPDATE membership SET status = 'disabled' WHERE user_id = %s", (one,))
+    finally:
+        conn.close()
+    assert _active_owners(admin_conn, t["id"]) == 2

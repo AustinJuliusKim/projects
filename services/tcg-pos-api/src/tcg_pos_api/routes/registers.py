@@ -82,7 +82,8 @@ SESSION_TOKEN_PREFIX = "tcgreg_"
 @router.put("/me/pin", status_code=204)
 def set_my_pin(session: MemberSession, body: PinSet) -> Response:
     """Set (or replace) the caller's PIN for the selected store. Clears any
-    lockout. Signed-in staff only — not over a register session."""
+    lockout and ends the caller's open register sessions in this store.
+    Signed-in staff only — not over a register session."""
     problem = pin_problem(body.pin)
     if problem:
         raise HTTPException(422, problem)
@@ -96,13 +97,19 @@ def set_my_pin(session: MemberSession, body: PinSet) -> Response:
         "fail_count = 0, locked_until = NULL, updated_at = now()",
         (principal.user_id, hash_pin(body.pin)),
     )
+    # A new PIN signs this person out of every register in the store: a
+    # session opened with the old PIN (perhaps by whoever learned it) ends.
+    ended = conn.execute(
+        "UPDATE register_session SET ended_at = now() WHERE user_id = %s AND ended_at IS NULL",
+        (principal.user_id,),
+    ).rowcount
     queries.write_audit(
         conn,
         action="pin.set",
         entity="staff_pin",
         entity_id=principal.user_id,
         before={"pin": "set" if existed else None},
-        after={"pin": "set"},
+        after={"pin": "set", "sessions_ended": ended},
     )
     return Response(status_code=204)
 
