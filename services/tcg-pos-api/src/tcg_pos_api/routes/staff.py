@@ -289,14 +289,20 @@ ACCEPT_ERRORS = {
     "expired": (410, "this invite has expired"),
     "used": (409, "this invite has already been used"),
     "already_member": (409, "you are already a member of that store"),
+    # Whoever sent it was disabled or demoted since (0015): ask for a new one.
+    "inviter_inactive": (
+        410,
+        "this invite is no longer valid: whoever sent it can't invite to that role any more",
+    ),
 }
 
 
 @router.post("/invites/accept", response_model=InviteAccepted)
 def accept_invite(session: UserConn, body: InviteAccept) -> InviteAccepted:
     """Join the invite's store with its role. The invite's email must equal
-    the caller's verified email (app_user.email, from the token / ID token —
-    never from the request)."""
+    the caller's verified email (app_user.email, from the ID token — never
+    from the request), and whoever sent it must still be an active member
+    who could grant that role now."""
     row = session.conn.execute(
         "SELECT status, tenant_id, role_key FROM accept_invite(%s, %s)",
         (session.claims.sub, token_hash(body.token.strip())),

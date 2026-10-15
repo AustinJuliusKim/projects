@@ -120,3 +120,95 @@ CREATE POLICY tenant_isolation ON staff_pin_device
 GRANT UPDATE (fail_devices) ON staff_pin TO tcg_pos_app;
 GRANT SELECT, INSERT (user_id, device_id, fail_count, locked_until),
     UPDATE (fail_count, locked_until, updated_at) ON staff_pin_device TO tcg_pos_app;
+
+-- ---------------------------------------------------------------------------
+-- an invite is only as good as its inviter's standing
+--
+-- An invite used to stay acceptable for its 7 days even after the person
+-- who sent it was disabled or demoted. Now accept_invite also requires the
+-- inviter to still be an active member of the store who could grant the
+-- invite's role today: holds staff.manage and every permission of the role,
+-- and is an owner for an owner invite (routes/staff.check_grantable's
+-- rules). Otherwise the status is 'inviter_inactive' and the API answers
+-- 410 (ask for a new invite). The invite stays pending, so it works again
+-- if the inviter's access is restored. Otherwise the same as 0011.
+
+CREATE OR REPLACE FUNCTION accept_invite(p_sub text, p_token_hash text)
+RETURNS TABLE (status text, tenant_id uuid, role_key text)
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+#variable_conflict use_column
+DECLARE
+    v_user public.app_user;
+    v_inv public.invite;
+    v_member public.membership;
+    v_role text;
+    v_role_system boolean;
+    v_status text;
+    v_prev text := current_setting('app.tenant_id', true);
+BEGIN
+    SELECT * INTO v_user FROM public.app_user u WHERE u.cognito_sub = p_sub;
+    SELECT * INTO v_inv FROM public.invite i WHERE i.token_hash = p_token_hash;
+    IF v_user.id IS NULL OR v_inv.id IS NULL THEN
+        RETURN QUERY SELECT 'not_found'::text, NULL::uuid, NULL::text;
+        RETURN;
+    END IF;
+    IF v_user.email IS NULL OR v_user.email <> v_inv.email THEN
+        RETURN QUERY SELECT 'email_mismatch'::text, NULL::uuid, NULL::text;
+        RETURN;
+    END IF;
+    -- From here on the store's own tenant policy admits the writes.
+    PERFORM set_config('app.tenant_id', v_inv.tenant_id::text, true);
+    SELECT * INTO v_inv FROM public.invite i WHERE i.id = v_inv.id FOR UPDATE;
+    SELECT r.key, r.is_system INTO v_role, v_role_system
+    FROM public.role r WHERE r.id = v_inv.role_id;
+    v_status := CASE
+        WHEN v_inv.revoked_at IS NOT NULL THEN 'revoked'
+        WHEN v_inv.accepted_at IS NOT NULL THEN 'used'
+        WHEN v_inv.expires_at <= now() THEN 'expired'
+    END;
+    IF v_status IS NULL AND NOT EXISTS (
+        SELECT 1
+        FROM public.membership im
+        JOIN public.role ir ON ir.id = im.role_id
+        WHERE im.tenant_id = v_inv.tenant_id AND im.user_id = v_inv.invited_by
+          AND im.status = 'active'
+          AND EXISTS (SELECT 1 FROM public.role_permission p
+                      WHERE p.role_id = ir.id AND p.perm = 'staff.manage')
+          AND NOT EXISTS (SELECT 1 FROM public.role_permission need
+                          WHERE need.role_id = v_inv.role_id
+                            AND NOT EXISTS (SELECT 1 FROM public.role_permission have
+                                            WHERE have.role_id = ir.id
+                                              AND have.perm = need.perm))
+          AND (NOT (v_role_system AND v_role = 'owner')
+               OR (ir.tenant_id IS NULL AND ir.key = 'owner'))
+    ) THEN
+        v_status := 'inviter_inactive';
+    END IF;
+    IF v_status IS NULL THEN
+        SELECT * INTO v_member FROM public.membership m
+        WHERE m.tenant_id = v_inv.tenant_id AND m.user_id = v_user.id FOR UPDATE;
+        IF v_member.status = 'active' THEN
+            v_status := 'already_member';
+        END IF;
+    END IF;
+    IF v_status IS NULL THEN
+        INSERT INTO public.membership AS m (tenant_id, user_id, role_id, invited_by)
+        VALUES (v_inv.tenant_id, v_user.id, v_inv.role_id, v_inv.invited_by)
+        ON CONFLICT ON CONSTRAINT membership_pkey DO UPDATE
+            SET role_id = EXCLUDED.role_id, status = 'active', location_id = NULL,
+                invited_by = EXCLUDED.invited_by, updated_at = now();
+        UPDATE public.invite i SET accepted_at = now(), accepted_by = v_user.id
+        WHERE i.id = v_inv.id;
+        INSERT INTO public.audit_log (tenant_id, actor, action, entity, entity_id, before, after)
+        VALUES (v_inv.tenant_id, 'user:' || v_user.id, 'invite.accept', 'membership', v_user.id,
+                CASE WHEN v_member.user_id IS NULL THEN NULL
+                     ELSE jsonb_build_object('status', v_member.status) END,
+                jsonb_build_object('invite_id', v_inv.id, 'role', v_role, 'status', 'active'));
+        v_status := 'accepted';
+    END IF;
+    PERFORM set_config('app.tenant_id', coalesce(v_prev, ''), true);
+    RETURN QUERY SELECT v_status, v_inv.tenant_id, v_role;
+END
+$$;

@@ -153,6 +153,36 @@ def test_expired_revoked_and_unknown_invites(client, store, invite_links, admin_
     assert _invite(client, store["owner"], "late@example.test").status_code == 201
 
 
+@pytest.mark.parametrize(
+    "inviter_role,invited_role,change",
+    [
+        ("manager", "cashier", {"status": "disabled"}),
+        ("manager", "cashier", {"role": "cashier"}),  # demoted: no staff.manage
+        ("manager", "manager", {"role": "buyer"}),  # can't grant manager any more
+        ("owner", "owner", {"role": "manager"}),  # only owners grant owner
+    ],
+    ids=["disabled", "lost-staff-manage", "lost-role-perms", "no-longer-owner"],
+)
+def test_an_invite_dies_with_its_inviters_standing(
+    client, store, invite_links, inviter_role, invited_role, change
+):
+    """Security review: invites outlived their inviter."""
+    inviter = f"inviter-{uuid.uuid4().hex[:6]}"
+    h = headers(store, actor=inviter, role=inviter_role)
+    email = f"invitee-{uuid.uuid4().hex[:6]}@example.test"
+    assert _invite(client, h, email, role=invited_role).status_code == 201
+    (token,) = invite_links()
+    resp = client.patch(f"/v1/staff/{user_id_for(inviter)}", json=change, headers=store["owner"])
+    assert resp.status_code == 200, resp.text
+    resp = _accept(client, email, token)
+    assert resp.status_code == 410 and "no longer valid" in resp.json()["detail"]
+    # Still pending: restoring the inviter's access makes it usable again.
+    restore = {"status": "active"} if "status" in change else {"role": inviter_role}
+    resp = client.patch(f"/v1/staff/{user_id_for(inviter)}", json=restore, headers=store["owner"])
+    assert resp.status_code == 200
+    assert _accept(client, email, token).status_code == 200
+
+
 def test_invite_conflicts_and_validation(client, store, invite_links):
     assert _invite(client, store["owner"], "dup@example.test").status_code == 201
     assert _invite(client, store["owner"], "dup@example.test").status_code == 409
