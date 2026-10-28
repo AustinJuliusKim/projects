@@ -15,6 +15,7 @@ class Perm(StrEnum):
     CREDIT_READ = "credit.read"
     CREDIT_ISSUE = "credit.issue"
     CREDIT_ADJUST = "credit.adjust"
+    CREDIT_REDEEM = "credit.redeem"
     BUYLIST_CREATE = "buylist.create"
     BUYLIST_PAYOUT_CREDIT = "buylist.payout_credit"
     BUYLIST_PAYOUT_CASH = "buylist.payout_cash"

@@ -42,7 +42,10 @@ Parameters:
     Default: ""
     Description: >
       Google OAuth client ID for "Sign in with Google". Blank = email +
-      password only (no Google identity provider is created).
+      password only (no Google identity provider is created). Leave blank
+      until the pre-sign-up account-linking trigger exists
+      (docs/AUTH_PLAN.md): without it, one person signing in with Google
+      and with a password becomes two users.
   GoogleClientSecret:
     Type: String
     Default: ""

@@ -195,9 +195,9 @@ Built as planned except where noted; each deviation says why.
   `/pricing/suggest` → `inventory.read`; adjust → `inventory.adjust`; price
   PATCH → `inventory.price_edit`; TCGplayer import (dry run too) →
   `imports.run`; `PUT /pricing/rule` → `pricing.rules_manage`; credit balance →
-  `credit.read`, issue → `credit.issue`, **redeem → `pos.sell`** (redeeming is
-  spending credit as tender at the counter; a cashier must be able to take it.
-  A downward correction without a sale will be `credit.adjust`); storefront
+  `credit.read`, issue → `credit.issue`, redeem → `credit.redeem` (originally `pos.sell`; split out in 0016, see
+  "Open product/design questions". A downward correction without a sale is
+  `credit.adjust`); storefront
   settings GET and PUT → `storefront.manage`; web orders list →
   `web_orders.read`, picked-up / cancel → `web_orders.fulfill`; staff, invites
   and `GET /v1/roles` → `staff.manage`.
@@ -445,14 +445,24 @@ Lower-confidence items, also fixed:
   Supabase project the migrating role creates it itself.)
 
 Open product/design questions (deliberately unchanged):
-- **`credit/redeem` is `pos.sell`.** Anyone who can sell can spend any
-  customer's store credit down, with no sale attached and no approval.
-  Should redemption need a sale id, an approval above a limit, or its own
-  permission?
-- **`app_user` is keyed on `sub`.** Someone who signs in with Google and
-  with email/password is two users with two memberships; linking is a
-  deliberate future step (never auto-merge on email). Decide before
-  enabling the Google IdP.
+- **Resolved 2026-10-28: redeem has its own permission and a cashier limit.**
+  `credit/redeem` used to need only `pos.sell`, so anyone who could sell
+  could spend any customer's credit with no limit. 0016 adds `credit.redeem`,
+  grants it to every role (system or custom) that held `pos.sell`, and gives
+  cashiers a default approval_policy of `allow` up to $50.00; above that the
+  request needs a manager's PIN approval bound to the customer and amount. A
+  store's own policy row changes or removes the limit. When counter sales
+  land, store credit as a sale tender goes through the same gate.
+- **Decided 2026-10-28: `app_user` stays keyed on `sub`.** `sub` is unique
+  within a user pool, and `iss` is pinned to the one `AUTH_ISSUER`, so adding
+  `iss` to the key would change nothing. The real case is one person with two
+  sign-in methods: Google and email/password are two Cognito users with two
+  `sub`s. Linking happens in Cognito, never in the app: before
+  `GoogleClientId` is set, add a pre-sign-up Lambda trigger that links a new
+  Google identity to the existing native user with the same verified email
+  (`AdminLinkProviderForUser`), so the person keeps one `sub`. The app never
+  merges users on email. `template.yaml`'s `GoogleClientId` description says
+  the same.
 - The two-register lockout DoS and the faster 11-failure first burst
   (item 3) are accepted trade-offs.
 - `prompt=login` depends on Cognito's managed login honouring it; the

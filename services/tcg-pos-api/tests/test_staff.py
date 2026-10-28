@@ -380,7 +380,7 @@ def test_roles_list(client, store, make_tenant, admin_conn):
     )
     roles = client.get("/v1/roles", headers=store["manager"]).json()
     assert [r["key"] for r in roles] == ["owner", "manager", "buyer", "cashier"]
-    assert len(roles[0]["perms"]) == 32 and all(r["is_system"] for r in roles)
+    assert len(roles[0]["perms"]) == 33 and all(r["is_system"] for r in roles)
     assert "billing.manage" not in roles[1]["perms"]
 
 

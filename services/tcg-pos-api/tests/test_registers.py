@@ -631,7 +631,7 @@ def test_store_policy_limit_and_deny(client, store, counter, admin_conn):
     other = admin_conn.execute(
         "SELECT count(*) AS n FROM approval_policy WHERE tenant_id IS NULL"
     ).fetchone()["n"]
-    assert other == 4
+    assert other == 5
 
 
 def test_owner_adjusts_directly(client, store, counter, admin_conn):
@@ -672,7 +672,7 @@ def test_app_role_cannot_read_secrets_or_other_stores(client, store, make_tenant
             assert conn.execute(f"SELECT count(*) AS n FROM {table}").fetchone()["n"] == 0, table
         # Only the system defaults are visible from another store.
         n = conn.execute("SELECT count(*) AS n FROM approval_policy").fetchone()["n"]
-        assert n == 4
+        assert n == 5
 
 
 # --- what a register session can never do (security review P1) ----------------------
@@ -964,3 +964,83 @@ def test_wrong_pin_attempts_left_counts_down_to_the_nearer_lock(client, store, a
     resp = sign_in(client, store, c, "mgr", pin="999990")  # 9th store-wide, 1st here
     assert resp.status_code == 403
     assert resp.json()["detail"] == {"reason": "wrong_pin", "attempts_left": 2}
+
+
+# --- store-credit redemption (0016: credit.redeem, cashier limit $50) ------------------
+
+
+def _redeem(client, store, cents, h, approval=None, reason="sale"):
+    hh = dict(h)
+    if approval:
+        hh["X-Approval"] = approval
+    return client.post(
+        f"/v1/customers/{store['customer_id']}/credit/redeem",
+        json={"amount_cents": cents, "reason": reason},
+        headers=hh,
+    )
+
+
+def _add_credit(admin_conn, store, cents):
+    admin_conn.execute(
+        "INSERT INTO credit_ledger (tenant_id, customer_id, delta_cents, reason, actor) "
+        "VALUES (%s, %s, %s, 'seed', 'job:test')",
+        (store["id"], store["customer_id"], cents),
+    )
+
+
+def test_cashier_redeems_up_to_the_limit_directly(client, store, counter, admin_conn):
+    resp = _redeem(client, store, 5000, counter["cashier"])  # exactly $50
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["balance_cents"] == 0
+    row = admin_conn.execute(
+        "SELECT approved_by FROM credit_ledger WHERE customer_id = %s AND reason = 'sale'",
+        (store["customer_id"],),
+    ).fetchone()
+    assert row["approved_by"] is None
+
+
+def test_cashier_redeem_over_the_limit_needs_a_manager(client, store, counter, admin_conn):
+    _add_credit(admin_conn, store, 5000)  # balance $100
+    resp = _redeem(client, store, 5001, counter["cashier"])
+    assert resp.status_code == 403
+    needed = resp.json()["detail"]
+    assert needed["approval_required"] == "credit.redeem" and needed["amount_cents"] == 5001
+    assert needed["summary"]["title"] == "Remove $50.01 store credit"
+    assert _balance(admin_conn, store) == 10000
+
+    approval = _approve(client, store, counter, needed).json()["approval_id"]
+    # Bound to the amount: a bigger redeem can't ride on it.
+    assert _redeem(client, store, 9000, counter["cashier"], approval).status_code == 403
+    resp = _redeem(client, store, 5001, counter["cashier"], approval)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["balance_cents"] == 4999
+    row = admin_conn.execute(
+        "SELECT approved_by FROM credit_ledger WHERE customer_id = %s AND reason = 'sale'",
+        (store["customer_id"],),
+    ).fetchone()
+    assert row["approved_by"] == store["uid"]["mgr"]
+    # Single use.
+    resp = _redeem(client, store, 5001, counter["cashier"], approval)
+    assert resp.status_code == 403 and resp.json()["detail"]["approval_error"] == "invalid"
+
+
+def test_store_policy_overrides_the_redeem_limit(client, store, counter, admin_conn):
+    admin_conn.execute(
+        "INSERT INTO approval_policy (tenant_id, role_id, perm, mode, limit_cents) "
+        "SELECT %s, id, 'credit.redeem', 'approval', NULL FROM role "
+        "WHERE tenant_id IS NULL AND key = 'cashier'",
+        (store["id"],),
+    )
+    resp = _redeem(client, store, 100, counter["cashier"])
+    assert resp.json()["detail"]["approval_required"] == "credit.redeem"
+    # The owner (no policy row) redeems any amount directly.
+    assert _redeem(client, store, 5000, store["owner"]).status_code == 200
+
+
+def test_every_role_that_could_sell_can_redeem(admin_conn):
+    missing = admin_conn.execute(
+        "SELECT r.key FROM role_permission rp JOIN role r ON r.id = rp.role_id "
+        "WHERE rp.perm = 'pos.sell' AND NOT EXISTS (SELECT 1 FROM role_permission x "
+        "WHERE x.role_id = rp.role_id AND x.perm = 'credit.redeem')"
+    ).fetchall()
+    assert missing == []

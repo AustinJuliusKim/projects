@@ -53,11 +53,13 @@ def test_system_roles_follow_the_plan(admin_conn):
         "imports.run",
         "credit.read",
         "credit.issue",
+        "credit.redeem",
         "customers.read",
         "pos.sell",
     }
     assert grants["cashier"] == {
         "pos.sell",
+        "credit.redeem",
         "pos.discount",
         "inventory.read",
         "credit.read",
@@ -145,7 +147,7 @@ def test_request_gucs_identify_the_principal(client, make_tenant):
         "tenant": str(t["id"]),
         "user_id": str(user),
         "actor": f"user:{user}",
-        "perms": "credit.read,customers.read,inventory.read,pos.discount,pos.sell,"
+        "perms": "credit.read,credit.redeem,customers.read,inventory.read,pos.discount,pos.sell,"
         "web_orders.fulfill,web_orders.read",
     }
 

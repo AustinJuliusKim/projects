@@ -64,15 +64,22 @@ def issue(conn: TenantConn, customer_id: uuid.UUID, body: CreditChange) -> Credi
     return _apply(conn, customer_id, body.amount_cents, body.reason, "credit.issue")
 
 
-# Redeeming is spending credit as tender, which is part of selling: pos.sell.
+# Spending credit is credit.redeem (0016), held by every role that can sell.
+# Cashiers redeem directly up to $50 by default (their approval_policy row);
+# above that a manager approves, and a store's own row can change the limit.
 # (Correcting a balance without a sale is credit.adjust, below.)
-@router.post(
-    "/{customer_id}/credit/redeem",
-    response_model=CreditBalance,
-    dependencies=[require(Perm.POS_SELL)],
-)
-def redeem(conn: TenantConn, customer_id: uuid.UUID, body: CreditChange) -> CreditBalance:
-    return _apply(conn, customer_id, -body.amount_cents, body.reason, "credit.redeem")
+@router.post("/{customer_id}/credit/redeem", response_model=CreditBalance)
+def redeem(
+    gate: Annotated[ApprovalGate, require_or_approval(Perm.CREDIT_REDEEM)],
+    customer_id: uuid.UUID,
+    body: CreditChange,
+) -> CreditBalance:
+    gate.authorize(
+        amount_cents=body.amount_cents,
+        payload=body,
+        summary=lambda: _credit_summary(gate.conn, customer_id, -body.amount_cents, body.reason),
+    )
+    return _apply(gate.conn, customer_id, -body.amount_cents, body.reason, "credit.redeem")
 
 
 # A correction to a balance (either direction) that isn't a sale or an
@@ -88,37 +95,39 @@ def adjust(
     gate.authorize(
         amount_cents=abs(body.delta_cents),
         payload=body,
-        summary=lambda: _adjust_summary(gate.conn, customer_id, body),
+        summary=lambda: _credit_summary(gate.conn, customer_id, body.delta_cents, body.reason),
     )
     return _apply(gate.conn, customer_id, body.delta_cents, body.reason, "credit.adjust")
 
 
-def _adjust_summary(conn: psycopg.Connection, customer_id: uuid.UUID, body: CreditAdjust) -> dict:
+def _credit_summary(
+    conn: psycopg.Connection, customer_id: uuid.UUID, delta_cents: int, reason: str
+) -> dict:
     """What the approving manager is shown: direction, amount, customer,
-    reason and the balance before/after."""
+    reason and the balance before/after. A redeem is a negative delta."""
     row = conn.execute("SELECT name FROM customer WHERE id = %s", (customer_id,)).fetchone()
     if row is None:
         raise HTTPException(404, "no customer with that id")
     balance = queries.credit_balance(conn, customer_id)
-    amount = format_cents(body.delta_cents)
-    adding = body.delta_cents > 0
+    amount = format_cents(delta_cents)
+    adding = delta_cents > 0
     sign = "+" if adding else "-"
     lines = [
         f"Customer: {row['name']}",
         f"Change: {sign}{amount} ({'add to' if adding else 'take from'} their balance)",
-        f"Reason: {body.reason}",
+        f"Reason: {reason}",
     ]
     if balance is not None:
         lines.append(
-            f"Balance: {format_cents(balance)} -> {format_cents(balance + body.delta_cents)}"
-            if balance + body.delta_cents >= 0
+            f"Balance: {format_cents(balance)} -> {format_cents(balance + delta_cents)}"
+            if balance + delta_cents >= 0
             else f"Balance: {format_cents(balance)} (not enough to remove {amount})"
         )
     return {
         "title": f"{'Add' if adding else 'Remove'} {amount} store credit",
         "lines": lines,
         "customer_name": row["name"],
-        "delta_cents": body.delta_cents,
-        "reason": body.reason,
+        "delta_cents": delta_cents,
+        "reason": reason,
         "balance_cents": balance,
     }

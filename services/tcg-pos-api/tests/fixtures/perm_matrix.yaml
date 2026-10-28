@@ -87,7 +87,7 @@ endpoints:
     body: {amount_cents: 100, reason: matrix}
   - method: POST
     path: /v1/customers/{customer_id}/credit/redeem
-    perm: pos.sell
+    perm: credit.redeem
     allow: [owner, manager, buyer, cashier]
     device: [owner, manager, buyer, cashier]
     expect: [409]  # balance 0: the route ran and refused to overdraw
