@@ -239,7 +239,8 @@ def reserve_order(
     written) if any line isn't sellable as asked.
 
     Per line: qty is decremented, an inventory_ledger row (channel 'web',
-    negative delta, reason 'web_reserve:<order id>', actor 'web:<email>')
+    negative delta, reason 'web_reserve:<order id>'; the actor is the session's
+    app.actor, storefront:<slug>)
     and an audit row are written, and the line snapshots the unit price. The
     search outbox triggers fire from the qty update."""
     # Serialize requests sharing a key, so a concurrent retry waits and then
@@ -262,7 +263,6 @@ def reserve_order(
     if issues:
         raise OrderRejected(issues)
 
-    actor = f"web:{customer['email']}"
     total = sum(r["line_total_cents"] for r in results)
     order = conn.execute(
         "INSERT INTO web_order (location_id, pickup_code, customer_name, customer_email, "
@@ -287,11 +287,10 @@ def reserve_order(
         before = {k: v for k, v in before.items() if k != "available"}
         after = queries.set_item_qty(conn, before["id"], before["qty"] - line["qty"])
         queries.insert_inventory_ledger(
-            conn, item_id=before["id"], delta=-line["qty"], reason=reason, channel="web",
-            actor=actor,
+            conn, item_id=before["id"], delta=-line["qty"], reason=reason, channel="web"
         )
         queries.write_audit(
-            conn, actor=actor, action="web_order.reserve", entity="inventory_item",
+            conn, action="web_order.reserve", entity="inventory_item",
             entity_id=before["id"], before=before, after=after,
         )
         conn.execute(
@@ -305,7 +304,7 @@ def reserve_order(
             ),
         )
     queries.write_audit(
-        conn, actor=actor, action="web_order.create", entity="web_order",
+        conn, action="web_order.create", entity="web_order",
         entity_id=order["id"], before=None,
         after={"status": order["status"], "total_cents": total, "lines": len(lines),
                "customer_email": customer["email"]},
@@ -313,7 +312,7 @@ def reserve_order(
     return order, order_lines(conn, [order["id"]])[order["id"]], True
 
 
-def mark_picked_up(conn: psycopg.Connection, order_id: uuid.UUID, *, actor: str) -> dict | None:
+def mark_picked_up(conn: psycopg.Connection, order_id: uuid.UUID) -> dict | None:
     """reserved -> picked_up. The stock was already taken at reserve time, so
     no ledger row. None if no such order; OrderStateError if not reserved."""
     order = get_order(conn, order_id, lock=True)
@@ -323,7 +322,7 @@ def mark_picked_up(conn: psycopg.Connection, order_id: uuid.UUID, *, actor: str)
         raise OrderStateError(order["status"])
     after = _set_status(conn, order_id, "picked_up")
     queries.write_audit(
-        conn, actor=actor, action="web_order.picked_up", entity="web_order",
+        conn, action="web_order.picked_up", entity="web_order",
         entity_id=order_id, before={"status": "reserved"}, after={"status": "picked_up"},
     )
     return after
@@ -337,7 +336,6 @@ def release_order(
     order_id: uuid.UUID,
     *,
     status: str,
-    actor: str,
     only_if_due: bool = False,
 ) -> dict | None:
     """reserved -> cancelled | expired, putting every line's qty back with a
@@ -369,15 +367,15 @@ def release_order(
         n = by_item[before["id"]]["qty"]
         after = queries.set_item_qty(conn, before["id"], before["qty"] + n)
         queries.insert_inventory_ledger(
-            conn, item_id=before["id"], delta=n, reason=reason, channel="web", actor=actor
+            conn, item_id=before["id"], delta=n, reason=reason, channel="web"
         )
         queries.write_audit(
-            conn, actor=actor, action=f"web_order.{status}", entity="inventory_item",
+            conn, action=f"web_order.{status}", entity="inventory_item",
             entity_id=before["id"], before=before, after=after,
         )
     after = _set_status(conn, order_id, status)
     queries.write_audit(
-        conn, actor=actor, action=f"web_order.{status}", entity="web_order",
+        conn, action=f"web_order.{status}", entity="web_order",
         entity_id=order_id, before={"status": "reserved"}, after={"status": status},
     )
     return after

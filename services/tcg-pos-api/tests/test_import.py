@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from conftest import headers, requires_db
+from conftest import actor_of, headers, requires_db
 
 pytestmark = requires_db
 
@@ -95,7 +95,7 @@ def test_apply_sets_quantities_and_is_idempotent(client, make_tenant, catalog, a
     ).fetchall()
     assert sorted(r["delta"] for r in ledger) == [1, 1, 2, 5]
     assert {(r["reason"], r["channel"], r["actor"]) for r in ledger} == {
-        ("tcgplayer import", "tcgplayer", "importer")
+        ("tcgplayer import", "tcgplayer", actor_of("importer"))
     }
     n_audit = admin_conn.execute(
         "SELECT count(*) AS n FROM audit_log WHERE tenant_id = %s AND action = 'inventory.import'",
@@ -136,7 +136,7 @@ def test_import_errors(client, make_tenant, catalog):
         content=FIXTURE,
         headers={"X-Tenant-Id": str(t["id"]), "Content-Type": "text/csv"},
     )
-    assert resp.status_code == 401  # X-Actor required, even for a dry run
+    assert resp.status_code == 401  # a bearer token is required, even for a dry run
 
     def down(request):
         raise httpx.ConnectError("refused")

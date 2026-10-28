@@ -1,6 +1,10 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: TCG card-shop POS API (FastAPI + Mangum on Lambda behind HttpApi)
+Description: >
+  TCG card-shop POS API (FastAPI + Mangum on Lambda behind HttpApi) and its
+  Cognito user pool. NOT READY TO DEPLOY — see OPS.md "Before any deploy"
+  (the Lambda bundle lacks tcg_search, CORS is open, invite email isn't
+  wired, no hosted OpenSearch).
 
 Parameters:
   DatabaseUrl:
@@ -10,11 +14,51 @@ Parameters:
   MtgApiBase:
     Type: String
     Description: Base URL of services/mtg-api (catalog + prices), e.g. its HttpApi or CloudFront origin, no trailing slash
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, staging]
+    Description: >
+      ENV for the function. Never local/test: those are the only values
+      that allow the dev token issuer, and the app refuses the dev issuer
+      anywhere else.
+  AppBaseUrl:
+    Type: String
+    Description: The POS app's origin, no trailing slash (invite accept links), e.g. https://pos.example.com
+  CognitoDomainPrefix:
+    Type: String
+    AllowedPattern: "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+    Description: Globally-unique prefix for the Cognito hosted sign-in domain (e.g. tcg-pos-auth)
+  AppCallbackUrls:
+    Type: CommaDelimitedList
+    Description: >
+      OAuth redirect URIs the POS app may receive the code at (exact match),
+      e.g. https://pos.example.com/auth/callback,http://localhost:5173/auth/callback
+  AppLogoutUrls:
+    Type: CommaDelimitedList
+    Description: Where the hosted UI may send the browser after sign-out, e.g. https://pos.example.com/
+  GoogleClientId:
+    Type: String
+    Default: ""
+    Description: >
+      Google OAuth client ID for "Sign in with Google". Blank = email +
+      password only (no Google identity provider is created). Leave blank
+      until the pre-sign-up account-linking trigger exists
+      (docs/AUTH_PLAN.md): without it, one person signing in with Google
+      and with a password becomes two users.
+  GoogleClientSecret:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Google OAuth client secret (required when GoogleClientId is set)
+
+Conditions:
+  HasGoogle: !Not [!Equals [!Ref GoogleClientId, ""]]
 
 Globals:
   Function:
     Timeout: 10
-    MemorySize: 512 # CPU scales with memory; keeps FastAPI cold starts ~1s
+    MemorySize: 512 # CPU scales with memory; keeps FastAPI cold starts ~1s; Argon2id PINs use 64 MiB
 
 Resources:
   ApiFunction:
@@ -28,6 +72,12 @@ Resources:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
           MTG_API_BASE: !Ref MtgApiBase
+          ENV: !Ref Environment
+          APP_BASE_URL: !Ref AppBaseUrl
+          # The token proves who; Postgres decides what (docs/AUTH_PLAN.md).
+          # JWKS defaults to {AUTH_ISSUER}/.well-known/jwks.json.
+          AUTH_ISSUER: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}"
+          AUTH_CLIENT_IDS: !Ref UserPoolClient
       Events:
         Api:
           Type: HttpApi
@@ -37,7 +87,10 @@ Resources:
   HttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
-      Description: tcg-pos-api gateway (no auth yet — do not deploy before the auth claim replaces X-Tenant-Id)
+      # Authentication is done in the app (bearer access token, register
+      # device + PIN session, or API key), not by an API Gateway authorizer:
+      # three credential schemes and per-request Postgres lookups.
+      Description: tcg-pos-api gateway — auth is in the app; not ready to deploy yet (see OPS.md)
 
   # Explicit log group so retention is bounded (cost control) instead of the
   # Lambda-created never-expiring default.
@@ -47,7 +100,122 @@ Resources:
       LogGroupName: /aws/lambda/tcg-pos-api
       RetentionInDays: 30
 
+  # --- Sign-in: Cognito, Lite tier. Staff sign up with email + password
+  # (verified by email) or, when GoogleClientId is set, with Google. The
+  # pool only proves who someone is: stores, roles and permissions live in
+  # Postgres. Access tokens carry no email (Lite has no access-token
+  # customization), so the app posts the ID token to POST /v1/me/identity.
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: !Sub "${AWS::StackName}-staff"
+      UserPoolTier: LITE
+      DeletionProtection: ACTIVE
+      UsernameAttributes: [email]
+      UsernameConfiguration:
+        CaseSensitive: false
+      AutoVerifiedAttributes: [email]
+      # An email change only takes effect once the new address is verified,
+      # so email_verified in the ID token can be trusted.
+      UserAttributeUpdateSettings:
+        AttributesRequireVerificationBeforeUpdate: [email]
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false # self-signup: a new shop owner onboards themselves
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: false
+          RequireUppercase: false
+          RequireNumbers: false
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 3
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: name
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+      # Cognito's own sender (capped at ~50 emails/day) for sign-up codes.
+      # Switch to SES (EmailSendingAccount: DEVELOPER + SourceArn) before
+      # real stores onboard — see OPS.md.
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+
+  GoogleIdp:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Condition: HasGoogle
+    Properties:
+      UserPoolId: !Ref UserPool
+      ProviderName: Google
+      ProviderType: Google
+      ProviderDetails:
+        client_id: !Ref GoogleClientId
+        client_secret: !Ref GoogleClientSecret
+        authorize_scopes: "openid email profile"
+      # A Google sign-in is its own Cognito user (its own sub) even when an
+      # email+password user has the same address: the app keys on sub and
+      # never merges accounts by email (OPS.md).
+      AttributeMapping:
+        email: email
+        email_verified: email_verified
+        name: name
+        username: sub
+
+  # The POS SPA: public client (no secret), authorization-code flow. The
+  # app sends a PKCE code_challenge (S256) on every authorize request, as
+  # apps/choices-webapp does.
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: tcg-pos-web
+      GenerateSecret: false
+      # !Ref GoogleIdp (its provider name) also orders the IdP before the client.
+      SupportedIdentityProviders: !If [HasGoogle, [COGNITO, !Ref GoogleIdp], [COGNITO]]
+      AllowedOAuthFlows: [code]
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes: [openid, email, profile]
+      CallbackURLs: !Ref AppCallbackUrls
+      LogoutURLs: !Ref AppLogoutUrls
+      ExplicitAuthFlows: [ALLOW_REFRESH_TOKEN_AUTH]
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Ref CognitoDomainPrefix
+
 Outputs:
   ApiEndpoint:
     Description: HttpApi endpoint
     Value: !Sub "${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  UserPoolId:
+    Description: Cognito user pool id
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: POS web app client id (VITE_COGNITO_CLIENT_ID)
+    Value: !Ref UserPoolClient
+  AuthIssuer:
+    Description: Token issuer (AUTH_ISSUER)
+    Value: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}"
+  HostedUiDomain:
+    Description: Hosted sign-in base URL (VITE_COGNITO_DOMAIN)
+    Value: !Sub "https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"

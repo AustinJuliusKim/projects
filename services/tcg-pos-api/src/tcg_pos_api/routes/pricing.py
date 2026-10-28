@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from tcg_pos_api import pricing, queries
 from tcg_pos_api.catalog import Catalog, get_catalog
-from tcg_pos_api.deps import Actor, TenantConn, tenant_id
+from tcg_pos_api.deps import Perm, TenantSession, require
 from tcg_pos_api.routes.models import (
     Condition,
     Finish,
@@ -32,8 +32,10 @@ def current_rule(conn: psycopg.Connection) -> dict[str, int]:
 
 
 @router.get("/rule", response_model=PriceRuleOut)
-def get_rule(conn: TenantConn) -> PriceRuleOut:
-    row = queries.get_price_rule(conn)
+def get_rule(
+    session: Annotated[TenantSession, require(Perm.INVENTORY_READ)],
+) -> PriceRuleOut:
+    row = queries.get_price_rule(session.conn)
     return PriceRuleOut(
         **_rule_values(row),
         is_default=row is None,
@@ -43,21 +45,19 @@ def get_rule(conn: TenantConn) -> PriceRuleOut:
 
 @router.put("/rule", response_model=PriceRuleOut)
 def put_rule(
-    actor: Actor,
-    conn: TenantConn,
-    tenant: Annotated[uuid.UUID, Depends(tenant_id)],
+    session: Annotated[TenantSession, require(Perm.PRICING_RULES_MANAGE)],
     body: PriceRule,
 ) -> PriceRuleOut:
     """Replace the tenant's price rule. Audit-logged with before (null while
     the defaults were in use) and after."""
+    conn = session.conn
     before = queries.get_price_rule(conn, lock=True)
     after = queries.upsert_price_rule(conn, body.model_dump())
     queries.write_audit(
         conn,
-        actor=actor,
         action="price_rule.update",
         entity="price_rule",
-        entity_id=tenant,
+        entity_id=session.principal.tenant_id,
         before=_rule_values(before) if before else None,
         after=_rule_values(after),
     )
@@ -66,7 +66,7 @@ def put_rule(
 
 @router.get("/suggest", response_model=PriceSuggestion)
 def suggest(
-    conn: TenantConn,
+    session: Annotated[TenantSession, require(Perm.INVENTORY_READ)],
     catalog: CatalogDep,
     printing_id: uuid.UUID,
     finish: Finish,
@@ -77,7 +77,7 @@ def suggest(
     open-lane USD reference (TCGplayer retail via MTGJSON, else Scryfall's
     USD trend) through the tenant's price rule. suggested_cents is null —
     never 0 — when there is no USD reference."""
-    rule = current_rule(conn)
+    rule = current_rule(session.conn)
     snapshot_id, results = catalog.price_batch(
         [{"scryfall_id": str(printing_id), "finish": finish}]
     )

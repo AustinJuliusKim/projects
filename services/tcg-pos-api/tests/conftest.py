@@ -5,19 +5,73 @@ and re-migrated once per session, like services/mtg-api's tests.
 Seeding connects as the TEST_DATABASE_URL user (a superuser locally and in
 CI), which bypasses RLS. Anything asserting isolation must go through the
 API or through `app_conn`, which drops to the RLS-bound tcg_pos_app role
-exactly as deps.get_conn does."""
+exactly as the API's tenant session does.
+
+Auth: every API call carries a real RS256 access token, signed by a key
+generated for this test session and verified through the app's normal
+JWKS path (AUTH_JWKS_URL points at a file:// JWKS written here). headers()
+mints one for a named user and makes that user a member of the tenant
+(owner unless `role` says otherwise); actor_of() gives the actor string the
+database stamps on that user's ledger and audit rows."""
 
 import contextlib
+import json
 import os
 import subprocess
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 
 import pytest
 
+from tcg_pos_api.auth.dev import access_claims, generate_key, key_id, public_jwk, sign
+
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 SERVICE_DIR = Path(__file__).resolve().parent.parent
+
+# --- auth: a per-session issuer ----------------------------------------------
+
+TEST_ISSUER = "https://issuer.tcg-pos.test/pool"
+TEST_CLIENT_ID = "tcg-pos-test-client"
+TEST_KEY = generate_key()
+TEST_KID = key_id(TEST_KEY.public_key())
+AUTH_DIR = Path(tempfile.mkdtemp(prefix="tcg-pos-test-auth-"))
+JWKS_FILE = AUTH_DIR / "jwks.json"
+JWKS_FILE.write_text(json.dumps({"keys": [public_jwk(TEST_KEY.public_key(), TEST_KID)]}))
+os.environ.update({
+    "ENV": "test",
+    "AUTH_ISSUER": TEST_ISSUER,
+    "AUTH_CLIENT_IDS": TEST_CLIENT_ID,
+    "AUTH_JWKS_URL": JWKS_FILE.as_uri(),
+    "DEV_AUTH_DIR": str(AUTH_DIR / "dev"),
+})
+
+
+def mint(sub, *, email=None, key=TEST_KEY, kid=TEST_KID, headers=None, **claims):
+    """A signed access token for `sub` from the test issuer. Keyword claims
+    override (None removes one), e.g. mint(sub, token_use="id")."""
+    body = access_claims(sub=sub, issuer=TEST_ISSUER, client_id=TEST_CLIENT_ID, email=email)
+    body.update(claims)
+    body = {k: v for k, v in body.items() if v is not None}
+    if headers is None:
+        return sign(key, body, kid=kid)
+    import jwt
+
+    return jwt.encode(body, key, algorithm="RS256", headers={"kid": kid, **headers})
+
+
+def sub_for(name):
+    return f"test|{name}"
+
+
+def email_for(name):
+    return name.lower() if "@" in name else f"{name.lower()}@example.test"
+
+
+def bearer(name, **claims):
+    claims.setdefault("email", email_for(name))
+    return {"Authorization": f"Bearer {mint(sub_for(name), **claims)}"}
 
 requires_db = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set (start docker compose db)"
@@ -64,9 +118,10 @@ def admin_conn(migrated_db):
 
 
 @contextlib.contextmanager
-def app_conn(tenant_id):
+def app_conn(tenant_id, actor=None):
     """A transaction as the API sees it: role tcg_pos_app, app.tenant_id set
-    (or left unset when tenant_id is None). Always rolled back."""
+    (or left unset when tenant_id is None), app.actor set when given. Always
+    rolled back."""
     import psycopg
     from psycopg.rows import dict_row
 
@@ -74,6 +129,8 @@ def app_conn(tenant_id):
         conn.execute("SET LOCAL ROLE tcg_pos_app")
         if tenant_id is not None:
             conn.execute("SELECT set_config('app.tenant_id', %s, true)", (str(tenant_id),))
+        if actor is not None:
+            conn.execute("SELECT set_config('app.actor', %s, true)", (actor,))
         try:
             yield conn
         finally:
@@ -100,10 +157,54 @@ def make_tenant(admin_conn):
     return _make
 
 
-def headers(tenant, actor="clerk@test"):
+_db = None
+
+
+def _admin_db():
+    """A module-level superuser connection for headers() (a plain function,
+    so it can't take the admin_conn fixture)."""
+    import psycopg
+    from psycopg.rows import dict_row
+
+    global _db
+    if _db is None or _db.closed:
+        _db = psycopg.connect(TEST_DATABASE_URL, autocommit=True, row_factory=dict_row)
+    return _db
+
+
+def user_id_for(name):
+    """The app_user id for a named test user (created on first use)."""
+    return _admin_db().execute(
+        "SELECT id FROM ensure_app_user(%s, %s)", (sub_for(name), email_for(name))
+    ).fetchone()["id"]
+
+
+def make_member(tenant, name="clerk@test", role="owner", status="active"):
+    """Make the named user a `role` member of the tenant (idempotent)."""
+    user = user_id_for(name)
+    _admin_db().execute(
+        "INSERT INTO membership (tenant_id, user_id, role_id, status) "
+        "SELECT %s, %s, id, %s FROM role WHERE tenant_id IS NULL AND key = %s "
+        "ON CONFLICT (tenant_id, user_id) DO UPDATE SET role_id = EXCLUDED.role_id, "
+        "status = EXCLUDED.status",
+        (tenant["id"], user, status, role),
+    )
+    return user
+
+
+def actor_of(name):
+    """The actor the database records for the named test user's writes."""
+    return f"user:{user_id_for(name)}"
+
+
+def headers(tenant, actor="clerk@test", role="owner"):
+    """Staff request headers: the store selector plus a bearer token for the
+    named user, made a `role` member of the tenant first. actor=None sends
+    no token (an unauthenticated request)."""
     h = {"X-Tenant-Id": str(tenant["id"])}
     if actor:
-        h["X-Actor"] = actor
+        make_member(tenant, actor, role)
+        h.update(bearer(actor))
     return h
 
 
@@ -285,3 +386,22 @@ def item_qty(admin_conn, item_id):
     return admin_conn.execute(
         "SELECT qty FROM inventory_item WHERE id = %s", (item_id,)
     ).fetchone()["qty"]
+
+
+def api_routes(app):
+    """(method, path, dependant) for every API route, including those in
+    included routers (FastAPI nests them; app.routes alone doesn't list
+    them)."""
+    from fastapi.routing import APIRoute, iter_route_contexts
+
+    for rc in iter_route_contexts(app.routes):
+        if isinstance(rc.original_route, APIRoute):
+            for method in rc.methods:
+                yield method, rc.path, rc.dependant
+
+
+def dependency_calls(dependant):
+    """Every dependency callable under `dependant`, recursively."""
+    for dep in dependant.dependencies:
+        yield dep.call
+        yield from dependency_calls(dep)

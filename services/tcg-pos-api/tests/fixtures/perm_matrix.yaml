@@ -1,0 +1,250 @@
+# Role x endpoint permission matrix (docs/AUTH_PLAN.md "Permissions").
+# tests/test_perm_matrix.py calls every endpoint as a member of each system
+# role and checks:
+#   * roles in `allow` get one of `expect` (the endpoint really ran);
+#   * every other role gets 403 {"detail": {"missing": <perm>}};
+#   * `perm` is exactly what the route declares with require(), and every
+#     permission-guarded route appears here once.
+#   * `device`: the same call made over a register session (Device + PIN
+#     session, auth/principal.py) by each role. Admin perms
+#     (auth/perms.DEVICE_FORBIDDEN) are never held on a register, so those
+#     rows list no roles and everyone gets 403 {"missing": perm} (plus
+#     "reason": "back_office_only" for roles that hold it in the back office).
+# Placeholders: {location_id} {customer_id} {item_id} {uuid} {hex} are filled
+# per test (a fresh store each time). `body` is JSON; `csv: true` sends the
+# TCGplayer fixture CSV.
+
+roles: [owner, manager, buyer, cashier]
+
+endpoints:
+  # --- inventory ---------------------------------------------------------------
+  - method: GET
+    path: /v1/inventory
+    perm: inventory.read
+    allow: [owner, manager, buyer, cashier]
+    device: [owner, manager, buyer, cashier]
+    expect: [200]
+  - method: POST
+    path: /v1/inventory/adjust
+    perm: inventory.adjust
+    allow: [owner, manager, buyer]
+    device: [owner, manager, buyer]
+    expect: [200]
+    body: {location_id: "{location_id}", printing_id: "{uuid}", condition: NM,
+           finish: nonfoil, delta: 1, reason: matrix}
+  - method: PATCH
+    path: /v1/inventory/{item_id}
+    perm: inventory.price_edit
+    allow: [owner, manager, buyer]
+    device: [owner, manager, buyer]
+    expect: [200]
+    body: {price_cents: 123}
+  - method: POST
+    path: /v1/inventory/import/tcgplayer?location_id={location_id}
+    route: /v1/inventory/import/tcgplayer
+    perm: imports.run
+    allow: [owner, manager, buyer]
+    device: [owner, manager, buyer]
+    expect: [200]
+    csv: true
+
+  # --- pricing -----------------------------------------------------------------
+  - method: GET
+    path: /v1/pricing/rule
+    perm: inventory.read
+    allow: [owner, manager, buyer, cashier]
+    device: [owner, manager, buyer, cashier]
+    expect: [200]
+  - method: PUT
+    path: /v1/pricing/rule
+    perm: pricing.rules_manage
+    allow: [owner, manager]
+    device: []
+    expect: [200]
+    body: {nm_bp: 10000, lp_bp: 9000, mp_bp: 7500, hp_bp: 6000, dmg_bp: 4000,
+           min_price_cents: 25, round_up_to_cents: 25}
+  - method: GET
+    path: /v1/pricing/suggest?printing_id={uuid}&finish=nonfoil&condition=NM
+    route: /v1/pricing/suggest
+    perm: inventory.read
+    allow: [owner, manager, buyer, cashier]
+    device: [owner, manager, buyer, cashier]
+    expect: [200]
+
+  # --- store credit ------------------------------------------------------------
+  - method: GET
+    path: /v1/customers/{customer_id}/credit
+    perm: credit.read
+    allow: [owner, manager, buyer, cashier]
+    device: [owner, manager, buyer, cashier]
+    expect: [200]
+  - method: POST
+    path: /v1/customers/{customer_id}/credit/issue
+    perm: credit.issue
+    allow: [owner, manager, buyer]
+    device: [owner, manager, buyer]
+    expect: [200]
+    body: {amount_cents: 100, reason: matrix}
+  - method: POST
+    path: /v1/customers/{customer_id}/credit/redeem
+    perm: credit.redeem
+    allow: [owner, manager, buyer, cashier]
+    device: [owner, manager, buyer, cashier]
+    expect: [409]  # balance 0: the route ran and refused to overdraw
+    body: {amount_cents: 100, reason: matrix}
+
+  # --- storefront + web orders -------------------------------------------------
+  - method: GET
+    path: /v1/storefront-settings
+    perm: storefront.manage
+    allow: [owner, manager]
+    device: []
+    expect: [404]  # no storefront yet
+  - method: PUT
+    path: /v1/storefront-settings
+    perm: storefront.manage
+    allow: [owner, manager]
+    device: []
+    expect: [200]
+    body: {slug: "m-{hex}", display_name: Matrix, published: false,
+           location_id: "{location_id}", holdback_copies: 0, holdback_pct: 0,
+           reservation_hours: 48}
+  - method: GET
+    path: /v1/web-orders
+    perm: web_orders.read
+    allow: [owner, manager, cashier]
+    device: [owner, manager, cashier]
+    expect: [200]
+  - method: POST
+    path: /v1/web-orders/{uuid}/picked-up
+    route: /v1/web-orders/{order_id}/picked-up
+    perm: web_orders.fulfill
+    allow: [owner, manager, cashier]
+    device: [owner, manager, cashier]
+    expect: [404]
+  - method: POST
+    path: /v1/web-orders/{uuid}/cancel
+    route: /v1/web-orders/{order_id}/cancel
+    perm: web_orders.fulfill
+    allow: [owner, manager, cashier]
+    device: [owner, manager, cashier]
+    expect: [404]
+
+  # --- staff, invites, roles ---------------------------------------------------
+  - method: GET
+    path: /v1/roles
+    perm: staff.manage
+    allow: [owner, manager]
+    device: []
+    expect: [200]
+  - method: GET
+    path: /v1/staff
+    perm: staff.manage
+    allow: [owner, manager]
+    device: []
+    expect: [200]
+  - method: PATCH
+    path: /v1/staff/{uuid}
+    route: /v1/staff/{user_id}
+    perm: staff.manage
+    allow: [owner, manager]
+    device: []
+    expect: [404]
+    body: {status: disabled}
+  - method: DELETE
+    path: /v1/staff/{uuid}
+    route: /v1/staff/{user_id}
+    perm: staff.manage
+    allow: [owner, manager]
+    device: []
+    expect: [404]
+  - method: POST
+    path: /v1/invites
+    perm: staff.manage
+    allow: [owner, manager]
+    device: []
+    expect: [201]
+    body: {email: "{hex}@example.test", role: cashier}
+  - method: GET
+    path: /v1/invites
+    perm: staff.manage
+    allow: [owner, manager]
+    device: []
+    expect: [200]
+  - method: DELETE
+    path: /v1/invites/{uuid}
+    route: /v1/invites/{invite_id}
+    perm: staff.manage
+    allow: [owner, manager]
+    device: []
+    expect: [404]
+
+  # --- store credit corrections (approval-gated) --------------------------------
+  # `approval`: roles whose default approval_policy (0012) lets them do this
+  # only with a manager's approval — they get 403 {"approval_required": perm}.
+  - method: POST
+    path: /v1/customers/{customer_id}/credit/adjust
+    route: /v1/customers/{customer_id}/credit/adjust
+    perm: credit.adjust
+    allow: [owner, manager]
+    device: [owner, manager]
+    approval: [cashier]
+    expect: [200]
+    body: {delta_cents: 100, reason: matrix}
+
+  # --- registers ---------------------------------------------------------------
+  - method: GET
+    path: /v1/registers
+    perm: registers.manage
+    allow: [owner, manager]
+    device: []
+    expect: [200]
+  - method: POST
+    path: /v1/registers
+    perm: registers.manage
+    allow: [owner, manager]
+    device: []
+    expect: [201]
+    body: {location_id: "{location_id}", name: "Register {hex}"}
+  - method: POST
+    path: /v1/registers/{uuid}/enroll
+    route: /v1/registers/{register_id}/enroll
+    perm: registers.manage
+    allow: [owner, manager]
+    device: []
+    expect: [404]
+  - method: GET
+    path: /v1/registers/devices
+    perm: registers.manage
+    allow: [owner, manager]
+    device: []
+    expect: [200]
+  - method: DELETE
+    path: /v1/registers/devices/{uuid}
+    route: /v1/registers/devices/{device_id}
+    perm: registers.manage
+    allow: [owner, manager]
+    device: []
+    expect: [404]
+
+  # --- API keys ----------------------------------------------------------------
+  - method: POST
+    path: /v1/api-keys
+    perm: apikeys.manage
+    allow: [owner]
+    device: []
+    expect: [201]
+    body: {name: "matrix {hex}", perms: [inventory.read]}
+  - method: GET
+    path: /v1/api-keys
+    perm: apikeys.manage
+    allow: [owner]
+    device: []
+    expect: [200]
+  - method: DELETE
+    path: /v1/api-keys/{uuid}
+    route: /v1/api-keys/{key_id}
+    perm: apikeys.manage
+    allow: [owner]
+    device: []
+    expect: [404]

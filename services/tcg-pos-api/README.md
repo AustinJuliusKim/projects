@@ -7,8 +7,10 @@ pinned deps in `requirements-dev.txt` (Lambda runtime pins in
 `src/requirements.txt`), plain numbered SQL migrations applied by
 `scripts/migrate.py`.
 
-Scaffold stage: no auth and no deployed stack yet. See [`OPS.md`](OPS.md)
-before deploying anything.
+Scaffold stage: no deployed stack yet. Auth + RBAC follow
+[`docs/AUTH_PLAN.md`](docs/AUTH_PLAN.md) (A1/A2 done: verified access tokens,
+Postgres-resolved roles and permissions, invites; Cognito resources are A4).
+See [`OPS.md`](OPS.md) before deploying anything.
 
 ## Data model
 
@@ -26,6 +28,17 @@ before deploying anything.
   the `customer_credit_balance` view.
 - **Buylist** — `buylist`, `buylist_offer` (schema only for now).
 - **Audit** — append-only `audit_log` with before/after JSON snapshots.
+- **Users and roles** — `app_user` (global, keyed by the identity
+  provider's `sub`; owner-only, reached through SECURITY DEFINER functions),
+  `permission` (the `Perm` enum's keys), `role` (system roles owner /
+  manager / buyer / cashier, or a store's own) + `role_permission`,
+  `membership` (store × user → role, active | disabled; a store always keeps
+  an active owner) and `invite` (only a SHA-256 of the token is stored).
+- **Actors** — `inventory_ledger.actor`, `credit_ledger.actor`,
+  `audit_log.actor` and `buylist.created_by` default to the transaction's
+  `app.actor` (`user:<uuid>`, `job:<name>`, `storefront:<slug>`), and a
+  trigger rejects any other value from `tcg_pos_app`: route code never
+  passes an actor. `approved_by` works the same way from `app.approved_by`.
 - **Price rule** — `price_rule`, one row per tenant (none = defaults):
   condition multipliers in basis points (NM 100%, LP 90%, MP 75%, HP 60%,
   DMG 40%), a floor (`min_price_cents`, default 25) and a round-up step
@@ -59,8 +72,67 @@ reached solely through SECURITY DEFINER functions.
 ## API
 
 All `/v1` routes except `/v1/health` and the public `/v1/storefront/{slug}`
-routes need `X-Tenant-Id: <uuid>`; writes also need `X-Actor`. Both are placeholders until a verified auth claim
-replaces them (see OPS.md).
+routes need a credential in `Authorization` (`auth/principal.py`):
+
+| Scheme | Who | Store | Actor |
+| --- | --- | --- | --- |
+| `Bearer <access token>` | a signed-in person (Cognito; the dev issuer locally) | `X-Tenant-Id: <uuid>` picks one of their stores | `user:<id>` |
+| `Device <device secret>` + `X-Register-Session: <token>` | the staff member signed in with their PIN on an enrolled register | the device's store | `device:<id>/user:<id>` |
+| `ApiKey tcgpos_<prefix>_<secret>` | a store API key with its own permission list | the key's store | `apikey:<id>` |
+
+`X-Tenant-Id` is only a selector (optional for Device/ApiKey, and must
+match). The caller's active membership, role and permissions are read from
+Postgres on every request (403 if not a member, the same for a store that
+doesn't exist). Each route declares one permission (403
+`{"detail": {"missing": "<perm>"}}`); `tests/fixtures/perm_matrix.yaml` is
+the role × route table. 401s from Device auth carry `{"detail": {"reason":
+"device_unknown" | "session_required" | "session_invalid" | "session_ended"
+| "session_expired" | "session_idle", "message": …}}`.
+
+**Approvals.** Some actions are gated by the role's `approval_policy`
+(cashiers: refunds, voids, store-credit corrections, price overrides). Such
+a route answers 403 `{"detail": {"approval_required": "<perm>",
+"amount_cents": n, "payload_hash": "<hex>"}}`; on a register, a manager
+enters their PIN (`POST /v1/approvals` with those three values plus
+`approver_user_id` and `pin`) and the client retries the identical request
+with `X-Approval: <approval_id>` within 60 s. Single use; the server
+recomputes the hash, so a changed body or amount needs a new approval. A bad
+or used approval adds `"approval_error": "invalid"` to the same 403. The
+write's ledger/audit rows record `approved_by`. Today
+`POST /v1/customers/{id}/credit/adjust` uses it (`auth/approvals.py`,
+`require_or_approval`); POS sale/refund routes will.
+
+| Route | Permission | |
+| --- | --- | --- |
+| `GET /v1/me` | signed in | user + `stores[]` (no `X-Tenant-Id`) |
+| `POST /v1/me/identity` | signed in | `{id_token}`: verified email + name from the Cognito ID token (422 `{"reason": "invalid_id_token"}` otherwise) |
+| `POST /v1/stores` | signed in | onboarding: `{name, location_name?}` → new store, caller is owner; 403 `store_limit` past `MAX_OWNED_STORES`, 429 past `STORE_CREATE_LIMIT`/hour |
+| `PUT /v1/me/pin` | any member (bearer) | `{pin}`: 6 digits, not trivial → 204 |
+| `GET /v1/registers` · `POST …` | `registers.manage` | list; `{location_id, name}` |
+| `POST /v1/registers/{id}/enroll` | `registers.manage` | → `{device, device_secret}` (secret shown once) |
+| `GET /v1/registers/devices` · `DELETE …/{id}` | `registers.manage` | list; revoke (ends its sessions) |
+| `GET /v1/register/staff` | Device | `[{user_id, name, role}]` members with a PIN |
+| `POST /v1/register/sessions` | Device | `{user_id, pin}` → `{session_token, expires_at, idle_timeout_seconds, perms, …}`; 403 `wrong_pin` (+`attempts_left`), 423 `pin_locked` (+`retry_after`), 429 |
+| `DELETE /v1/register/sessions` | Device + session | sign out / lock → 204 |
+| `POST /v1/approvals` | Device + session | `{perm, payload_hash, amount_cents, approver_user_id, pin}` → `{approval_id, expires_at, …}` |
+| `POST /v1/api-keys` · `GET …` · `DELETE …/{id}` | `apikeys.manage` | `{name, perms}` → key shown once; list; revoke |
+| `GET /v1/roles` | `staff.manage` | roles with their permissions |
+| `GET /v1/staff` · `PATCH /v1/staff/{user_id}` · `DELETE …` | `staff.manage` | list; `{role?, status?}`; DELETE = disable |
+| `POST /v1/invites` · `GET …` · `DELETE /v1/invites/{id}` | `staff.manage` | invite `{email, role}` (link logged locally, no email yet); list; revoke |
+| `POST /v1/invites/accept` | signed in | `{token}`; the invite email must equal the user's verified email |
+| `POST /v1/dev/login` | — | `{email, name?}` → dev access + ID token; only with the dev issuer (ENV=local/test) |
+
+Escalation rules: you can only grant (or act on holders of) a role whose
+permissions you hold, only owners grant owner, nobody edits their own
+membership, and the last active owner can't be disabled or demoted.
+
+Permissions for the routes below: inventory list, pricing rule / suggest
+`inventory.read`; adjust `inventory.adjust`; price PATCH
+`inventory.price_edit`; import `imports.run`; PUT rule
+`pricing.rules_manage`; credit balance `credit.read`, issue
+`credit.issue`, redeem `pos.sell` (credit as tender), adjust
+`credit.adjust` (approval-gated for cashiers); storefront settings
+`storefront.manage`; web orders `web_orders.read` / `web_orders.fulfill`.
 
 | Route | |
 | --- | --- |
@@ -74,6 +146,7 @@ replaces them (see OPS.md).
 | `GET /v1/customers/{id}/credit` | balance in cents |
 | `POST /v1/customers/{id}/credit/issue` | `amount_cents > 0` |
 | `POST /v1/customers/{id}/credit/redeem` | 409 if the balance would go below 0 |
+| `POST /v1/customers/{id}/credit/adjust` | `{delta_cents ≠ 0, reason}`; 409 below 0; may need an approval (above) |
 | `GET /v1/storefront-settings` / `PUT …` | the tenant's storefront (PUT is audit-logged; 409 on a taken slug/domain) |
 | `GET /v1/web-orders` | `status`, `page`, `page_size`; newest first, with lines |
 | `POST /v1/web-orders/{id}/picked-up` | `reserved` → `picked_up`; 409 otherwise |
@@ -101,7 +174,7 @@ key, replay lookup, `FOR UPDATE` on the items in id order, location /
 priced / `web_available` checks (any failure → 409, nothing written), then
 the order (6-character pickup code, `expires_at = now() +
 reservation_hours`) and per line: snapshot price, `qty −= n`, ledger row
-(`channel='web'`, `reason='web_reserve:<order id>'`, `actor='web:<email>'`)
+(`channel='web'`, `reason='web_reserve:<order id>'`, actor `storefront:<slug>`)
 and audit row. Caps: ≤ 40 lines, ≤ 20 per line, one line per item. Public
 POSTs are rate limited per IP in Postgres (`ratelimit.py`;
 `STOREFRONT_ORDER_LIMIT` default 10/min, `STOREFRONT_QUOTE_LIMIT` 60/min).
@@ -160,7 +233,8 @@ notes are in the module docstring. `search_outbox_stats()` (migration
 0010) backs `status`.
 
 Expire stale reservations (same reversal as cancel, status `expired`,
-reason `web_expire:<id>`; also prunes old rate-limit windows):
+reason `web_expire:<id>`, actor `job:expire_reservations`; also prunes old
+rate-limit windows):
 `python -m tcg_pos_api.jobs.expire_reservations` (`make expire-reservations`).
 
 ### Listings outbox (consumer contract, for the M5 indexer)
@@ -231,6 +305,14 @@ make serve          # http://127.0.0.1:8001/docs (mtg-api expected on :8000)
 | `MTG_API_BASE` | `http://localhost:8000` | mtg-api for catalog + prices |
 | `DB_CONNECT_TIMEOUT` | `5` | seconds; keep below the Lambda timeout |
 | `PORT` | `8001` | `make serve` only |
+| `AUTH_ISSUER` | dev issuer (`make serve`) | exact token `iss`; required by the app |
+| `AUTH_CLIENT_IDS` | dev client | comma list of accepted `client_id`s |
+| `AUTH_JWKS_URL` | `{issuer}/.well-known/jwks.json` | dev issuer: `.dev/auth/jwks.json` |
+| `ENV` | `local` (`make serve`) | the dev issuer is refused unless `local` / `test` |
+| `APP_BASE_URL` | `http://localhost:5173` | invite accept links |
+| `REGISTER_PIN_LIMIT` | `10` | PIN attempts per register device per minute |
+| `MAX_OWNED_STORES` | `5` | stores one user may own (`POST /v1/stores`) |
+| `STORE_CREATE_LIMIT` | `3` | `POST /v1/stores` per user per hour |
 | `STOREFRONT_ORDER_LIMIT` | `10` | public order POSTs per IP per minute |
 | `STOREFRONT_QUOTE_LIMIT` | `60` | public cart-quote POSTs per IP per minute |
 | `STOREFRONT_RATELIMIT_ENABLED` | `1` | `0` disables the check (local dev only) |
@@ -253,6 +335,30 @@ DATABASE_URL=postgres://tcg_pos_worker_login:tcg_pos_worker_login@localhost:5432
 OPENSEARCH_URL=http://localhost:9200 MTG_API_BASE=http://localhost:8000 \
   .venv/bin/python scripts/serve-local.py        # or: make serve-dev  -> http://127.0.0.1:8001/docs
 curl -s localhost:8001/v1/storefront/demo/search?q=bolt
+```
+
+Staff routes need a token. `make serve` / `serve-dev` run with the local dev
+issuer (key pair generated into `.dev/auth/`, gitignored). After migrating,
+make a dev user the demo store's owner once, then mint tokens for it:
+
+```bash
+DATABASE_URL=postgres://postgres:postgres@localhost:54329/tcg_pos_dev \
+  .venv/bin/python scripts/backfill_owner.py --tenant <demo tenant id> --email owner@demo.test
+TOKEN=$(.venv/bin/python scripts/dev_token.py owner@demo.test)   # or POST /v1/dev/login
+curl -s -H "Authorization: Bearer $TOKEN" -H "X-Tenant-Id: <demo tenant id>" localhost:8001/v1/inventory
+```
+
+Register mode locally (owner token as above):
+
+```bash
+H=(-H "Authorization: Bearer $TOKEN" -H "X-Tenant-Id: <demo tenant id>" -H "Content-Type: application/json")
+curl -s -X PUT "${H[@]}" localhost:8001/v1/me/pin -d '{"pin":"284716"}'
+REG=$(curl -s -X POST "${H[@]}" localhost:8001/v1/registers -d '{"location_id":"<location id>","name":"Front"}' | jq -r .id)
+SECRET=$(curl -s -X POST "${H[@]}" localhost:8001/v1/registers/$REG/enroll | jq -r .device_secret)
+curl -s -H "Authorization: Device $SECRET" localhost:8001/v1/register/staff   # pick a user_id
+SESSION=$(curl -s -X POST -H "Authorization: Device $SECRET" -H "Content-Type: application/json" \
+  localhost:8001/v1/register/sessions -d '{"user_id":"<user id>","pin":"284716"}' | jq -r .session_token)
+curl -s -H "Authorization: Device $SECRET" -H "X-Register-Session: $SESSION" localhost:8001/v1/inventory
 ```
 
 Another store: `DATABASE_URL=postgres://postgres:postgres@localhost:54329/tcg_pos_dev
