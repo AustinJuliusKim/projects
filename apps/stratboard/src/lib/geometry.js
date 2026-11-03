@@ -3,6 +3,48 @@
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+// Board/minimap drawings use a 0..1000 square over the minimap image.
+export const BOARD_SIZE = 1000;
+
+// Board positions for players, in board units. Players sharing a callout fan
+// out in a small ring of radius ~r so none hide the others.
+export function fanOut(players, r) {
+  const groups = new Map();
+  players.forEach((p, i) => {
+    if (!groups.has(p.at.name)) groups.set(p.at.name, []);
+    groups.get(p.at.name).push(i);
+  });
+  const out = [];
+  for (const idx of groups.values()) {
+    idx.forEach((i, k) => {
+      const { at } = players[i];
+      const spread = idx.length > 1 ? r * 1.25 : 0;
+      const angle = (k / idx.length) * Math.PI * 2 - Math.PI / 2;
+      out[i] = {
+        x: at.x * BOARD_SIZE + Math.cos(angle) * spread,
+        y: at.y * BOARD_SIZE + Math.sin(angle) * spread,
+      };
+    });
+  }
+  return out;
+}
+
+// Minimap art fills only the middle of its image, so views frame the callouts
+// (plus a margin) instead of the whole square.
+// The margin covers art past the outermost callouts (Ascent's attacker side).
+export function mapFrame(map, pad = 120) {
+  const xs = map.callouts.map((c) => c.x * BOARD_SIZE);
+  const ys = map.callouts.map((c) => c.y * BOARD_SIZE);
+  const x = Math.max(0, Math.min(...xs) - pad);
+  const y = Math.max(0, Math.min(...ys) - pad);
+  return {
+    x,
+    y,
+    w: Math.min(BOARD_SIZE, Math.max(...xs) + pad) - x,
+    h: Math.min(BOARD_SIZE, Math.max(...ys) + pad) - y,
+  };
+}
+
 export function spawns(map) {
   const find = (zone) => map.callouts.find((c) => c.zone === zone && c.region === "Spawn");
   return { attack: find("Attacker Side"), defense: find("Defender Side") };

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { fromPlan } from "../lib/board.js";
 import { generatePlan } from "../lib/plan.js";
 import { createRng, randomSeed } from "../lib/rng.js";
 import Minimap, { ROLE_COLORS } from "./Minimap.jsx";
@@ -24,7 +25,7 @@ function save(key, value) {
   }
 }
 
-export default function PlanView({ state, setState, data }) {
+export default function PlanView({ state, setState, data, onOpenBoard }) {
   const { maps, agents } = data;
   const [pool, setPool] = useState(() => load(POOL_KEY, null)); // null = every map
   const [choice, setChoice] = useState(() => load(CHOICE_KEY, "random"));
@@ -142,7 +143,10 @@ export default function PlanView({ state, setState, data }) {
                 <p className="eyebrow">{map.name} · {plan.side === "attack" ? "Attack" : "Defense"} · {plan.site} site</p>
                 <h1 className="strat-name">{plan.strat.name}</h1>
               </div>
-              <span className={`side-pill side-${plan.side}`}>{plan.side}</span>
+              <div className="board-head-actions">
+                <span className={`side-pill side-${plan.side}`}>{plan.side}</span>
+                <button type="button" className="btn-ghost" onClick={() => onOpenBoard(fromPlan(plan))}>Edit in planner</button>
+              </div>
             </div>
             <p className="summary">{plan.strat.summary}</p>
             <Minimap map={map} plan={plan} active={active} onActive={setActive} />

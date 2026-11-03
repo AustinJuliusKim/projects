@@ -1,0 +1,67 @@
+name: stratboard deploy
+
+# Ship the static SPA to Cloudflare Pages (free tier) on every push to main.
+# No-ops politely until the secrets exist — one-time setup:
+#   1. Cloudflare dashboard → Workers & Pages → create a Pages project named
+#      `stratboard` (direct upload).
+#   2. Repo secrets CLOUDFLARE_API_TOKEN (Pages:Edit) and
+#      CLOUDFLARE_ACCOUNT_ID — the same pair mtg-tools-deploy.yml uses.
+# Routing is hash-based, so Pages needs no SPA fallback rules.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/stratboard/**"
+      - ".github/workflows/stratboard-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stratboard-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/stratboard
+    steps:
+      - name: Check for Cloudflare credentials
+        id: gate
+        # Runs before checkout, so apps/stratboard doesn't exist yet.
+        working-directory: .
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          echo "go=${TOKEN:+yes}" >> "$GITHUB_OUTPUT"
+          [ -n "$TOKEN" ] || echo "No CLOUDFLARE_API_TOKEN secret — skipping deploy."
+
+      - uses: actions/checkout@v7
+        if: steps.gate.outputs.go == 'yes'
+
+      - uses: actions/setup-node@v6
+        if: steps.gate.outputs.go == 'yes'
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: apps/stratboard/package-lock.json
+
+      - name: Test and build
+        if: steps.gate.outputs.go == 'yes'
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+      - name: Deploy to Cloudflare Pages
+        if: steps.gate.outputs.go == 'yes'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # wrangler-action runs from the repo root, so spell out the path.
+          command: pages deploy apps/stratboard/dist --project-name=stratboard --branch=main

@@ -1,4 +1,4 @@
-import { spawns } from "../lib/geometry.js";
+import { BOARD_SIZE as S, fanOut, mapFrame, spawns } from "../lib/geometry.js";
 
 export const ROLE_COLORS = {
   Duelist: "var(--duelist)",
@@ -7,44 +7,11 @@ export const ROLE_COLORS = {
   Sentinel: "var(--sentinel)",
 };
 
-const S = 1000; // SVG units across the minimap
 const R = 24; // player marker radius
 
-// Players sharing a callout fan out in a small ring so none hide the others.
-function layoutMarkers(players) {
-  const groups = new Map();
-  players.forEach((p, i) => {
-    const key = p.at.name;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(i);
-  });
-  const out = [];
-  for (const idx of groups.values()) {
-    idx.forEach((i, k) => {
-      const p = players[i];
-      const spread = idx.length > 1 ? R * 1.25 : 0;
-      const angle = (k / idx.length) * Math.PI * 2 - Math.PI / 2;
-      out[i] = { x: p.at.x * S + Math.cos(angle) * spread, y: p.at.y * S + Math.sin(angle) * spread };
-    });
-  }
-  return out;
-}
-
-// Minimap art fills only the middle of its image, so frame the callouts
-// (plus a margin) instead of the whole square.
-function frame(map) {
-  const xs = map.callouts.map((c) => c.x * S);
-  const ys = map.callouts.map((c) => c.y * S);
-  const pad = 70;
-  const x0 = Math.max(0, Math.min(...xs) - pad);
-  const y0 = Math.max(0, Math.min(...ys) - pad);
-  const w = Math.min(S, Math.max(...xs) + pad) - x0;
-  const h = Math.min(S, Math.max(...ys) + pad) - y0;
-  return `${x0} ${y0} ${w} ${h}`;
-}
-
 export default function Minimap({ map, plan, active, onActive }) {
-  const markers = layoutMarkers(plan.players);
+  const markers = fanOut(plan.players, R);
+  const frame = mapFrame(map);
   const { attack, defense } = spawns(map);
   const siteLabel = map.callouts.find((c) => c.name === `${plan.site} Site`);
   const targets = [...new Map(
@@ -54,7 +21,7 @@ export default function Minimap({ map, plan, active, onActive }) {
   ).values()];
 
   return (
-    <svg className="minimap" viewBox={frame(map)} role="img" aria-label={`${map.name} minimap with the plan`}>
+    <svg className="minimap" viewBox={`${frame.x} ${frame.y} ${frame.w} ${frame.h}`} role="img" aria-label={`${map.name} minimap with the plan`}>
       <defs>
         <clipPath id="agent-clip" clipPathUnits="objectBoundingBox">
           <circle cx="0.5" cy="0.5" r="0.5" />
