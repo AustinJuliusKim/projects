@@ -1,0 +1,29 @@
+name: stratboard CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/stratboard/**"
+      - ".github/workflows/stratboard.yml"
+  pull_request:
+    paths:
+      - "apps/stratboard/**"
+      - ".github/workflows/stratboard.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/stratboard
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.13
+          cache: npm
+          cache-dependency-path: apps/stratboard/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
