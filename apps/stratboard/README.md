@@ -1,7 +1,7 @@
 # stratboard
 
-A Valorant strategy randomizer, built as a portfolio piece. It is the first
-part of a ValoPlant-style planner; the hand-drawn board comes later.
+A Valorant strategy planner with a built-in randomizer, built as a portfolio
+piece.
 
 - **Tactical plan:** picks a map from your pool, a side, a target site, a
   strat (fast execute, split, fake or default on attack; standard, stack,
@@ -9,6 +9,17 @@ part of a ValoPlant-style planner; the hand-drawn board comes later.
   position, a job and a real ability, all drawn on the actual minimap.
 - **Strat roulette:** one-round constraints ("Sheriff squad", "Give it up")
   filtered by side. You can also add one to a plan as a twist.
+- **Planner:** a ValoPlant-style board on the minimap. Place ally and enemy
+  agents and their abilities, draw freehand, arrows and areas, add text, and
+  split a round into steps (a new step starts as a copy of the current one).
+  It has undo/redo and keyboard shortcuts (V/D/A/C/T/E, Del, Ctrl+Z), and
+  exports to PNG. "Edit in planner" turns any generated plan into a board.
+
+Boards autosave in the browser. **Share** copies a link with the whole board
+compressed into the URL (deflate + base64url), so nothing is stored on a
+server. A shared board is untrusted input: `cleanBoard` rebuilds every item
+from known fields, caps item and step counts, and decompression stops at
+1 MB.
 
 Each result is seeded and lives in the URL hash, so a copied link reproduces
 the same plan as long as the agent and map data haven't changed.
@@ -29,11 +40,17 @@ rest as hold positions. Straight-line distance gets a few sites wrong, and
 
 ```bash
 npm ci
-npm test        # node --test over src/lib (rng, data, geometry, plan, roulette, share)
+npm test        # node --test over src/lib (rng, data, geometry, plan, roulette, share, board)
 npm run dev     # http://localhost:5173
 npm run build
 ```
 
-Static SPA with no backend. It isn't deployed yet.
+## Deploy
+
+Static SPA with no backend, hosted on Cloudflare Pages (free tier).
+`.github/workflows/stratboard-deploy.yml` deploys every push to main that
+touches this app to the `stratboard` Pages project, using the repo's existing
+`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets. Routing is
+hash-based, so Pages needs no rewrite rules.
 
 Fan project, not affiliated with Riot Games.

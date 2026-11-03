@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import snapshot from "./data/snapshot.json";
 import { fetchGameData } from "./lib/data.js";
 import { buildHash, parseHash } from "./lib/share.js";
 import PlanView from "./components/PlanView.jsx";
 import RouletteView from "./components/RouletteView.jsx";
+import BoardView from "./components/BoardView.jsx";
 
 function useHashState() {
   const [state, setState] = useState(() => parseHash(window.location.hash));
@@ -43,15 +44,35 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  const tab = (view) => (
+  // Switching tabs returns to that tab's last result instead of rolling anew.
+  const lastHash = useRef({});
+  useEffect(() => {
+    if (state.view !== "board") lastHash.current[state.view] = buildHash(state);
+  }, [state]);
+
+  // A plan opened in the planner is handed over in memory; `boardKey`
+  // remounts the board so it starts from that plan.
+  const [incoming, setIncoming] = useState(null);
+  const [boardKey, setBoardKey] = useState(0);
+  const openBoard = (board) => {
+    setIncoming(board);
+    setBoardKey((k) => k + 1);
+    setState({ view: "board", d: null });
+  };
+
+  const tab = (view, label) => (
     <button
       type="button"
       role="tab"
       aria-selected={state.view === view}
       className="tab"
-      onClick={() => state.view !== view && setState(parseHash(`#${view}`))}
+      onClick={() => {
+        if (state.view === view) return;
+        if (view === "board") setIncoming(null);
+        setState(parseHash(lastHash.current[view] ?? `#${view}`));
+      }}
     >
-      {view === "plan" ? "Tactical plan" : "Strat roulette"}
+      {label}
     </button>
   );
 
@@ -63,15 +84,16 @@ export default function App() {
           <span>Stratboard</span>
         </div>
         <nav className="tabs" role="tablist">
-          {tab("plan")}
-          {tab("roulette")}
+          {tab("plan", "Tactical plan")}
+          {tab("board", "Planner")}
+          {tab("roulette", "Strat roulette")}
         </nav>
       </header>
       <main>
-        {state.view === "roulette" ? (
-          <RouletteView state={state} setState={setState} />
-        ) : (
-          <PlanView state={state} setState={setState} data={data} />
+        {state.view === "roulette" && <RouletteView state={state} setState={setState} />}
+        {state.view === "plan" && <PlanView state={state} setState={setState} data={data} onOpenBoard={openBoard} />}
+        {state.view === "board" && (
+          <BoardView key={boardKey} state={state} setState={setState} data={data} incoming={incoming} />
         )}
       </main>
       <footer className="footer">
