@@ -23,6 +23,11 @@ const POSTS = JSON.parse(
   await readFile(join(root, "src", "generated", "posts.json"), "utf8")
 );
 
+// Shared with the /studio page (src/studio.ts reads the same file).
+const STUDIO = JSON.parse(
+  await readFile(join(root, "src", "studio-copy.json"), "utf8")
+);
+
 const SITE = "https://austinjuliuskim.com";
 const AUTHOR = "Austin Kim";
 const BLOG_TITLE = "Notes on building — Austin Kim";
@@ -149,6 +154,28 @@ for (const p of POSTS) {
     )
   );
 }
+
+// Studio lead-gen page
+await write(
+  "studio",
+  render(
+    shell,
+    {
+      title: `${STUDIO.name} — Web, networking & security for Glendale-area small businesses`,
+      description: STUDIO.description,
+      url: `${SITE}/studio`,
+    },
+    `<main><h1>${esc(STUDIO.h1)}</h1><p>${esc(STUDIO.lede)}</p>` +
+      STUDIO.pillars
+        .map(
+          (p) =>
+            `<section><h2>${esc(p.title)}</h2><p>${esc(p.summary)}</p>` +
+            `<ul>${p.points.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></section>`
+        )
+        .join("") +
+      `</main>`
+  )
+);
 
 await writeFile(join(DIST, "rss.xml"), rss(POSTS));
 console.log(`prerender: rss.xml (${POSTS.length} item(s))`);
