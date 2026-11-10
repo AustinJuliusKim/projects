@@ -1,0 +1,41 @@
+{
+  "name": "Kim Tech Studio",
+  "tagline": "Web, networking and security for small businesses.",
+  "h1": "Your website, Wi-Fi and security, handled by one engineer.",
+  "lede": "I help small businesses in Glendale, Pasadena, Burbank and the San Fernando Valley get online ordering, reliable networks and basic security without the jargon. Fixed prices. Plain English.",
+  "description": "A one-person studio run by a senior software engineer: websites with direct online ordering, office Wi-Fi and network setup, and security checkups for small businesses in Glendale, Pasadena, Burbank and the San Fernando Valley.",
+  "pillars": [
+    {
+      "id": "web",
+      "title": "Web and online ordering",
+      "summary": "Sites that make money, not just look nice.",
+      "points": [
+        "Direct online ordering, so you skip the 15-30% delivery-app fees.",
+        "Booking, forms and simple automations that save you hours.",
+        "Fixed prices, agreed before work starts.",
+        "Built to WCAG 2.1 AA. No accessibility overlays, ever."
+      ]
+    },
+    {
+      "id": "network",
+      "title": "Networking",
+      "summary": "Office and shop Wi-Fi that just works.",
+      "points": [
+        "Coverage that reaches the back room and the patio.",
+        "A guest network kept separate from your POS and cameras.",
+        "Clean setup: labeled, documented, and handed over with the passwords."
+      ]
+    },
+    {
+      "id": "security",
+      "title": "Security",
+      "summary": "The basics that stop most real-world problems.",
+      "points": [
+        "Multi-factor authentication on the accounts that matter.",
+        "Backups you have actually tested restoring.",
+        "Phishing basics for you and your staff.",
+        "A plain-English security checkup with a short list of fixes."
+      ]
+    }
+  ]
+}

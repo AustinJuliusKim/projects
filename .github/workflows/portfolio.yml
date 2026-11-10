@@ -26,6 +26,8 @@ jobs:
           cache-dependency-path: apps/portfolio/package-lock.json
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_LEADS_API_URL: ${{ vars.VITE_LEADS_API_URL }}
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -73,3 +75,5 @@ jobs:
             --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" "IncludeWww=$INCLUDE_WWW" "WebAclArn=$WEB_ACL_ARN" \
             --no-fail-on-empty-changeset
       - run: ./deploy-frontend.sh
+        env:
+          VITE_LEADS_API_URL: ${{ vars.VITE_LEADS_API_URL }}
