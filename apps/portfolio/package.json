@@ -9,7 +9,8 @@
     "build": "node scripts/build-posts.mjs && tsc -b && vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "deploy": "./deploy-frontend.sh",
-    "posts": "node scripts/build-posts.mjs"
+    "posts": "node scripts/build-posts.mjs",
+    "checklist:pdf": "node scripts/checklist/render-pdf.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

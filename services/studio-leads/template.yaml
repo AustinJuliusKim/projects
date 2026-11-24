@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: studio-leads - POST /leads for small-business landing page leads
+
+Parameters:
+  AllowedOrigin:
+    Type: String
+    Default: https://austinjuliuskim.com
+    Description: Origin allowed by CORS
+  SendWelcomeEmail:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: Send the welcome email via SES (requires a verified FromAddress)
+  FromAddress:
+    Type: String
+    Default: ""
+    Description: Verified SES sender address
+  ChecklistUrl:
+    Type: String
+    Default: https://austinjuliuskim.com/studio/small-business-tech-checklist.pdf
+  MailingAddress:
+    Type: String
+    Default: ""
+    Description: Physical mailing address shown in the email footer (CAN-SPAM)
+
+Conditions:
+  WelcomeOn: !Equals [!Ref SendWelcomeEmail, "true"]
+
+Resources:
+  LeadsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref AllowedOrigin
+        AllowMethods:
+          - POST
+        AllowHeaders:
+          - content-type
+        MaxAge: 600
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 10
+        ThrottlingRateLimit: 5
+
+  LeadsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${LeadsFunction}
+      RetentionInDays: 30
+
+  LeadsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs24.x
+      Handler: src/lambda.handler
+      CodeUri: .
+      Timeout: 10
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref LeadsTable
+          SEND_WELCOME: !Ref SendWelcomeEmail
+          FROM_ADDRESS: !Ref FromAddress
+          CHECKLIST_URL: !Ref ChecklistUrl
+          MAILING_ADDRESS: !Ref MailingAddress
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:UpdateItem
+              Resource: !GetAtt LeadsTable.Arn
+        - !If
+          - WelcomeOn
+          - Statement:
+              - Effect: Allow
+                Action: ses:SendEmail
+                Resource: !Sub arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/*
+                Condition:
+                  StringEquals:
+                    ses:FromAddress: !Ref FromAddress
+          - !Ref AWS::NoValue
+      Events:
+        PostLeads:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /leads
+            Method: POST
+
+Outputs:
+  ApiUrl:
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+  TableName:
+    Value: !Ref LeadsTable
