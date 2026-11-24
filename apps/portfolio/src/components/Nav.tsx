@@ -16,6 +16,9 @@ export default function Nav() {
           </a>
           <a href="/blog">Blog</a>
           <a href="/resume">Résumé</a>
+          <a href="/studio" className="hide-sm">
+            Small business help
+          </a>
           <a href={`mailto:${profile.email}`} className="hide-sm">
             Contact
           </a>

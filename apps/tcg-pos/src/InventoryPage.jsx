@@ -7,8 +7,9 @@ import { isUuid } from "./receive.js";
 
 const PAGE_SIZE = 50;
 
-// Tenant and location come from the store fields in App; App remounts this
-// page (key) when they change, which resets the page number.
+// The store comes from sign-in (or the enrolled register) and the location
+// from the bar in App; App remounts this page (key) when either changes,
+// which resets the page number. The API client attaches the credential.
 export default function InventoryPage({ tenantId, locationId }) {
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
@@ -29,7 +30,7 @@ export default function InventoryPage({ tenantId, locationId }) {
     setError(null);
     listInventory(
       { location_id: locationId, page, page_size: PAGE_SIZE },
-      { tenantId, signal: ctrl.signal },
+      { signal: ctrl.signal },
     )
       .then(setData)
       .catch((e) => {
@@ -50,7 +51,9 @@ export default function InventoryPage({ tenantId, locationId }) {
       {loading && <Loader size="sm" />}
 
       {error && <Alert color="red">{error}</Alert>}
-      {!ready && <Text c="dimmed">Enter a tenant ID (and optionally a location ID) to load inventory.</Text>}
+      {!ready && (
+        <Text c="dimmed">The location ID must be a UUID (or blank for every location).</Text>
+      )}
 
       {data && (
         <>

@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import Resume from "./pages/Resume";
 import Blog from "./pages/Blog";
 import Post from "./pages/Post";
+import Studio from "./pages/Studio";
 import "./styles.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -15,6 +16,7 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/resume" element={<Resume />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<Post />} />
+        <Route path="/studio" element={<Studio />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>

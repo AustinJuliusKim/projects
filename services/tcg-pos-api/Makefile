@@ -51,7 +51,7 @@ export DOCKER_HOST
 endif
 
 .PHONY: help install up down migrate migrate-dry-run lint test test-db ci serve \
-	expire-reservations build serve-dev listings-status listings-drain listings-rebuild
+	expire-reservations build serve-dev listings-status listings-drain listings-rebuild dev-token
 
 # ============================================================================
 # SAFE — local dev only, no external mutations.
@@ -92,6 +92,10 @@ expire-reservations: ## Release web reservations past their expiry (DATABASE_URL
 
 serve-dev: ## Serve on :8001 against tcg_pos_dev + local OpenSearch (the storefront app proxies /api here)
 	DATABASE_URL=$(DEV_DATABASE_URL) $(PY) scripts/serve-local.py
+
+dev-token: ## Print a local dev-issuer access token: make dev-token EMAIL=owner@demo.test
+	@test -n "$(EMAIL)" || { echo "usage: make dev-token EMAIL=you@example.test" >&2; exit 2; }
+	$(PY) scripts/dev_token.py "$(EMAIL)"
 
 listings-status: ## Listings indexer: outbox backlog, oldest event, alias + doc counts (tcg_pos_dev)
 	DATABASE_URL=$(DEV_DATABASE_URL) $(PY) -m tcg_pos_api.search.listings status

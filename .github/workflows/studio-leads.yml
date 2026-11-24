@@ -1,0 +1,33 @@
+name: studio-leads CI
+
+# Tests only. The stack is deployed by hand (sam deploy --guided) — see
+# services/studio-leads/README.md.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/studio-leads/**"
+      - ".github/workflows/studio-leads.yml"
+  pull_request:
+    paths:
+      - "services/studio-leads/**"
+      - ".github/workflows/studio-leads.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/studio-leads
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: services/studio-leads/package-lock.json
+      - run: npm ci
+      - run: npm test

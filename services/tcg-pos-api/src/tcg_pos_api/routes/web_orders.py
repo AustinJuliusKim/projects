@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query
 
 from tcg_pos_api import storefront
-from tcg_pos_api.deps import Actor, TenantConn
+from tcg_pos_api.deps import Perm, TenantConn, require
 from tcg_pos_api.routes.models import (
     WebOrderLine,
     WebOrderPage,
@@ -29,7 +29,7 @@ def _one(conn, order: dict) -> WebOrderStaff:
     return _staff(order, storefront.order_lines(conn, [order["id"]])[order["id"]])
 
 
-@router.get("", response_model=WebOrderPage)
+@router.get("", response_model=WebOrderPage, dependencies=[require(Perm.WEB_ORDERS_READ)])
 def list_orders(
     conn: TenantConn,
     status: WebOrderStatus | None = None,
@@ -45,11 +45,15 @@ def list_orders(
     )
 
 
-@router.post("/{order_id}/picked-up", response_model=WebOrderStaff)
-def picked_up(actor: Actor, conn: TenantConn, order_id: uuid.UUID) -> WebOrderStaff:
+@router.post(
+    "/{order_id}/picked-up",
+    response_model=WebOrderStaff,
+    dependencies=[require(Perm.WEB_ORDERS_FULFILL)],
+)
+def picked_up(conn: TenantConn, order_id: uuid.UUID) -> WebOrderStaff:
     """reserved -> picked_up. 409 if the order is no longer reserved."""
     try:
-        order = storefront.mark_picked_up(conn, order_id, actor=actor)
+        order = storefront.mark_picked_up(conn, order_id)
     except storefront.OrderStateError as err:
         raise HTTPException(409, f"order is {err.status}, not reserved") from None
     if order is None:
@@ -57,13 +61,17 @@ def picked_up(actor: Actor, conn: TenantConn, order_id: uuid.UUID) -> WebOrderSt
     return _one(conn, order)
 
 
-@router.post("/{order_id}/cancel", response_model=WebOrderStaff)
-def cancel(actor: Actor, conn: TenantConn, order_id: uuid.UUID) -> WebOrderStaff:
+@router.post(
+    "/{order_id}/cancel",
+    response_model=WebOrderStaff,
+    dependencies=[require(Perm.WEB_ORDERS_FULFILL)],
+)
+def cancel(conn: TenantConn, order_id: uuid.UUID) -> WebOrderStaff:
     """reserved -> cancelled, restoring each line's qty with a +n ledger row
     (channel 'web', reason 'web_cancel:<id>'). 409 if the order is no
     longer reserved, so stock is restored exactly once."""
     try:
-        order = storefront.release_order(conn, order_id, status="cancelled", actor=actor)
+        order = storefront.release_order(conn, order_id, status="cancelled")
     except storefront.OrderStateError as err:
         raise HTTPException(409, f"order is {err.status}, not reserved") from None
     if order is None:

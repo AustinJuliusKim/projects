@@ -28,7 +28,7 @@ import {
 // Receive stock: find a card in the catalog (mtg-api, directly), pick the
 // exact printing/finish/condition, see the store's suggested price, and add
 // the quantity with a price in one adjust.
-export default function ReceivePage({ tenantId, locationId, actor }) {
+export default function ReceivePage({ tenantId, locationId }) {
   const [query, setQuery] = useState("");
   const [cards, setCards] = useState([]);
   const [oracleId, setOracleId] = useState(null);
@@ -97,7 +97,7 @@ export default function ReceivePage({ tenantId, locationId, actor }) {
     const ctrl = new AbortController();
     suggestPrice(
       { printing_id: printingId, finish, condition },
-      { tenantId, signal: ctrl.signal },
+      { signal: ctrl.signal },
     )
       .then((s) => {
         setSuggestion(s);
@@ -113,8 +113,7 @@ export default function ReceivePage({ tenantId, locationId, actor }) {
   async function submit() {
     setError(null);
     setDone(null);
-    if (!isUuid(tenantId)) return setError("Enter a tenant ID (UUID).");
-    if (!actor.trim()) return setError("Enter the clerk name.");
+    if (!isUuid(tenantId)) return setError("No store selected.");
     const { body, error: formError } = buildReceiveBody({
       locationId,
       printingId,
@@ -126,7 +125,7 @@ export default function ReceivePage({ tenantId, locationId, actor }) {
     if (formError) return setError(formError);
     setBusy(true);
     try {
-      const result = await adjustInventory(body, { tenantId, actor: actor.trim() });
+      const result = await adjustInventory(body);
       setDone(result.item);
       setPriceTouched(false);
     } catch (e) {

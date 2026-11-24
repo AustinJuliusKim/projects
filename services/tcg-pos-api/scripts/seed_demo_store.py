@@ -14,9 +14,11 @@ through the search_outbox like any other write.
   * Stock goes through the API's own write path (POST /v1/inventory/adjust
     with price_cents, in-process), so every item has its ledger, audit and
     outbox rows. The storefront is created with PUT /v1/storefront-settings.
-    Only the tenant + location rows are inserted directly (there is no API
-    for them yet), which needs DATABASE_URL to be a role that may insert
-    tenants (the local postgres superuser).
+    Only the tenant + location rows are inserted directly, which needs
+    DATABASE_URL to be a role that may insert tenants (the local postgres
+    superuser). The API calls are made as a dev-issuer user (SEED_EMAIL)
+    made the store's owner by backfill_owner.py, so the ledger and audit
+    rows carry that user as their actor.
   * Prices: the printing's catalog NM reference (TCGplayer market, else
     Scryfall) through the POS default price rule for the condition
     (pricing.apply_rule) — the same math as /pricing/suggest. A few items are
@@ -28,21 +30,26 @@ import argparse
 import os
 import random
 import sys
+from pathlib import Path
 
 import psycopg
 from fastapi.testclient import TestClient
+from psycopg.rows import dict_row
 from tcg_search.client import OpenSearch
 
-from tcg_pos_api.app import create_app
+from tcg_pos_api.auth.dev import DEV_ISSUER, dev_sub, mint_dev_token
 from tcg_pos_api.pricing import DEFAULT_RULE, apply_rule
 from tcg_pos_api.search import catalog_alias
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import backfill_owner  # noqa: E402
 
 STAPLES = ["Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf", "Thoughtseize",
            "Llanowar Elves", "Swords to Plowshares", "Dark Ritual", "Brainstorm",
            "Birds of Paradise", "Path to Exile", "Ponder", "Fatal Push", "Opt",
            "Shivan Dragon", "Serra Angel", "Rhystic Study", "Cyclonic Rift"]
 CONDITIONS = ["NM"] * 6 + ["LP"] * 3 + ["MP", "HP"]
-ACTOR = "seed:demo"
+SEED_EMAIL = "owner@demo.test"
 
 
 def popular_cards(os_: OpenSearch, n: int) -> list[dict]:
@@ -117,7 +124,14 @@ def main() -> int:
     with OpenSearch() as os_:
         cards = popular_cards(os_, args.cards)
     lines = stock_lines(cards, rng)
-    hdr = {"X-Tenant-Id": str(tenant), "X-Actor": ACTOR}
+    with psycopg.connect(url, row_factory=dict_row) as admin, admin.transaction():
+        backfill_owner.backfill(admin, tenant, dev_sub(SEED_EMAIL), SEED_EMAIL)
+    os.environ.setdefault("ENV", "local")
+    os.environ["AUTH_ISSUER"] = DEV_ISSUER
+    from tcg_pos_api.app import create_app
+
+    hdr = {"X-Tenant-Id": str(tenant),
+           "Authorization": f"Bearer {mint_dev_token(SEED_EMAIL)}"}
     with TestClient(create_app()) as api:
         resp = api.put("/v1/storefront-settings", headers=hdr, json={
             "slug": args.slug, "display_name": args.name, "published": True,

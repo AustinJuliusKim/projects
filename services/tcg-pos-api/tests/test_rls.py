@@ -8,7 +8,7 @@ isolating — the API's queries never filter by tenant_id."""
 import psycopg
 import pytest
 
-from conftest import adjust_body, app_conn, headers, requires_db
+from conftest import adjust_body, app_conn, headers, requires_db, user_id_for
 
 pytestmark = requires_db
 
@@ -23,6 +23,8 @@ TENANT_TABLES = [
     "buylist",
     "buylist_offer",
     "price_rule",
+    "membership",
+    "invite",
 ]
 
 
@@ -45,6 +47,12 @@ def two_tenants(client, make_tenant, admin_conn):
             (t["id"], bl),
         )
         admin_conn.execute("INSERT INTO price_rule (tenant_id) VALUES (%s)", (t["id"],))
+        admin_conn.execute(
+            "INSERT INTO invite (tenant_id, email, role_id, token_hash, expires_at, invited_by) "
+            "SELECT %s, 'new@example.test', r.id, md5(random()::text) || md5(random()::text), "
+            "now() + interval '1 day', %s FROM role r WHERE r.key = 'cashier'",
+            (t["id"], user_id_for("clerk@test")),
+        )
         client.post("/v1/inventory/adjust", json=adjust_body(t), headers=headers(t))
         client.post(
             f"/v1/customers/{t['customer_id']}/credit/issue",
@@ -114,10 +122,13 @@ def test_app_role_cannot_write_into_another_tenant(two_tenants):
         cur = conn.execute("UPDATE customer SET name = 'pwned' WHERE id = %s", (b["customer_id"],))
         assert cur.rowcount == 0
     # Own-tenant row pointing at B's customer: the composite FK refuses it.
-    with app_conn(a["id"]) as conn, pytest.raises(psycopg.errors.ForeignKeyViolation):
+    # (app.actor set and actor omitted, so the actor trigger is satisfied.)
+    with (
+        app_conn(a["id"], actor="user:x") as conn,
+        pytest.raises(psycopg.errors.ForeignKeyViolation),
+    ):
         conn.execute(
-            "INSERT INTO credit_ledger (customer_id, delta_cents, reason, actor) "
-            "VALUES (%s, 100000, 'x', 'x')",
+            "INSERT INTO credit_ledger (customer_id, delta_cents, reason) VALUES (%s, 100000, 'x')",
             (b["customer_id"],),
         )
     # No tenant set: tenant_id defaults to NULL, which no policy admits.
