@@ -5,3 +5,13 @@ fastapi==0.141.1
 httpx==0.28.1
 mangum==0.21.0
 psycopg[binary]==3.2.9
+# Access-token verification (auth/tokens.py): RS256 + JWKS. cryptography is
+# pinned too because PyJWT[crypto] only bounds it from below.
+PyJWT[crypto]==2.14.0
+cryptography==50.0.1
+# Staff PINs (auth/pins.py): Argon2id. The bindings and their cffi chain are
+# pinned too because argon2-cffi only bounds them from below.
+argon2-cffi==25.1.0
+argon2-cffi-bindings==25.1.0
+cffi==2.0.0
+pycparser==2.23

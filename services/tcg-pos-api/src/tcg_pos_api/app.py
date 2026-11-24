@@ -1,12 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import iter_route_contexts
 
+from tcg_pos_api.auth import dev as dev_auth
+from tcg_pos_api.auth import tokens
+from tcg_pos_api.config import env_name
 from tcg_pos_api.routes import (
+    account,
+    api_keys,
     credit,
+    dev,
     health,
     imports,
     inventory,
     pricing,
+    registers,
+    staff,
     storefront,
     storefront_settings,
     web_orders,
@@ -31,24 +40,47 @@ class StripApiPrefix:
         await self.app(scope, receive, send)
 
 
+def check_auth_config() -> tokens.AuthSettings:
+    """Refuse to start without an issuer, or with the dev issuer anywhere
+    but ENV=local/test (its private key sits on disk and /v1/dev/login mints
+    tokens for any email)."""
+    auth = tokens.settings()
+    if auth.is_dev and env_name() not in dev_auth.DEV_ENVS:
+        raise RuntimeError(
+            f"AUTH_ISSUER is the dev issuer but ENV={env_name()!r}; "
+            "the dev issuer is only allowed with ENV=local or ENV=test"
+        )
+    return auth
+
+
 def create_app() -> FastAPI:
+    auth = check_auth_config()
     app = FastAPI(
         title="tcg-pos-api",
         version="0.1.0",
         description=(
             "Card-shop POS: multi-tenant inventory with an append-only ledger, "
-            "store credit, and an audit log. Money is integer cents."
+            "store credit, and an audit log. Money is integer cents. Staff "
+            "routes take `Authorization: Bearer <access token>` plus "
+            "`X-Tenant-Id` to pick one of the caller's stores, or a register's "
+            "`Authorization: Device <secret>` + `X-Register-Session`, or "
+            "`Authorization: ApiKey <key>`."
         ),
     )
-    # TODO(auth): origins open while there is no auth and no deployed app;
-    # pin to the POS app's origin once it has one (see Ops tasks).
+    # TODO(auth): origins open while there is no deployed app; pin to the POS
+    # app's origin once it has one (see Ops tasks). Credentials are bearer
+    # tokens, never cookies, so an open origin can't ride a session.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
     app.add_middleware(StripApiPrefix)
+    app.include_router(account.router, prefix="/v1")
+    app.include_router(staff.router, prefix="/v1")
+    app.include_router(registers.router, prefix="/v1")
+    app.include_router(api_keys.router, prefix="/v1")
     app.include_router(inventory.router, prefix="/v1")
     app.include_router(imports.router, prefix="/v1")
     app.include_router(pricing.router, prefix="/v1")
@@ -57,6 +89,8 @@ def create_app() -> FastAPI:
     app.include_router(web_orders.router, prefix="/v1")
     app.include_router(storefront.router, prefix="/v1")
     app.include_router(health.router, prefix="/v1")
+    if auth.is_dev:
+        app.include_router(dev.router, prefix="/v1")
 
     @app.get("/", include_in_schema=False)
     def root() -> dict:
@@ -64,30 +98,13 @@ def create_app() -> FastAPI:
             "name": "tcg-pos-api",
             "docs": "/docs",
             "openapi": "/openapi.json",
-            "endpoints": [
-                "/v1/inventory",
-                "/v1/inventory/adjust",
-                "/v1/inventory/{item_id}",
-                "/v1/inventory/import/tcgplayer",
-                "/v1/pricing/rule",
-                "/v1/pricing/suggest",
-                "/v1/customers/{customer_id}/credit",
-                "/v1/customers/{customer_id}/credit/issue",
-                "/v1/customers/{customer_id}/credit/redeem",
-                "/v1/storefront-settings",
-                "/v1/web-orders",
-                "/v1/web-orders/{order_id}/picked-up",
-                "/v1/web-orders/{order_id}/cancel",
-                "/v1/storefront/{slug}",
-                "/v1/storefront/{slug}/search",
-                "/v1/storefront/{slug}/autocomplete",
-                "/v1/storefront/{slug}/cards/{oracle_id}",
-                "/v1/storefront/{slug}/offers",
-                "/v1/storefront/{slug}/cart/quote",
-                "/v1/storefront/{slug}/orders",
-                "/v1/storefront/{slug}/orders/{order_id}",
-                "/v1/health",
-            ],
+            "endpoints": sorted(
+                {
+                    r.path
+                    for r in iter_route_contexts(app.routes)
+                    if r.path and r.path.startswith("/v1/")
+                }
+            ),
         }
 
     return app

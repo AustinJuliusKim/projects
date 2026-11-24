@@ -5,11 +5,97 @@ done yet; check items off as they are.
 
 ## Before any deploy
 
-- [ ] **Replace the `X-Tenant-Id` / `X-Actor` headers with a verified auth
-  claim** (Supabase Auth JWT → tenant id + user id), in `deps.py`. Until
-  then any caller can act as any tenant; `template.yaml` must not be
-  deployed.
+`template.yaml` now defines the Cognito pool and wires `AUTH_ISSUER` /
+`AUTH_CLIENT_IDS` / `ENV`, but it is still **not ready to deploy** until
+the unchecked items below and in §1b (tcg_search in the bundle, OpenSearch)
+are done.
+
+- [x] Replace the `X-Tenant-Id` / `X-Actor` headers with a verified access
+  token + Postgres-resolved membership (docs/AUTH_PLAN.md A1/A2, done
+  2026-10-14). X-Tenant-Id is now only a store selector.
+- [x] Identity provider in `template.yaml` (AUTH_PLAN A4, 2026-10-14): see
+  §0 for the steps to stand it up. The app refuses to start without
+  `AUTH_ISSUER`, and refuses the dev issuer unless `ENV` is `local`/`test`
+  — the template's `Environment` parameter only allows `prod`/`staging`.
+- [x] Users' email for invites: the app posts the Cognito ID token to
+  `POST /v1/me/identity` after sign-in (A4); the API verifies it and stores
+  the verified email. (A5 must make the app do this.)
+- [ ] Invite email delivery (SES, §0). Today the accept link is only logged,
+  and only in local/test.
+- [ ] Existing stores need an owner: `scripts/backfill_owner.py --tenant
+  <id> --email <email> --sub <cognito sub>` once per store migrated past
+  `0011_rbac`.
 - [ ] Pin CORS `allow_origins` in `app.py` to the POS app's origin.
+
+## 0. Sign-in (Cognito) — not done; run manually when deploying
+
+- [ ] Deploy parameters: `CognitoDomainPrefix` (globally unique, e.g.
+  `tcg-pos-auth`), `AppCallbackUrls` (e.g.
+  `https://pos.example.com/auth/callback`), `AppLogoutUrls`, `AppBaseUrl`
+  (invite links), `Environment=prod`. The pool is Lite tier
+  (`UserPoolTier: LITE`, free up to the MAU allowance), email sign-in with
+  self-signup and email verification, `DeletionProtection: ACTIVE` and
+  `DeletionPolicy: Retain` (deleting the stack never deletes users).
+- [ ] From the stack outputs, set the app's build env: `VITE_COGNITO_DOMAIN`
+  (`HostedUiDomain`), `VITE_COGNITO_CLIENT_ID` (`UserPoolClientId`), and
+  the redirect URI matching one of `AppCallbackUrls`. The SPA must use the
+  authorization-code flow with PKCE (S256), like
+  `apps/choices-webapp/frontend/src/lib/auth.js`.
+- [ ] **SES for email** before real stores onboard: Cognito's default sender
+  is capped at ~50 emails/day (sign-up codes and password resets). Verify
+  a sending domain in SES (DKIM), request production access (out of the
+  sandbox), then set the pool's `EmailConfiguration` to
+  `EmailSendingAccount: DEVELOPER` + `SourceArn` (+ `From`). Invite mail
+  is a separate sender in the API (`routes/staff.deliver_invite`, still a
+  log line): give the Lambda `ses:SendEmail` on that identity and wire it.
+- [ ] **Google sign-in (optional):** create an OAuth client (Web
+  application) in Google Cloud with redirect URI
+  `https://<prefix>.auth.<region>.amazoncognito.com/oauth2/idpresponse`,
+  then pass `GoogleClientId` / `GoogleClientSecret`. Account linking: a
+  Google sign-in is a **different Cognito user (different `sub`)** from an
+  email+password user with the same address. The API keys users on `sub`
+  and never merges accounts by email, so that person has two app users;
+  invites still work for whichever one they accept with (the invite
+  matches the verified email). Do not add a pre-sign-up trigger that
+  auto-links by email — that lets anyone who controls a Google account for
+  an address take over the password account. If linking is ever wanted,
+  do it explicitly (AdminLinkProviderForUser) after the user proves both.
+- [ ] After the first deploy, backfill owners (above) using the real
+  Cognito `sub`s (`aws cognito-idp list-users`, read-only).
+
+## Registers, PINs and API keys — runbooks
+
+**Enroll a register** (a manager or owner, on the register machine):
+1. Sign in to the POS app on that machine with your own account.
+2. Create the register if needed (`POST /v1/registers {location_id, name}`)
+   and enroll this machine (`POST /v1/registers/{id}/enroll`). The
+   response's `device_secret` is shown once; the app stores it locally and
+   sends `Authorization: Device <secret>` from then on. Sign out of your
+   own account on that machine afterwards.
+3. Each staff member sets a 6-digit PIN for the store from their own
+   sign-in (`PUT /v1/me/pin`), then picks their name on the register and
+   enters it. Sessions last 12 h and lock after 30 min idle.
+
+**Lost or stolen register:** `DELETE /v1/registers/devices/{id}` (the app's
+registers page once A5 has one). The secret and every session on it stop working on
+the next request. Re-enroll the replacement.
+
+**Locked PIN:** 5 wrong PINs lock it for 1 min, then 2, 4, … up to 1 h. The
+member can clear it by setting a new PIN from their own sign-in. PIN
+attempts are also limited per register (`REGISTER_PIN_LIMIT`, default 10
+per minute). Failed attempts are in `audit_log` (`action = 'pin.fail'`).
+
+**Approvals:** by default a cashier needs a manager's PIN for refunds,
+voids, store-credit corrections and price overrides (`approval_policy`
+rows with `tenant_id IS NULL`). A store can override per role with its own
+row (`mode` allow / approval / deny, optional `limit_cents`) — there is no
+API for that yet, so it's SQL as the schema owner.
+
+**API keys** (owners): `POST /v1/api-keys {name, perms}` returns the key
+once (`tcgpos_<prefix>_<secret>`; only a hash is stored). Keys don't
+expire and keep working if their creator leaves — revoke them
+(`DELETE /v1/api-keys/{id}`) when the integration or its owner goes away.
+Keys can't hold staff/roles/registers/keys/approval/billing permissions.
 
 ## 1. Database
 

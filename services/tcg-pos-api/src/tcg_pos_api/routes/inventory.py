@@ -5,7 +5,7 @@ import psycopg
 from fastapi import APIRouter, HTTPException, Query
 
 from tcg_pos_api import queries
-from tcg_pos_api.deps import Actor, TenantConn
+from tcg_pos_api.deps import Perm, TenantConn, require
 from tcg_pos_api.routes.models import (
     INT32_MAX,
     InventoryAdjust,
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/inventory", tags=["inventory"])
 PAGE_MAX = 100_000
 
 
-@router.get("", response_model=InventoryPage)
+@router.get("", response_model=InventoryPage, dependencies=[require(Perm.INVENTORY_READ)])
 def list_inventory(
     conn: TenantConn,
     location_id: uuid.UUID | None = None,
@@ -37,10 +37,12 @@ def list_inventory(
     )
 
 
-# `actor` is declared before `conn` so a missing X-Actor 401s before a DB
-# connection is opened (FastAPI resolves dependencies in declaration order).
-@router.post("/adjust", response_model=InventoryAdjustResult)
-def adjust(actor: Actor, conn: TenantConn, body: InventoryAdjust) -> InventoryAdjustResult:
+@router.post(
+    "/adjust",
+    response_model=InventoryAdjustResult,
+    dependencies=[require(Perm.INVENTORY_ADJUST)],
+)
+def adjust(conn: TenantConn, body: InventoryAdjust) -> InventoryAdjustResult:
     """Apply a signed quantity change at the item's grain. The item update,
     its inventory_ledger row and its audit_log row commit together or not at
     all; a change that would take qty below 0 is rejected with 409."""
@@ -70,11 +72,9 @@ def adjust(actor: Actor, conn: TenantConn, body: InventoryAdjust) -> InventoryAd
         delta=body.delta,
         reason=body.reason,
         channel=body.channel,
-        actor=actor,
     )
     queries.write_audit(
         conn,
-        actor=actor,
         action="inventory.adjust",
         entity="inventory_item",
         entity_id=after["id"],
@@ -84,10 +84,12 @@ def adjust(actor: Actor, conn: TenantConn, body: InventoryAdjust) -> InventoryAd
     return InventoryAdjustResult(item=InventoryItem(**after), ledger_id=ledger_id)
 
 
-@router.patch("/{item_id}", response_model=InventoryItem)
-def set_price(
-    actor: Actor, conn: TenantConn, item_id: uuid.UUID, body: InventoryPriceUpdate
-) -> InventoryItem:
+@router.patch(
+    "/{item_id}",
+    response_model=InventoryItem,
+    dependencies=[require(Perm.INVENTORY_PRICE_EDIT)],
+)
+def set_price(conn: TenantConn, item_id: uuid.UUID, body: InventoryPriceUpdate) -> InventoryItem:
     """Set or clear (null) an item's shelf price. Quantity is untouched and no
     ledger row is written — the ledger is quantity only; the price change is
     an audit_log row in the same transaction."""
@@ -99,7 +101,6 @@ def set_price(
     after = queries.set_item_price(conn, item_id, body.price_cents)
     queries.write_audit(
         conn,
-        actor=actor,
         action="inventory.price",
         entity="inventory_item",
         entity_id=item_id,

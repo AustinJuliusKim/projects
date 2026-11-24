@@ -1,6 +1,9 @@
 """SQL for the routes. Every function takes a connection already scoped to a
 tenant (deps.TenantConn): RLS filters reads, and tenant_id columns default
-to current_tenant_id(), so no query here passes a tenant id explicitly."""
+to current_tenant_id(), so no query here passes a tenant id explicitly.
+Likewise no query passes an actor: ledger and audit `actor` columns default
+to the transaction's app.actor (set from the verified caller) and the
+database rejects any other value (migrations/0011_rbac.sql)."""
 
 import uuid
 from typing import Any
@@ -23,7 +26,6 @@ def _snapshot(row: dict[str, Any] | None) -> Jsonb | None:
 def write_audit(
     conn: psycopg.Connection,
     *,
-    actor: str,
     action: str,
     entity: str,
     entity_id: uuid.UUID,
@@ -31,9 +33,9 @@ def write_audit(
     after: dict[str, Any] | None,
 ) -> None:
     conn.execute(
-        "INSERT INTO audit_log (actor, action, entity, entity_id, before, after) "
-        "VALUES (%s, %s, %s, %s, %s, %s)",
-        (actor, action, entity, entity_id, _snapshot(before), _snapshot(after)),
+        "INSERT INTO audit_log (action, entity, entity_id, before, after) "
+        "VALUES (%s, %s, %s, %s, %s)",
+        (action, entity, entity_id, _snapshot(before), _snapshot(after)),
     )
 
 
@@ -102,12 +104,11 @@ def insert_inventory_ledger(
     delta: int,
     reason: str,
     channel: str,
-    actor: str,
 ) -> uuid.UUID:
     row = conn.execute(
-        "INSERT INTO inventory_ledger (inventory_item_id, delta, reason, channel, actor) "
-        "VALUES (%s, %s, %s, %s, %s) RETURNING id",
-        (item_id, delta, reason, channel, actor),
+        "INSERT INTO inventory_ledger (inventory_item_id, delta, reason, channel) "
+        "VALUES (%s, %s, %s, %s) RETURNING id",
+        (item_id, delta, reason, channel),
     ).fetchone()
     return row["id"]
 
@@ -138,12 +139,11 @@ def insert_credit_ledger(
     customer_id: uuid.UUID,
     delta_cents: int,
     reason: str,
-    actor: str,
 ) -> None:
     conn.execute(
-        "INSERT INTO credit_ledger (customer_id, delta_cents, reason, actor) "
-        "VALUES (%s, %s, %s, %s)",
-        (customer_id, delta_cents, reason, actor),
+        "INSERT INTO credit_ledger (customer_id, delta_cents, reason) "
+        "VALUES (%s, %s, %s)",
+        (customer_id, delta_cents, reason),
     )
 
 

@@ -22,3 +22,9 @@ def connect_kwargs() -> dict:
         "prepare_threshold": None,
         "connect_timeout": int(os.environ.get("DB_CONNECT_TIMEOUT", DEFAULT_CONNECT_TIMEOUT)),
     }
+
+
+def env_name() -> str:
+    """ENV: local | test | (anything else = a deployed environment). Only
+    local and test may use the dev token issuer (auth/dev.py)."""
+    return os.environ.get("ENV", "").strip().lower()

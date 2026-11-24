@@ -7,7 +7,8 @@ tcg_pos_worker, then releases each one in its own transaction as
 tcg_pos_app with that order's tenant set — the same RLS-bound path and the
 same reversal as a staff cancel (storefront.release_order), with status
 'expired', ledger reason 'web_expire:<id>' and actor
-'system:expire_reservations'. An order a clerk picked up or cancelled in the
+'job:expire_reservations' (set as app.actor, which the database stamps on the
+ledger and audit rows). An order a clerk picked up or cancelled in the
 meantime is skipped (the order row lock makes that race safe). Also prunes
 old storefront rate-limit windows.
 
@@ -27,7 +28,7 @@ from tcg_pos_api.config import connect_kwargs, database_url
 
 logger = logging.getLogger("tcg_pos_api.jobs.expire_reservations")
 
-ACTOR = "system:expire_reservations"
+ACTOR = "job:expire_reservations"
 
 
 def run(conn: psycopg.Connection, *, limit: int = 500) -> dict[str, int]:
@@ -44,10 +45,12 @@ def run(conn: psycopg.Connection, *, limit: int = 500) -> dict[str, int]:
             with conn.transaction():
                 conn.execute("SET LOCAL ROLE tcg_pos_app")
                 conn.execute(
-                    "SELECT set_config('app.tenant_id', %s, true)", (str(row["tenant_id"]),)
+                    "SELECT set_config('app.tenant_id', %s, true), "
+                    "set_config('app.actor', %s, true)",
+                    (str(row["tenant_id"]), ACTOR),
                 )
                 done = storefront.release_order(
-                    conn, row["id"], status="expired", actor=ACTOR, only_if_due=True
+                    conn, row["id"], status="expired", only_if_due=True
                 )
             counts["expired" if done else "skipped"] += 1
         except storefront.OrderStateError:

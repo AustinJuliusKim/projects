@@ -220,8 +220,8 @@ def test_order_reserves_stock_with_ledger_audit_and_outbox(client, make_shop, ad
     reason = f"web_reserve:{order['id']}"
     assert [(r["inventory_item_id"], r["delta"], r["reason"], r["channel"], r["actor"])
             for r in ledger] == [
-        (a, -2, reason, "web", "web:pat@example.com"),
-        (b, -1, reason, "web", "web:pat@example.com"),
+        (a, -2, reason, "web", f"storefront:{shop['slug']}"),
+        (b, -1, reason, "web", f"storefront:{shop['slug']}"),
     ]
     audit = admin_conn.execute(
         "SELECT action, entity, before, after FROM audit_log WHERE tenant_id = %s", (t["id"],)
