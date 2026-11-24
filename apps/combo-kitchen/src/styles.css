@@ -1,0 +1,767 @@
+@font-face {
+  font-family: "Pixel";
+  src: url("/fonts/pixel.woff2") format("woff2");
+  font-display: swap;
+}
+
+:root {
+  --cream: #f8edd8;
+  --ink: #2b2018;
+  --ketchup: #d64533;
+  --mustard: #e8a828;
+  --leaf: #5a9e4b;
+  --sky: #7ec4cf;
+  --paper: #fffaf0;
+  --wood: #c68a4e;
+  --wood-dark: #a06a36;
+  --tile: #eadfc6;
+  --px: 4px;
+  font-family: "Pixel", "Courier New", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* all graphics are 16x16 pixel-art SVGs from src/sprites/ — never emoji */
+.sprite {
+  display: block;
+  image-rendering: pixelated;
+}
+
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--ink);
+  image-rendering: pixelated;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1rem;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* CRT scanlines over everything, purely decorative */
+.crt::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, 0.06) 2px 4px);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* chunky stepped "pixel" border via box-shadow */
+.pixel-frame,
+.tile,
+.btn,
+.reveal-card,
+.cookbook-panel,
+.counter-slot,
+.scene-window,
+.scene-shelf {
+  border: none;
+  box-shadow:
+    0 calc(-1 * var(--px)) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(-1 * var(--px)) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink);
+}
+
+/* ---------- kitchen backdrop ---------- */
+
+.kitchen-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+/* checkered tile backsplash on the upper wall */
+.scene-backsplash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 62vh;
+  background:
+    repeating-conic-gradient(var(--tile) 0% 25%, var(--cream) 25% 50%)
+    0 0 / 48px 48px;
+}
+
+.scene-window {
+  position: absolute;
+  top: 9vh;
+  left: 6%;
+  width: 120px;
+  height: 110px;
+  background: linear-gradient(180deg, #a8dbe4 0%, var(--sky) 100%);
+  overflow: hidden;
+}
+
+.scene-cloud {
+  position: absolute;
+  top: 18%;
+  left: 26%;
+  width: 34px;
+  height: 34px;
+}
+
+.scene-curtain {
+  position: absolute;
+  top: 0;
+  width: 26%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--ketchup) 0 8px,
+    #b93a2b 8px 16px
+  );
+}
+
+.scene-curtain-l { left: 0; }
+.scene-curtain-r { right: 0; }
+
+.scene-shelf {
+  position: absolute;
+  top: 12vh;
+  right: 6%;
+  width: 140px;
+  padding: 0.2rem 0.5rem 0;
+  background: var(--wood);
+  display: flex;
+  justify-content: space-around;
+}
+
+.shelf-sprite {
+  width: 28px;
+  height: 28px;
+  transform: translateY(-55%);
+}
+
+/* wooden counter along the bottom */
+.scene-counter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 62vh;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 88px, rgba(43, 32, 24, 0.25) 88px 92px),
+    linear-gradient(180deg, var(--wood) 0 14px, var(--wood-dark) 14px 18px, var(--wood) 18px 100%);
+}
+
+.stage {
+  position: relative;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0 1.5rem;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--ketchup);
+  text-shadow: 3px 3px 0 var(--mustard);
+}
+
+h2,
+h3,
+h4 {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.btn {
+  background: var(--paper);
+  padding: 0.5rem 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+.btn:active {
+  transform: translateY(var(--px));
+}
+
+.btn-cookbook {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-sprite {
+  width: 18px;
+  height: 18px;
+}
+
+.btn-cook {
+  background: var(--ketchup);
+  color: var(--paper);
+  font-size: 1.1rem;
+  padding: 0.75rem 2.5rem;
+  margin-top: 1rem;
+}
+
+.btn-cook:disabled {
+  background: #b8a894;
+  color: #7b6f60;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---------- pantry ---------- */
+
+.pantry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pantry-hint {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+  background: var(--paper);
+  padding: 0.3rem 0.8rem;
+}
+
+.pantry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: calc(var(--px) * 3);
+  width: 100%;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 0.25rem;
+  background: var(--paper);
+}
+
+.tile[aria-pressed="true"] {
+  background: var(--mustard);
+}
+
+.tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tile-sprite {
+  width: 40px;
+  height: 40px;
+}
+
+.tile-name {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.counter {
+  display: flex;
+  gap: calc(var(--px) * 3);
+  margin-top: 1.25rem;
+}
+
+.counter-slot {
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  background: var(--paper);
+  color: #b8a894;
+}
+
+.counter-slot.filled {
+  background: var(--sky);
+  color: var(--ink);
+}
+
+.slot-sprite {
+  width: 32px;
+  height: 32px;
+}
+
+/* ---------- cooking scene: pot on the stove, rumble cloud over it ---------- */
+
+.cooking {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 2rem;
+}
+
+.cooking-stage {
+  position: relative;
+  width: 420px;
+  height: 420px;
+}
+
+.stove {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 270px;
+  height: 69px;
+  background: #4a3d31;
+  box-shadow:
+    0 calc(-1 * var(--px)) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(-1 * var(--px)) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink);
+}
+
+.burner {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 165px;
+  height: 18px;
+  background: repeating-linear-gradient(90deg, var(--ink) 0 15px, #6b5b49 15px 30px);
+}
+
+.pot {
+  position: absolute;
+  bottom: 63px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 132px;
+  height: 132px;
+  animation: rattle 0.18s steps(2, end) infinite;
+}
+
+@keyframes rattle {
+  0% { transform: translateX(-50%) translate(0, 0) rotate(0deg); }
+  25% { transform: translateX(-50%) translate(-5px, 2px) rotate(-3deg); }
+  50% { transform: translateX(-50%) translate(5px, -2px) rotate(3deg); }
+  75% { transform: translateX(-50%) translate(-3px, 0) rotate(-2deg); }
+  100% { transform: translateX(-50%) translate(0, 0) rotate(0deg); }
+}
+
+/* the cartoon scuffle cloud hiding the pot */
+.rumble-cloud {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  margin-left: -165px;
+  width: 330px;
+  height: 225px;
+  animation:
+    cloud-drop 0.3s steps(4),
+    cloud-wobble 0.22s steps(2, end) 0.3s infinite;
+}
+
+.rumble-cloud.poofing {
+  animation: poof 0.4s steps(4) forwards;
+}
+
+.cloud-blob {
+  position: absolute;
+  width: 126px;
+  height: 126px;
+}
+
+.blob-1 { top: 28%; left: 4%; }
+.blob-2 { top: 6%; left: 26%; }
+.blob-3 { top: 30%; right: 2%; }
+.blob-4 { top: 42%; left: 30%; width: 138px; height: 138px; }
+.blob-5 { top: 12%; right: 20%; }
+
+.cloud-bang {
+  position: absolute;
+  width: 45px;
+  height: 45px;
+  animation: bang-flash 0.5s steps(2) infinite;
+}
+
+.bang-1 { top: 34%; left: 34%; }
+.bang-2 { top: 52%; left: 54%; animation-delay: 0.25s; }
+
+/* ingredients / spoon / stars poking out of the cloud edge */
+.poker {
+  position: absolute;
+  transform: scale(0);
+  animation: poke 1.1s steps(3) infinite;
+}
+
+.poker-sprite {
+  width: 51px;
+  height: 51px;
+}
+
+.poker-star {
+  width: 39px;
+  height: 39px;
+}
+
+@keyframes cloud-drop {
+  from { transform: translateY(-135px) scale(0.3); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes cloud-wobble {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-9px, 3px) rotate(-2deg); }
+  50% { transform: translate(9px, -3px) rotate(2deg); }
+  75% { transform: translate(-6px, 2px) rotate(-1deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes poke {
+  0%, 100% { transform: scale(0) rotate(0deg); }
+  40% { transform: scale(1) rotate(-12deg); }
+  60% { transform: scale(1) rotate(10deg); }
+}
+
+@keyframes bang-flash {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes poof {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(1.9); opacity: 0; }
+}
+
+.steam {
+  position: absolute;
+  bottom: 70%;
+  width: 54px;
+  height: 54px;
+  animation: puff-rise 0.5s steps(4) forwards;
+}
+
+.steam-1 { left: 30%; }
+.steam-2 { right: 26%; animation-delay: 0.1s; }
+
+.puff {
+  position: absolute;
+  bottom: 27px;
+  width: 42px;
+  height: 42px;
+  animation: puff-rise 0.9s steps(4) infinite;
+}
+
+.puff-1 { left: 8%; animation-delay: 0s; }
+.puff-2 { right: 6%; animation-delay: 0.45s; }
+
+@keyframes puff-rise {
+  from { transform: translateY(0) scale(0.4); opacity: 0.9; }
+  to { transform: translateY(-90px) scale(1.4); opacity: 0; }
+}
+
+.cooking-caption {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  background: var(--paper);
+  padding: 0.3rem 0.8rem;
+  animation: blink 0.8s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ---------- reveal ---------- */
+
+.reveal {
+  display: flex;
+  justify-content: center;
+}
+
+.reveal-card {
+  background: var(--paper);
+  padding: 1.5rem;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  animation: slam 0.35s steps(5);
+}
+
+@keyframes slam {
+  from { transform: scale(2.5); opacity: 0; }
+  60% { transform: scale(0.9); }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.new-badge {
+  position: absolute;
+  top: -0.75rem;
+  right: -0.5rem;
+  background: var(--leaf);
+  color: var(--paper);
+  padding: 0.3rem 0.6rem;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  transform: rotate(6deg);
+  z-index: 2;
+}
+
+.praise-banner {
+  display: inline-block;
+  background: var(--ketchup);
+  color: var(--mustard);
+  padding: 0.4rem 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 1rem;
+  transform: rotate(-3deg);
+  margin-bottom: 0.75rem;
+  animation: slam 0.35s steps(5) 0.15s backwards;
+}
+
+.praise-mystery {
+  background: var(--sky);
+  color: var(--ink);
+  transform: rotate(2deg);
+}
+
+.plate-spot {
+  position: relative;
+  height: 7rem;
+  display: grid;
+  place-items: center;
+}
+
+/* rotating rays behind the plate */
+.sunburst {
+  position: absolute;
+  width: 10rem;
+  height: 10rem;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    rgba(232, 168, 40, 0.45) 0deg 15deg,
+    transparent 15deg 30deg
+  );
+  animation: sunspin 6s steps(24) infinite;
+}
+
+@keyframes sunspin {
+  to { transform: rotate(360deg); }
+}
+
+.reveal-plate {
+  width: 84px;
+  height: 84px;
+  position: relative;
+}
+
+.sparkle {
+  position: absolute;
+  transform: scale(0);
+  animation: sparkle-pop 0.9s steps(3) forwards;
+  z-index: 2;
+}
+
+.sparkle-sprite {
+  width: 20px;
+  height: 20px;
+}
+
+@keyframes sparkle-pop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.4); opacity: 0; }
+}
+
+.reveal-name {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.2rem;
+  color: var(--ketchup);
+}
+
+.reveal-flavor {
+  font-style: italic;
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+}
+
+.recipe {
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.recipe h3 {
+  font-size: 0.9rem;
+  border-bottom: var(--px) solid var(--ink);
+  padding-bottom: 0.35rem;
+}
+
+.recipe h4 {
+  font-size: 0.8rem;
+  margin: 0.75rem 0 0.25rem;
+  color: var(--leaf);
+}
+
+.recipe ul,
+.recipe ol {
+  margin: 0.25rem 0;
+  padding-left: 1.4rem;
+}
+
+.recipe li {
+  margin: 0.3rem 0;
+  line-height: 1.4;
+}
+
+/* ---------- cookbook ---------- */
+
+.cookbook {
+  position: fixed;
+  inset: 0;
+  background: rgba(43, 32, 24, 0.75);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 20;
+}
+
+.cookbook-panel {
+  background: var(--paper);
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+
+.cookbook-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.cookbook-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  flex: 1;
+}
+
+.cookbook-count {
+  font-size: 0.85rem;
+  color: var(--leaf);
+}
+
+.cookbook-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: calc(var(--px) * 3);
+  margin-top: 1rem;
+}
+
+.cookbook-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem 0.25rem;
+  background: var(--cream);
+  border: none;
+  opacity: 0.5;
+}
+
+.slot-dish-sprite {
+  width: 40px;
+  height: 40px;
+}
+
+.cookbook-slot.found {
+  background: var(--paper);
+  opacity: 1;
+  box-shadow:
+    0 calc(-1 * var(--px)) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(-1 * var(--px)) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink);
+}
+
+.cookbook-slot-name {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.cookbook-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 0.75rem;
+}
+
+.cookbook-detail .btn {
+  align-self: flex-start;
+}
+
+.cookbook-detail .recipe {
+  width: 100%;
+}
+
+/* ---------- small screens ---------- */
+
+@media (max-width: 520px) {
+  .scene-window { width: 84px; height: 78px; top: 7vh; }
+  .scene-shelf { width: 100px; }
+  .scene-shelf .shelf-sprite { width: 22px; height: 22px; }
+  /* the 150% cooking stage overflows narrow phones — shrink it back down */
+  .cooking-stage {
+    transform: scale(0.7);
+    transform-origin: bottom center;
+    margin-top: -120px;
+  }
+}
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .pot,
+  .cloud-bang,
+  .poker,
+  .cooking-caption,
+  .sunburst,
+  .sparkle,
+  .reveal-card,
+  .praise-banner {
+    animation: none;
+  }
+  .poker {
+    transform: scale(1);
+  }
+  .rumble-cloud {
+    animation: none;
+  }
+  .rumble-cloud.poofing {
+    animation: poof 0.2s steps(2) forwards;
+  }
+  .puff,
+  .steam {
+    animation-duration: 2s;
+  }
+}

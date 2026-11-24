@@ -1,0 +1,85 @@
+name: combo-kitchen CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/combo-kitchen/**"
+      - ".github/workflows/combo-kitchen.yml"
+  pull_request:
+    paths:
+      - "apps/combo-kitchen/**"
+      - ".github/workflows/combo-kitchen.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/combo-kitchen
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          # Node >= 24: tests import the TS game modules via type stripping
+          node-version: 24.15
+          cache: npm
+          cache-dependency-path: apps/combo-kitchen/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for OIDC role assumption
+      contents: read
+    concurrency:
+      group: combo-kitchen-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/combo-kitchen
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.15
+          cache: npm
+          cache-dependency-path: apps/combo-kitchen/package-lock.json
+      # Runs before configure-aws-credentials so an unbootstrapped stack skips
+      # the deploy instead of failing it.
+      - name: Check whether infra is bootstrapped
+        id: guard
+        run: |
+          ROLE_ARN=$(node -pe "require('./deploy-params.json').RoleArn ?? ''")
+          if [ "$ROLE_ARN" = "FILL_AFTER_BOOTSTRAP" ] || [ -z "$ROLE_ARN" ]; then
+            echo "::notice::combo-kitchen: deploy-params.json RoleArn not bootstrapped — skipping deploy."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "role_arn=$ROLE_ARN" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: aws-actions/configure-aws-credentials@v6
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          role-to-assume: ${{ steps.guard.outputs.role_arn }}
+          aws-region: us-west-2
+      - name: Deploy CloudFormation stack
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          STACK_NAME=$(node -pe "require('./deploy-params.json').StackName")
+          REGION=$(node -pe "require('./deploy-params.json').Region")
+          CUSTOM_DOMAIN=$(node -pe "require('./deploy-params.json').CustomDomain ?? ''")
+          CERT_ARN=$(node -pe "require('./deploy-params.json').CertificateArn ?? ''")
+          WEB_ACL_ARN=$(node -pe "require('./deploy-params.json').WebAclArn ?? ''")
+          aws cloudformation deploy \
+            --template-file template.yaml \
+            --stack-name "$STACK_NAME" \
+            --region "$REGION" \
+            --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" "WebAclArn=$WEB_ACL_ARN" \
+            --no-fail-on-empty-changeset
+      - run: ./deploy-frontend.sh
+        if: steps.guard.outputs.skip != 'true'
