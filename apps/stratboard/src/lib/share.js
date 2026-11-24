@@ -11,6 +11,11 @@ const oneOf = (v, list, fallback) => (list.includes(v) ? v : fallback);
 export function parseHash(hash) {
   const [view, query = ""] = hash.replace(/^#/, "").split("?");
   const q = new URLSearchParams(query);
+  if (view === "board") {
+    // `d` is an encoded board (see board.js); validated when decoded.
+    const d = q.get("d");
+    return { view: "board", d: d && /^[A-Za-z0-9_-]+$/.test(d) ? d : null };
+  }
   if (view === "roulette") {
     return {
       view: "roulette",
@@ -30,6 +35,11 @@ export function parseHash(hash) {
 
 export function buildHash(state) {
   const q = new URLSearchParams();
+  if (state.view === "board") {
+    if (state.d) q.set("d", state.d);
+    const query = q.toString();
+    return query ? `#board?${query}` : "#board";
+  }
   if (state.view === "roulette") {
     q.set("side", state.side);
   } else {
