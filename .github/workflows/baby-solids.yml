@@ -1,0 +1,140 @@
+name: baby-solids CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/baby-solids/**"
+      - "packages/baby-core/**"
+      - ".github/workflows/baby-solids.yml"
+  pull_request:
+    paths:
+      - "apps/baby-solids/**"
+      - "packages/baby-core/**"
+      - ".github/workflows/baby-solids.yml"
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/baby-core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.15
+          cache: npm
+          cache-dependency-path: packages/baby-core/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/baby-solids
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.15
+          cache: npm
+          cache-dependency-path: apps/baby-solids/package-lock.json
+      - run: npm ci
+      # The file:-linked @baby/core package is symlinked; Node resolves its
+      # `zod` import via the symlink's real path, so the package's own
+      # node_modules must be populated here too.
+      - name: Install linked core deps
+        run: npm ci
+        working-directory: packages/baby-core
+      - run: npm test
+      # Drift gate: the committed src/generated/foods.json must match the
+      # Markdown sources byte-for-byte.
+      - run: npm run check
+      # Relational-expressibility gate: every food must still flatten into the
+      # tables documented in content/SCHEMA.md.
+      - run: npm run check:sql
+      - run: npm run build
+
+  # GitHub Actions has no job-level path filter — diff the push range so the
+  # deploy only runs when this app or its linked package actually changed.
+  app-changed:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: diff
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            # New branch or force push — can't diff, deploy to be safe.
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BEFORE" "${{ github.sha }}" \
+              | grep -qE '^(apps/baby-solids/|packages/baby-core/)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    # Gated on a repo variable so main stays green until the one-time ops
+    # setup exists (Google OAuth client, IAM role, first manual
+    # `aws cloudformation deploy` — see the app README). Set
+    # BABY_SOLIDS_DEPLOY_ENABLED=true to arm.
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      vars.BABY_SOLIDS_DEPLOY_ENABLED == 'true' &&
+      needs.app-changed.outputs.changed == 'true'
+    needs: [core, app, app-changed]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for OIDC role assumption
+      contents: read
+    concurrency:
+      group: baby-solids-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/baby-solids
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.15
+          cache: npm
+          cache-dependency-path: apps/baby-solids/package-lock.json
+      - run: npm ci
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::549883968767:role/baby-solids-github-deploy
+          aws-region: us-west-2
+      - name: Check deploy-params.json is filled in
+        run: |
+          CLIENT_ID=$(node -pe "require('./deploy-params.json').GoogleClientId")
+          if [ "$CLIENT_ID" = "FILL_AFTER_OAUTH_CLIENT" ]; then
+            echo "::error::deploy-params.json GoogleClientId is still FILL_AFTER_OAUTH_CLIENT. See apps/baby-solids/README.md." >&2
+            exit 1
+          fi
+      - name: Deploy CloudFormation stack
+        run: |
+          STACK_NAME=$(node -pe "require('./deploy-params.json').StackName")
+          REGION=$(node -pe "require('./deploy-params.json').Region")
+          CUSTOM_DOMAIN=$(node -pe "require('./deploy-params.json').CustomDomain ?? ''")
+          CERT_ARN=$(node -pe "require('./deploy-params.json').CertificateArn ?? ''")
+          WEB_ACL_ARN=$(node -pe "require('./deploy-params.json').WebAclArn ?? ''")
+          CLIENT_ID=$(node -pe "require('./deploy-params.json').GoogleClientId")
+          HOUSEHOLD=$(node -pe "require('./deploy-params.json').HouseholdId")
+          ORIGIN=$(node -pe "require('./deploy-params.json').SyncAllowedOrigin ?? '*'")
+          aws cloudformation deploy \
+            --template-file template.yaml \
+            --stack-name "$STACK_NAME" \
+            --region "$REGION" \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides "CustomDomain=$CUSTOM_DOMAIN" "CertificateArn=$CERT_ARN" "WebAclArn=$WEB_ACL_ARN" "GoogleClientId=$CLIENT_ID" "HouseholdId=$HOUSEHOLD" "SyncAllowedOrigin=$ORIGIN" \
+            --no-fail-on-empty-changeset
+      - run: ./deploy-frontend.sh
